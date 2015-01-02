@@ -10,6 +10,11 @@ import java.net.URI;
  * Created by khc on 1/1/15.
  */
 public class BounceApiMetadata extends BaseApiMetadata {
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
     public BounceApiMetadata(Builder builder) {
         super(builder);
     }
@@ -20,7 +25,7 @@ public class BounceApiMetadata extends BaseApiMetadata {
 
     @Override
     public ApiMetadata.Builder<?> toBuilder() {
-        return null;
+        return new Builder().fromApiMetadata(this);
     }
 
     public static class Builder extends BaseApiMetadata.Builder<Builder> {

@@ -43,13 +43,17 @@ public final class BounceBlobStore implements BlobStore {
     private Logger logger = Logger.NULL;
 
     private BlobStoreContext context;
-    private final BlobStore nearStore;
-    private final BlobStore farStore;
+    private BlobStore nearStore, farStore;
 
-    BounceBlobStore(BlobStoreContext context, BlobStore nearStore, BlobStore farStore) {
-        this.context = checkNotNull(context);
+    BounceBlobStore() {
+    }
+
+    void setNearStore(BlobStore nearStore) {
         this.nearStore = checkNotNull(nearStore);
-        this.farStore = checkNotNull(farStore);
+    }
+
+    void setFarStore(BlobStore nearStore) {
+        this.farStore = checkNotNull(nearStore);
     }
 
     @Override
