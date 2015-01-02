@@ -26,8 +26,8 @@ import com.google.common.hash.HashCode;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
-import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.BlobBuilder.PayloadBlobBuilder;
+import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.io.ContentMetadata;
