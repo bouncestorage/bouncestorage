@@ -1,5 +1,6 @@
 bouncestorage.iml
-.idea/*
+.idea/
+target/
 
 # below is default github .ignore for java
 *.class
