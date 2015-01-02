@@ -11,9 +11,11 @@ import org.jclouds.domain.Location;
 import org.jclouds.logging.Logger;
 
 import javax.annotation.Resource;
+import java.io.IOException;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Throwables.propagate;
 
 /**
  * Created by khc on 12/30/14.
@@ -141,17 +143,38 @@ public class BounceBlobStore implements BlobStore {
 
     @Override
     public BlobMetadata blobMetadata(String s, String s1) {
-        return null;
+        BlobMetadata meta = nearStore.blobMetadata(s, s1);
+        if (BounceLink.isLink(meta)) {
+            try {
+                return BounceLink.fromBlob(nearStore.getBlob(s, s1)).getBlobMetadata();
+            } catch (IOException e) {
+                logger.error(e, "An error occurred while loading the metadata for blob %s in container %s",
+                        s, s1);
+                throw propagate(e);
+            }
+        } else {
+            return meta;
+        }
     }
 
     @Override
     public Blob getBlob(String s, String s1) {
-        return null;
+        Blob b = nearStore.getBlob(s, s1);
+        if (BounceLink.isLink(b.getMetadata())) {
+            return farStore.getBlob(s, s1);
+        } else {
+            return b;
+        }
     }
 
     @Override
     public Blob getBlob(String s, String s1, GetOptions getOptions) {
-        return null;
+        BlobMetadata meta = nearStore.blobMetadata(s, s1);
+        if (BounceLink.isLink(meta)) {
+            return farStore.getBlob(s, s1, getOptions);
+        } else {
+            return nearStore.getBlob(s, s1, getOptions);
+        }
     }
 
     @Override
