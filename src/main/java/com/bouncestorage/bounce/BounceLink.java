@@ -20,8 +20,8 @@ import java.io.*;
 import java.net.URI;
 import java.util.Date;
 import java.util.Map;
+import java.util.Optional;
 
-import com.google.common.base.Optional;
 import com.google.common.hash.HashCode;
 import com.google.common.io.ByteSource;
 
@@ -40,7 +40,7 @@ import org.jclouds.io.payloads.ByteSourcePayload;
  */
 public final class BounceLink implements Serializable {
 
-    private static final String BOUNCE_LINK = "bounce-link";
+    static final String BOUNCE_LINK = "bounce-link";
     private final MutableBlobMetadata metadata;
 
     BounceLink(Optional<BlobMetadata> metadata) {
