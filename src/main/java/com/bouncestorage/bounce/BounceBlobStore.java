@@ -1,4 +1,28 @@
+/*
+ * Copyright 2015 Bounce Storage <info@bouncestorage.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.bouncestorage.bounce;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Throwables.propagate;
+
+import java.io.IOException;
+import java.util.Set;
+
+import javax.annotation.Resource;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -10,23 +34,17 @@ import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.domain.Location;
 import org.jclouds.logging.Logger;
 
-import javax.annotation.Resource;
-import java.io.IOException;
-import java.util.Set;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Throwables.propagate;
-
 /**
  * Created by khc on 12/30/14.
  */
-public class BounceBlobStore implements BlobStore {
+public final class BounceBlobStore implements BlobStore {
 
     @Resource
     private Logger logger = Logger.NULL;
 
     private BlobStoreContext context;
-    private final BlobStore nearStore, farStore;
+    private final BlobStore nearStore;
+    private final BlobStore farStore;
 
     BounceBlobStore(BlobStoreContext context, BlobStore nearStore, BlobStore farStore) {
         this.context = checkNotNull(context);
