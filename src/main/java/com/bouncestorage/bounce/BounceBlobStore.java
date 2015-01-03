@@ -20,9 +20,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Set;
 
 import javax.annotation.Resource;
+
+import com.google.common.collect.ImmutableMap;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -84,12 +87,14 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public boolean createContainerInLocation(Location location, String s) {
-        return nearStore.createContainerInLocation(location, s);
+        return nearStore.createContainerInLocation(location, s) |
+                farStore.createContainerInLocation(location, s);
     }
 
     @Override
     public boolean createContainerInLocation(Location location, String s, CreateContainerOptions createContainerOptions) {
-        return nearStore.createContainerInLocation(location, s, createContainerOptions);
+        return nearStore.createContainerInLocation(location, s, createContainerOptions) |
+                farStore.createContainerInLocation(location, s, createContainerOptions);
     }
 
     @Override
@@ -214,5 +219,18 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public long countBlobs(String s, ListContainerOptions listContainerOptions) {
         return nearStore.countBlobs(s, listContainerOptions);
+    }
+
+    public void copyBlobAndCreateBounceLink(String containerName, String blobName)
+            throws IOException {
+        Utils.copyBlob(nearStore, farStore, containerName,
+                containerName, blobName);
+        BounceLink link = new BounceLink(Optional.of(nearStore.blobMetadata(
+                containerName, blobName)));
+        Blob blob = nearStore.blobBuilder(blobName)
+                .payload(link.toBlobPayload())
+                .userMetadata(ImmutableMap.of(BounceLink.BOUNCE_LINK, ""))
+                .build();
+        nearStore.putBlob(containerName, blob);
     }
 }
