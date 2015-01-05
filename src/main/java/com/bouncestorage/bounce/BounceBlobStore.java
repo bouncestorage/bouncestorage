@@ -19,7 +19,6 @@ import javax.inject.Inject;
 import javax.inject.Named;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.inject.Module;
 
 import org.jclouds.Constants;
@@ -253,14 +252,9 @@ public final class BounceBlobStore implements BlobStore {
 
     public void copyBlobAndCreateBounceLink(String containerName, String blobName)
             throws IOException {
-        Utils.copyBlob(nearStore, farStore, containerName,
+        Blob blobFrom = Utils.copyBlob(nearStore, farStore, containerName,
                 containerName, blobName);
-        BounceLink link = new BounceLink(Optional.of(nearStore.blobMetadata(
-                containerName, blobName)));
-        Blob blob = nearStore.blobBuilder(blobName)
-                .payload(link.toBlobPayload())
-                .userMetadata(ImmutableMap.of(BounceLink.BOUNCE_LINK, ""))
-                .build();
-        nearStore.putBlob(containerName, blob);
+        BounceLink link = new BounceLink(Optional.of(blobFrom.getMetadata()));
+        nearStore.putBlob(containerName, link.toBlob(nearStore));
     }
 }

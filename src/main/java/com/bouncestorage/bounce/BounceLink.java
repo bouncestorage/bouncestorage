@@ -11,9 +11,11 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.hash.HashCode;
 import com.google.common.io.ByteSource;
 
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.MutableBlobMetadata;
@@ -26,7 +28,10 @@ import org.jclouds.io.payloads.ByteSourcePayload;
 
 public final class BounceLink implements Serializable {
 
-    static final String BOUNCE_LINK = "bounce-link";
+    private static final String BOUNCE_LINK = "bounce-link";
+    private static final Map<String, String> BOUNCE_ATTR = ImmutableMap.of(
+            BOUNCE_LINK, ""
+    );
     private final MutableBlobMetadata metadata;
 
     BounceLink(Optional<BlobMetadata> metadata) {
@@ -58,7 +63,14 @@ public final class BounceLink implements Serializable {
         }
     }
 
-    Payload toBlobPayload() throws IOException {
+    Blob toBlob(BlobStore store) throws IOException {
+        return store.blobBuilder(metadata.getName())
+                .payload(toBlobPayload())
+                .userMetadata(BounceLink.BOUNCE_ATTR)
+                .build();
+    }
+
+    private Payload toBlobPayload() throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         try (ObjectOutputStream oos = new ObjectOutputStream(bos)) {
             oos.writeObject(this);
