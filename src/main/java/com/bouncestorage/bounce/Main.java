@@ -1,32 +1,20 @@
 /*
+ * Copyright 2015 Bounce Storage <info@bouncestorage.com>
  *
- *  * Copyright 2015 Bounce Storage <info@bouncestorage.com>
- *  *
- *  * Licensed under the Apache License, Version 2.0 (the "License");
- *  * you may not use this file except in compliance with the License.
- *  * You may obtain a copy of the License at
- *  *
- *  * http://www.apache.org/licenses/LICENSE-2.0
- *  *
- *  * Unless required by applicable law or agreed to in writing, software
- *  * distributed under the License is distributed on an "AS IS" BASIS,
- *  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  * See the License for the specific language governing permissions and
- *  * limitations under the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.bouncestorage.bounce;
-
-import com.google.common.base.Optional;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
-import com.google.inject.Module;
-import org.gaul.s3proxy.S3Proxy;
-import org.gaul.s3proxy.S3ProxyConstants;
-import org.jclouds.ContextBuilder;
-import org.jclouds.blobstore.BlobStoreContext;
-import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -34,7 +22,23 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.Properties;
 
-public class Main {
+import com.google.common.base.Optional;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
+import com.google.inject.Module;
+
+import org.gaul.s3proxy.S3Proxy;
+import org.gaul.s3proxy.S3ProxyConstants;
+
+import org.jclouds.ContextBuilder;
+import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
+
+public final class Main {
+    /* hide useless constructor */
+    private Main() {
+    }
+
     public static void main(String[] args) throws Exception {
         if (args.length == 1 && args[0].equals("--version")) {
             System.err.println(
@@ -54,11 +58,20 @@ public class Main {
                 S3ProxyConstants.PROPERTY_ENDPOINT);
         String s3ProxyAuthorization = properties.getProperty(
                 S3ProxyConstants.PROPERTY_AUTHORIZATION);
+        String nearStorePropertiesPath = properties.getProperty(
+                BounceBlobStore.STORE_PROPERTY_1);
+        String farStorePropertiesPath = properties.getProperty(
+                BounceBlobStore.STORE_PROPERTY_2);
         if (s3ProxyEndpointString == null ||
-                s3ProxyAuthorization == null) {
+                s3ProxyAuthorization == null ||
+                nearStorePropertiesPath == null ||
+                farStorePropertiesPath == null) {
             System.err.println("Properties file must contain:\n" +
                     S3ProxyConstants.PROPERTY_ENDPOINT + "\n" +
-                    S3ProxyConstants.PROPERTY_AUTHORIZATION);
+                    S3ProxyConstants.PROPERTY_AUTHORIZATION + "\n" +
+                    BounceBlobStore.STORE_PROPERTY_1 + "\n" +
+                    BounceBlobStore.STORE_PROPERTY_2 + "\n"
+            );
             System.exit(1);
         }
 
@@ -97,6 +110,7 @@ public class Main {
             }
         }
 
+
         String forceMultiPartUpload = properties.getProperty(
                 S3ProxyConstants.PROPERTY_FORCE_MULTI_PART_UPLOAD);
         Optional<String> virtualHost = Optional.fromNullable(
@@ -105,9 +119,14 @@ public class Main {
 
         ContextBuilder builder = ContextBuilder
                 .newBuilder("bounce")
-                .modules(ImmutableList.<Module>of(new SLF4JLoggingModule()))
-                .overrides(properties);
+                .modules(ImmutableList.<Module>of(new SLF4JLoggingModule()));
         BlobStoreContext context = builder.build(BlobStoreContext.class);
+        BounceBlobStore bounceStore = (BounceBlobStore) context.getBlobStore();
+        File nearStoreFile = new File(nearStorePropertiesPath);
+        File farStoreFile = new File(farStorePropertiesPath);
+        Properties nearStoreProps = Utils.propertiesFromFile(nearStoreFile);
+        Properties farStoreProps = Utils.propertiesFromFile(farStoreFile);
+        bounceStore.initStores(nearStoreProps, farStoreProps);
         URI s3ProxyEndpoint = new URI(s3ProxyEndpointString);
         S3Proxy s3Proxy = new S3Proxy(context.getBlobStore(), s3ProxyEndpoint,
                 localIdentity, localCredential, keyStorePath,
