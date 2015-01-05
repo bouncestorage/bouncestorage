@@ -8,18 +8,16 @@ package com.bouncestorage.bounce;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Throwables.propagate;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
 import javax.annotation.Resource;
-import javax.inject.Inject;
-import javax.inject.Named;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.inject.Inject;
 import com.google.inject.Module;
 
 import org.jclouds.Constants;
@@ -48,21 +46,6 @@ public final class BounceBlobStore implements BlobStore {
     private BlobStore farStore;
 
     @Inject
-    BounceBlobStore(BlobStoreContext context,
-                    @Named(STORE_PROPERTY_1) String prop1,
-                    @Named(STORE_PROPERTY_2) String prop2) {
-        this(context);
-        if (!prop1.isEmpty() && !prop2.isEmpty()) {
-            try {
-                initStores(Utils.propertiesFromFile(new File(prop1)),
-                        Utils.propertiesFromFile(new File(prop2)));
-            } catch (IOException e) {
-                logger.error(e, "error loading properties file");
-                throw propagate(e);
-            }
-        }
-    }
-
     BounceBlobStore(BlobStoreContext context) {
         this.context = checkNotNull(context);
     }
