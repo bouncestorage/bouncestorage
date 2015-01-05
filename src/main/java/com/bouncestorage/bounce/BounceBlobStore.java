@@ -37,9 +37,6 @@ import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.domain.Location;
 import org.jclouds.logging.Logger;
 
-/**
- * Created by khc on 12/30/14.
- */
 public final class BounceBlobStore implements BlobStore {
 
     @Resource

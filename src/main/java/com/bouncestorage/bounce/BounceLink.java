@@ -35,9 +35,6 @@ import org.jclouds.io.MutableContentMetadata;
 import org.jclouds.io.Payload;
 import org.jclouds.io.payloads.ByteSourcePayload;
 
-/**
- * Created by khc on 12/30/14.
- */
 public final class BounceLink implements Serializable {
 
     static final String BOUNCE_LINK = "bounce-link";

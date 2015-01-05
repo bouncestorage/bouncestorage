@@ -22,9 +22,6 @@ import org.jclouds.apis.ApiMetadata;
 import org.jclouds.apis.internal.BaseApiMetadata;
 import org.jclouds.blobstore.BlobStoreContext;
 
-/**
- * Created by khc on 1/1/15.
- */
 public final class BounceApiMetadata extends BaseApiMetadata {
 
     public BounceApiMetadata(Builder builder) {

@@ -22,9 +22,6 @@ import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.attr.ConsistencyModel;
 import org.jclouds.blobstore.config.BlobStoreObjectModule;
 
-/**
- * Created by khc on 1/1/15.
- */
 public final class BounceBlobStoreContextModule extends AbstractModule {
     @Override
     protected void configure() {
