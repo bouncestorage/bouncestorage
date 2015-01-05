@@ -16,11 +16,12 @@
 
 package com.bouncestorage.bounce;
 
+import static org.jclouds.reflect.Reflection2.typeToken;
+
 import java.net.URI;
 
 import org.jclouds.apis.ApiMetadata;
 import org.jclouds.apis.internal.BaseApiMetadata;
-import org.jclouds.blobstore.BlobStoreContext;
 
 public final class BounceApiMetadata extends BaseApiMetadata {
 
@@ -51,7 +52,7 @@ public final class BounceApiMetadata extends BaseApiMetadata {
                 .defaultIdentity(System.getProperty("user.name"))
                 .defaultCredential("bar")
                 .version("1")
-                .view(BlobStoreContext.class)
+                .view(typeToken(BounceBlobStoreContext.class))
                 .defaultModule(BounceBlobStoreContextModule.class)
                 .documentation(URI.create("http://www.jclouds.org/documentation/userguide/blobstore-guide"));
         }

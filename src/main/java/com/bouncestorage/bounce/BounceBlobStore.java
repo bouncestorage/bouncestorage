@@ -19,14 +19,22 @@ package com.bouncestorage.bounce;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Throwables.propagate;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
 
 import javax.annotation.Resource;
+import javax.inject.Inject;
+import javax.inject.Named;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.inject.Module;
 
+import org.jclouds.Constants;
+import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.*;
@@ -36,8 +44,12 @@ import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.domain.Location;
 import org.jclouds.logging.Logger;
+import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 
 public final class BounceBlobStore implements BlobStore {
+
+    public static final String STORE_PROPERTY_1 = "bounce.store.properties.1";
+    public static final String STORE_PROPERTY_2 = "bounce.store.properties.2";
 
     @Resource
     private Logger logger = Logger.NULL;
@@ -46,15 +58,47 @@ public final class BounceBlobStore implements BlobStore {
     private BlobStore nearStore;
     private BlobStore farStore;
 
-    BounceBlobStore() {
+    @Inject
+    BounceBlobStore(BlobStoreContext context,
+                    @Named(STORE_PROPERTY_1) String prop1,
+                    @Named(STORE_PROPERTY_2) String prop2) {
+        this(context);
+        if (!prop1.isEmpty() && !prop2.isEmpty()) {
+            try {
+                initStores(Utils.propertiesFromFile(new File(prop1)),
+                        Utils.propertiesFromFile(new File(prop2)));
+            } catch (IOException e) {
+                logger.error(e, "error loading properties file");
+                throw propagate(e);
+            }
+        }
     }
 
-    void setNearStore(BlobStore nearStore) {
-        this.nearStore = checkNotNull(nearStore);
+    BounceBlobStore(BlobStoreContext context) {
+        this.context = checkNotNull(context);
     }
 
-    void setFarStore(BlobStore farStore) {
-        this.farStore = checkNotNull(farStore);
+    void initStores(Properties prop1, Properties prop2) {
+        this.nearStore = storeFromProperties(checkNotNull(prop1));
+        this.farStore = storeFromProperties(checkNotNull(prop2));
+    }
+
+    private static BlobStore storeFromProperties(Properties properties) {
+        String provider = properties.getProperty(Constants.PROPERTY_PROVIDER);
+        ContextBuilder builder = ContextBuilder
+                .newBuilder(provider)
+                .modules(ImmutableList.<Module>of(new SLF4JLoggingModule()))
+                .overrides(properties);
+        BlobStoreContext context = builder.build(BlobStoreContext.class);
+        return context.getBlobStore();
+    }
+
+    BlobStore getNearStore() {
+        return nearStore;
+    }
+
+    BlobStore getFarStore() {
+        return farStore;
     }
 
     @Override

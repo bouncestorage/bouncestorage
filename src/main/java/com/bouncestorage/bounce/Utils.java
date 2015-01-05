@@ -16,10 +16,13 @@
 
 package com.bouncestorage.bounce;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.Properties;
 
 import com.google.common.base.Preconditions;
 import com.google.common.hash.HashCode;
@@ -40,6 +43,14 @@ final class Utils {
     static Iterable<StorageMetadata> crawlBlobStore(
             BlobStore blobStore, String containerName) {
         return new CrawlBlobStoreIterable(blobStore, containerName);
+    }
+
+    static Properties propertiesFromFile(File file) throws IOException {
+        Properties properties = new Properties();
+        try (InputStream is = new FileInputStream(file)) {
+            properties.load(is);
+        }
+        return properties;
     }
 
     private static class CrawlBlobStoreIterable implements Iterable {

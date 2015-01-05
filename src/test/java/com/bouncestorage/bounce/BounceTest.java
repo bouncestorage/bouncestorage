@@ -19,26 +19,25 @@ package com.bouncestorage.bounce;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
+import java.util.Properties;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
 import com.google.common.net.MediaType;
-import com.google.inject.Module;
 
+import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.io.ContentMetadata;
-import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 public final class BounceTest {
-    private BlobStoreContext nearContext;
-    private BlobStoreContext farContext;
+    private BlobStoreContext bounceContext;
     private BlobStore nearBlobStore;
     private BlobStore farBlobStore;
     private BounceBlobStore bounceBlobStore;
@@ -48,23 +47,30 @@ public final class BounceTest {
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        nearContext = ContextBuilder
-                .newBuilder("transient")
-                .credentials("identity", "credential")
-                .modules(ImmutableList.<Module>of(new SLF4JLoggingModule()))
-                .build(BlobStoreContext.class);
-        nearBlobStore = nearContext.getBlobStore();
+        Properties nearProperties = new Properties();
+        nearProperties.putAll(ImmutableMap.of(
+                Constants.PROPERTY_PROVIDER, "transient"
+        ));
 
-        farContext = ContextBuilder
-                .newBuilder("transient")
-                .credentials("identity", "credential")
-                .modules(ImmutableList.<Module>of(new SLF4JLoggingModule()))
-                .build(BlobStoreContext.class);
-        farBlobStore = farContext.getBlobStore();
+        Properties farProperties = new Properties();
+        farProperties.putAll(ImmutableMap.of(
+                Constants.PROPERTY_PROVIDER, "transient"
+        ));
 
-        bounceBlobStore = new BounceBlobStore();
-        bounceBlobStore.setNearStore(nearBlobStore);
-        bounceBlobStore.setFarStore(farBlobStore);
+        Properties dummy = new Properties();
+        dummy.putAll(ImmutableMap.of(
+                BounceBlobStore.STORE_PROPERTY_1, "",
+                BounceBlobStore.STORE_PROPERTY_2, ""
+        ));
+        bounceContext = ContextBuilder
+                .newBuilder("bounce")
+                .overrides(dummy)
+                .build(BlobStoreContext.class);
+
+        bounceBlobStore = (BounceBlobStore) bounceContext.getBlobStore();
+        bounceBlobStore.initStores(nearProperties, farProperties);
+        nearBlobStore = bounceBlobStore.getNearStore();
+        farBlobStore = bounceBlobStore.getFarStore();
         bounceBlobStore.createContainerInLocation(null, containerName);
     }
 
@@ -72,13 +78,9 @@ public final class BounceTest {
     public void tearDown() throws Exception {
         if (bounceBlobStore != null) {
             bounceBlobStore.deleteContainer(containerName);
-            // TODO: close context?
         }
-        if (nearContext != null) {
-            nearContext.close();
-        }
-        if (farContext != null) {
-            farContext.close();
+        if (bounceContext != null) {
+            bounceContext.close();
         }
     }
 
