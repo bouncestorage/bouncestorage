@@ -132,6 +132,7 @@
                 </executions>
                 <configuration>
                     <javaVersion>${java.version}</javaVersion>
+                    <exclusionsFile>src/main/resources/modernizer_exclusions.txt</exclusionsFile>
                 </configuration>
             </plugin>
         </plugins>
