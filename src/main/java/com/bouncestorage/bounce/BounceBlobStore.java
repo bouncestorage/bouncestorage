@@ -84,7 +84,7 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public Set<? extends Location> listAssignableLocations() {
-        return nearStore.listAssignableLocations();
+        return farStore.listAssignableLocations();
     }
 
     @Override
@@ -105,7 +105,7 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public boolean createContainerInLocation(Location location, String s, CreateContainerOptions createContainerOptions) {
         return farStore.createContainerInLocation(location, s, createContainerOptions) |
-                nearStore.createContainerInLocation(location, s, createContainerOptions);
+                nearStore.createContainerInLocation(location, s);
     }
 
     @Override
