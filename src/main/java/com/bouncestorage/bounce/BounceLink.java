@@ -28,6 +28,7 @@ import org.jclouds.io.payloads.ByteSourcePayload;
 
 public final class BounceLink implements Serializable {
 
+    private static final long serialVersionUID = 0;
     private static final String BOUNCE_LINK = "bounce-link";
     private static final Map<String, String> BOUNCE_ATTR = ImmutableMap.of(
             BOUNCE_LINK, ""
@@ -106,7 +107,9 @@ public final class BounceLink implements Serializable {
     }
 
     private static <T> T readFrom(ObjectInputStream ois, Class<T> c) throws IOException, ClassNotFoundException {
-        return (T) ois.readObject();
+        @SuppressWarnings("unchecked")
+        T object = (T) ois.readObject();
+        return object;
     }
 
     private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
@@ -118,7 +121,10 @@ public final class BounceLink implements Serializable {
         metadata.setName(readStr(ois));
         metadata.setType(readFrom(ois, StorageType.class));
         metadata.setUri(readFrom(ois, URI.class));
-        metadata.setUserMetadata(readFrom(ois, Map.class));
+        @SuppressWarnings("unchecked")
+        Map<String, String> userMetadata =
+                (Map<String, String>) readFrom(ois, Map.class);
+        metadata.setUserMetadata(userMetadata);
         MutableContentMetadata cmeta = metadata.getContentMetadata();
         cmeta.setContentDisposition(readStr(ois));
         cmeta.setContentEncoding(readStr(ois));

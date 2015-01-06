@@ -42,7 +42,8 @@ final class Utils {
         return properties;
     }
 
-    private static class CrawlBlobStoreIterable implements Iterable {
+    private static class CrawlBlobStoreIterable
+            implements Iterable<StorageMetadata> {
         private final BlobStore blobStore;
         private final String containerName;
 
@@ -57,7 +58,8 @@ final class Utils {
         }
     }
 
-    private static class CrawlBlobStoreIterator implements Iterator {
+    private static class CrawlBlobStoreIterator
+            implements Iterator<StorageMetadata> {
         private final BlobStore blobStore;
         private final String containerName;
         private Iterator<? extends StorageMetadata> iterator;
