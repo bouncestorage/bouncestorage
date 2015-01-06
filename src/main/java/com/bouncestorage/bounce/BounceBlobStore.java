@@ -99,14 +99,13 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public boolean createContainerInLocation(Location location, String s) {
-        return nearStore.createContainerInLocation(location, s) |
-                farStore.createContainerInLocation(location, s);
+        return createContainerInLocation(location, s, CreateContainerOptions.NONE);
     }
 
     @Override
     public boolean createContainerInLocation(Location location, String s, CreateContainerOptions createContainerOptions) {
-        return nearStore.createContainerInLocation(location, s, createContainerOptions) |
-                farStore.createContainerInLocation(location, s, createContainerOptions);
+        return farStore.createContainerInLocation(location, s, createContainerOptions) |
+                nearStore.createContainerInLocation(location, s, createContainerOptions);
     }
 
     @Override
