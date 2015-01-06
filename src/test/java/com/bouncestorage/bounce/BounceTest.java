@@ -74,6 +74,12 @@ public final class BounceTest {
     }
 
     @Test
+    public void testCreateBucket() throws Exception {
+        assertThat(nearBlobStore.containerExists(containerName));
+        assertThat(farBlobStore.containerExists(containerName));
+    }
+
+    @Test
     public void testCreateLink() throws Exception {
         String blobName = "blob";
         ByteSource byteSource = ByteSource.wrap(new byte[1]);
