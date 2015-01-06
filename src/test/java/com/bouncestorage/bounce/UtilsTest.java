@@ -113,4 +113,8 @@ public final class UtilsTest {
     static String createRandomContainerName() {
         return "bounce-" + new Random().nextInt(Integer.MAX_VALUE);
     }
+
+    static String createRandomBlobName() {
+        return "blob-" + new Random().nextInt(Integer.MAX_VALUE);
+    }
 }

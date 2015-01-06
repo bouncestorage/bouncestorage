@@ -183,7 +183,7 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public BlobMetadata blobMetadata(String s, String s1) {
         BlobMetadata meta = nearStore.blobMetadata(s, s1);
-        if (BounceLink.isLink(meta)) {
+        if (meta != null && BounceLink.isLink(meta)) {
             try {
                 return BounceLink.fromBlob(nearStore.getBlob(s, s1)).getBlobMetadata();
             } catch (IOException e) {
@@ -236,6 +236,9 @@ public final class BounceBlobStore implements BlobStore {
             throws IOException {
         Blob blobFrom = Utils.copyBlob(nearStore, farStore, containerName,
                 containerName, blobName);
+        if (blobFrom == null) {
+            return;
+        }
         BounceLink link = new BounceLink(Optional.of(blobFrom.getMetadata()));
         nearStore.putBlob(containerName, link.toBlob(nearStore));
     }
