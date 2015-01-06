@@ -4,11 +4,13 @@
       <pattern>%.-1p %d{MM-dd HH:mm:ss.SSS} %t %c{30}:%L %X{clientId}|%X{sessionId}:%X{messageId}:%X{fileId}] %m%n</pattern>
     </encoder>
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-      <level>${LOG_LEVEL:-info}</level>
+      <level>${LOG_LEVEL:-debug}</level>
     </filter>
   </appender>
 
-  <root level="${LOG_LEVEL:-info}">
+  <logger name="org.eclipse.jetty" level="${JETTY_LOG_LEVEL:-info}" />
+
+  <root level="${LOG_LEVEL:-debug}">
     <appender-ref ref="STDOUT" />
   </root>
 </configuration>
