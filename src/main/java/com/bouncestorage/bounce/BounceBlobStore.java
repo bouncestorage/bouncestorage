@@ -49,7 +49,7 @@ public final class BounceBlobStore implements BlobStore {
         this.context = checkNotNull(context);
     }
 
-    void initStores(Properties prop1, Properties prop2) {
+    public void initStores(Properties prop1, Properties prop2) {
         this.nearStore = storeFromProperties(checkNotNull(prop1));
         this.farStore = storeFromProperties(checkNotNull(prop2));
     }
@@ -230,6 +230,10 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public long countBlobs(String s, ListContainerOptions listContainerOptions) {
         return nearStore.countBlobs(s, listContainerOptions);
+    }
+
+    public boolean isLink(String containerName, String blobName) {
+        return BounceLink.isLink(nearStore.blobMetadata(containerName, blobName));
     }
 
     public void copyBlobAndCreateBounceLink(String containerName, String blobName)

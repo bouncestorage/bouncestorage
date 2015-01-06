@@ -110,7 +110,7 @@ public final class UtilsTest {
                 .isFalse();
     }
 
-    static String createRandomContainerName() {
+    public static String createRandomContainerName() {
         return "bounce-" + new Random().nextInt(Integer.MAX_VALUE);
     }
 }
