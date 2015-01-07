@@ -27,7 +27,7 @@
                 <version>2.14-SNAPSHOT</version>
                 <executions>
                     <execution>
-                        <id>modernizer</id>
+                        <id>checkstyle</id>
                         <phase>verify</phase>
                         <goals>
                             <goal>check</goal>
