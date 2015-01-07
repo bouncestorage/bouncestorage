@@ -75,8 +75,8 @@ public final class BounceTest {
 
     @Test
     public void testCreateBucket() throws Exception {
-        assertThat(nearBlobStore.containerExists(containerName));
-        assertThat(farBlobStore.containerExists(containerName));
+        assertThat(nearBlobStore.containerExists(containerName)).isTrue();
+        assertThat(farBlobStore.containerExists(containerName)).isTrue();
     }
 
     @Test
@@ -91,12 +91,12 @@ public final class BounceTest {
         nearBlobStore.putBlob(containerName, blob);
 
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
-                containerName, blobName))).isEqualTo(false);
+                containerName, blobName))).isFalse();
 
         bounceBlobStore.copyBlobAndCreateBounceLink(containerName, blobName);
 
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
-                containerName, blobName))).isEqualTo(true);
+                containerName, blobName))).isTrue();
     }
 
     @Test

@@ -107,7 +107,7 @@ public final class UtilsTest {
             assertThat(is2).hasContentEqualTo(is);
         }
         assertThat(nearBlobStore.blobExists(containerName, blobName))
-                .isEqualTo(false);
+                .isFalse();
     }
 
     static String createRandomContainerName() {
