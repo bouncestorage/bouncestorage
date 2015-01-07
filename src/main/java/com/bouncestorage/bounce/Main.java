@@ -34,7 +34,7 @@ public final class Main {
                     Main.class.getPackage().getImplementationVersion());
             System.exit(0);
         } else if (args.length != 2) {
-            System.err.println("Usage: s3proxy --properties FILE");
+            System.err.println("Usage: bounce --properties FILE");
             System.exit(1);
         }
         Properties properties = new Properties();
