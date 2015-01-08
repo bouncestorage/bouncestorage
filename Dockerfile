@@ -1,4 +1,5 @@
 FROM dockerfile/java:oracle-java8
+RUN apt-get update && apt-get install attr
 COPY target/bounce /data/
 COPY src/test/resources/bounce.properties /data/
 COPY src/test/resources/nearStore.properties /data/
