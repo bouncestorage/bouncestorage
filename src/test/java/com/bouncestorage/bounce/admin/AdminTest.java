@@ -62,8 +62,9 @@ public final class AdminTest {
         bounceBlobStore = (BounceBlobStore) bounceContext.getBlobStore();
         bounceBlobStore.initStores(nearProperties, farProperties);
         bounceBlobStore.createContainerInLocation(null, containerName);
+        String config = getClass().getResource("/bounce.yml").toExternalForm();
         new BounceApplication(bounceBlobStore).run(new String[] {
-            "server", "src/main/resources/bounce.yml" });
+            "server", config });
     }
 
     @After
