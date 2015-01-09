@@ -31,7 +31,14 @@ public final class Utils {
 
     public static Iterable<StorageMetadata> crawlBlobStore(
             BlobStore blobStore, String containerName) {
-        return new CrawlBlobStoreIterable(blobStore, containerName);
+        return crawlBlobStore(blobStore, containerName,
+                new ListContainerOptions());
+    }
+
+    public static Iterable<StorageMetadata> crawlBlobStore(
+            BlobStore blobStore, String containerName,
+            ListContainerOptions options) {
+        return new CrawlBlobStoreIterable(blobStore, containerName, options);
     }
 
     static Properties propertiesFromFile(File file) throws IOException {
@@ -46,15 +53,19 @@ public final class Utils {
             implements Iterable<StorageMetadata> {
         private final BlobStore blobStore;
         private final String containerName;
+        private final ListContainerOptions options;
 
-        CrawlBlobStoreIterable(BlobStore blobStore, String containerName) {
+        CrawlBlobStoreIterable(BlobStore blobStore, String containerName,
+                ListContainerOptions options) {
             this.blobStore = Preconditions.checkNotNull(blobStore);
             this.containerName = Preconditions.checkNotNull(containerName);
+            this.options = Preconditions.checkNotNull(options);
         }
 
         @Override
         public Iterator<StorageMetadata> iterator() {
-            return new CrawlBlobStoreIterator(blobStore, containerName);
+            return new CrawlBlobStoreIterator(blobStore, containerName,
+                    options);
         }
     }
 
@@ -62,17 +73,19 @@ public final class Utils {
             implements Iterator<StorageMetadata> {
         private final BlobStore blobStore;
         private final String containerName;
+        private final ListContainerOptions options;
         private Iterator<? extends StorageMetadata> iterator;
         private String marker;
 
-        CrawlBlobStoreIterator(BlobStore blobStore, String containerName) {
+        CrawlBlobStoreIterator(BlobStore blobStore, String containerName,
+                ListContainerOptions options) {
             this.blobStore = Preconditions.checkNotNull(blobStore);
             this.containerName = Preconditions.checkNotNull(containerName);
+            this.options = Preconditions.checkNotNull(options);
             advance();
         }
 
         private void advance() {
-            ListContainerOptions options = new ListContainerOptions();
             if (marker != null) {
                 options.afterMarker(marker);
             }
