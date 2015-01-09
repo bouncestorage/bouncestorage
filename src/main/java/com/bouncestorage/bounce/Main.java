@@ -123,8 +123,9 @@ public final class Main {
                 keyStorePassword,
                 "true".equalsIgnoreCase(forceMultiPartUpload), virtualHost);
 
+        String config = Main.class.getResource("/bounce.yml").toExternalForm();
         new BounceApplication(bounceStore).run(new String[] {
-            "server", "src/main/resources/bounce.yml" });
+            "server", config });
         s3Proxy.start();
     }
 }
