@@ -21,6 +21,7 @@ import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobBuilder.PayloadBlobBuilder;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.domain.StorageType;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.io.ContentMetadata;
 
@@ -81,7 +82,7 @@ public final class Utils {
                 ListContainerOptions options) {
             this.blobStore = Preconditions.checkNotNull(blobStore);
             this.containerName = Preconditions.checkNotNull(containerName);
-            this.options = Preconditions.checkNotNull(options);
+            this.options = Preconditions.checkNotNull(options).recursive();
             advance();
         }
 
@@ -102,10 +103,17 @@ public final class Utils {
 
         @Override
         public StorageMetadata next() {
-            if (!iterator.hasNext()) {
-                advance();
+            while (true) {
+                if (!iterator.hasNext()) {
+                    advance();
+                }
+                StorageMetadata metadata = iterator.next();
+                // filter out folders with atmos and filesystem providers
+                if (metadata.getType() == StorageType.FOLDER) {
+                    continue;
+                }
+                return metadata;
             }
-            return iterator.next();
         }
     }
 
