@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.Properties;
 
+import com.bouncestorage.bounce.admin.BounceApplication;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -122,6 +123,8 @@ public final class Main {
                 keyStorePassword,
                 "true".equalsIgnoreCase(forceMultiPartUpload), virtualHost);
 
+        new BounceApplication(bounceStore).run(new String[] {
+            "server", "src/main/resources/bounce.yml" });
         s3Proxy.start();
     }
 }

@@ -24,12 +24,12 @@ import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.io.ContentMetadata;
 
-final class Utils {
+public final class Utils {
     private Utils() {
         throw new AssertionError("intentionally unimplemented");
     }
 
-    static Iterable<StorageMetadata> crawlBlobStore(
+    public static Iterable<StorageMetadata> crawlBlobStore(
             BlobStore blobStore, String containerName) {
         return new CrawlBlobStoreIterable(blobStore, containerName);
     }
