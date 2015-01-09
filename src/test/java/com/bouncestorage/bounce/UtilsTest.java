@@ -129,6 +129,29 @@ public final class UtilsTest {
                 new ListContainerOptions().maxResults(2))).hasSize(5);
     }
 
+    @Test
+    public void testBounceDirectories() throws Exception {
+        String blobName = "foo/bar/baz";
+        ByteSource byteSource = ByteSource.wrap(new byte[1]);
+        Blob blob = nearBlobStore.blobBuilder(blobName)
+                .payload(byteSource)
+                .contentLength(byteSource.size())
+                .contentMD5(byteSource.hash(Hashing.md5()))
+                .contentType(MediaType.OCTET_STREAM)
+                .build();
+        ContentMetadata metadata = blob.getMetadata().getContentMetadata();
+        nearBlobStore.putBlob(containerName, blob);
+
+        assertThat(Utils.crawlBlobStore(nearBlobStore, containerName))
+                .hasSize(1);
+
+        for (StorageMetadata sm : Utils.crawlBlobStore(nearBlobStore,
+                containerName)) {
+            Utils.moveBlob(nearBlobStore, farBlobStore, containerName,
+                    containerName, sm.getName());
+        }
+    }
+
     public static String createRandomContainerName() {
         return "bounce-" + new Random().nextInt(Integer.MAX_VALUE);
     }
