@@ -5,6 +5,6 @@ COPY src/test/resources/bounce.properties /data/
 COPY src/test/resources/nearStore.properties /data/
 COPY src/test/resources/farStore.properties /data/
 RUN mkdir -p /tmp/blobstore
-EXPOSE 8080
+EXPOSE 8080 9000 9001
 CMD []
 ENTRYPOINT [ "./bounce", "--properties", "bounce.properties" ]
