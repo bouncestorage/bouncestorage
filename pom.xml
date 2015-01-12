@@ -10,6 +10,7 @@
     
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <dropwizard.version>0.7.1</dropwizard.version>
         <java.version>1.8</java.version>
         <jclouds.version>2.0.0-SNAPSHOT</jclouds.version>
         <slf4j.version>1.7.7</slf4j.version>
@@ -193,8 +194,13 @@
         </dependency>
         <dependency>
             <groupId>io.dropwizard</groupId>
+            <artifactId>dropwizard-assets</artifactId>
+            <version>${dropwizard.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard</groupId>
             <artifactId>dropwizard-core</artifactId>
-            <version>0.7.1</version>
+            <version>${dropwizard.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

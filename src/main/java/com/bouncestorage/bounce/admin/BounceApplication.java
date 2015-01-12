@@ -8,6 +8,7 @@ package com.bouncestorage.bounce.admin;
 import com.bouncestorage.bounce.BounceBlobStore;
 
 import io.dropwizard.Application;
+import io.dropwizard.assets.AssetsBundle;
 import io.dropwizard.configuration.UrlConfigurationSourceProvider;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
@@ -26,6 +27,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
 
     @Override
     public void initialize(Bootstrap<BounceConfiguration> bootstrap) {
+        bootstrap.addBundle(new AssetsBundle());
         bootstrap.setConfigurationSourceProvider(new UrlConfigurationSourceProvider());
     }
 
