@@ -20,6 +20,7 @@ import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.io.ContentMetadata;
 import org.junit.After;
 import org.junit.Before;
@@ -97,6 +98,21 @@ public final class BounceTest {
 
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
                 containerName, blobName))).isTrue();
+    }
+
+    @Test
+    public void testBounceNonexistentBlob() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        bounceBlobStore.copyBlobAndCreateBounceLink(containerName, blobName);
+        assertThat(nearBlobStore.blobExists(containerName, blobName)).isFalse();
+        assertThat(farBlobStore.blobExists(containerName, blobName)).isFalse();
+    }
+
+    @Test
+    public void test404Meta() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        BlobMetadata meta = bounceBlobStore.blobMetadata(containerName, blobName);
+        assertThat(meta).isNull();
     }
 
     @Test

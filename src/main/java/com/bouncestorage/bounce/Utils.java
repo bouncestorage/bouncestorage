@@ -102,6 +102,9 @@ public final class Utils {
             String containerNameFrom, String containerNameTo, String blobName)
             throws IOException {
         Blob blobFrom = from.getBlob(containerNameFrom, blobName);
+        if (blobFrom == null) {
+            return null;
+        }
         ContentMetadata metadata = blobFrom.getMetadata().getContentMetadata();
         try (InputStream is = blobFrom.getPayload().openStream()) {
             PayloadBlobBuilder builder = to.blobBuilder(blobName).payload(is);
