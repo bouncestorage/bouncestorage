@@ -21,6 +21,7 @@ import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.io.ContentMetadata;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.junit.After;
@@ -108,6 +109,23 @@ public final class UtilsTest {
         }
         assertThat(nearBlobStore.blobExists(containerName, blobName))
                 .isFalse();
+    }
+
+    public void testCrawlWithPagination() throws Exception {
+        for (int i = 0; i < 5; ++i) {
+            String blobName = "blob" + i;
+            ByteSource byteSource = ByteSource.wrap(new byte[1]);
+            Blob blob = nearBlobStore.blobBuilder(blobName)
+                    .payload(byteSource)
+                    .contentLength(byteSource.size())
+                    .contentMD5(byteSource.hash(Hashing.md5()))
+                    .contentType(MediaType.OCTET_STREAM)
+                    .build();
+            nearBlobStore.putBlob(containerName, blob);
+        }
+
+        assertThat(Utils.crawlBlobStore(nearBlobStore, containerName,
+                new ListContainerOptions().maxResults(2))).hasSize(3);
     }
 
     public static String createRandomContainerName() {
