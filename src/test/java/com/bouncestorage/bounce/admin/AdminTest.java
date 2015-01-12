@@ -83,7 +83,7 @@ public final class AdminTest {
     public void testServiceResource() throws Exception {
         String output = Strings2.toStringAndClose(httpClient.get(URI.create(
                 ADMIN_ENDPOINT + "service")));
-        assertThat(output).isEqualTo("{\"containecrNames\":[\"" +
+        assertThat(output).isEqualTo("{\"containerNames\":[\"" +
                 containerName + "\"]}");
     }
 
