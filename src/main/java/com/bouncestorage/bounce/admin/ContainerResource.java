@@ -33,7 +33,8 @@ public final class ContainerResource {
 
     @GET
     @Timed
-    public ContainerStats sayHello(@QueryParam("name") String containerName) {
+    public ContainerStats getContainerStats(
+            @QueryParam("name") String containerName) {
         PageSet<? extends StorageMetadata> pageSet = blobStore.list(
                 containerName);
         List<String> blobNames = pageSet.stream()
