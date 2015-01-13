@@ -111,6 +111,7 @@ public final class UtilsTest {
                 .isFalse();
     }
 
+    @Test
     public void testCrawlWithPagination() throws Exception {
         for (int i = 0; i < 5; ++i) {
             String blobName = "blob" + i;
@@ -125,7 +126,7 @@ public final class UtilsTest {
         }
 
         assertThat(Utils.crawlBlobStore(nearBlobStore, containerName,
-                new ListContainerOptions().maxResults(2))).hasSize(3);
+                new ListContainerOptions().maxResults(2))).hasSize(5);
     }
 
     public static String createRandomContainerName() {

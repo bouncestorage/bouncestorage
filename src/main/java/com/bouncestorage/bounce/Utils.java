@@ -102,7 +102,7 @@ public final class Utils {
 
         @Override
         public StorageMetadata next() {
-            if (!hasNext()) {
+            if (!iterator.hasNext()) {
                 advance();
             }
             return iterator.next();
