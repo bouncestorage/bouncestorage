@@ -9,6 +9,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -17,9 +18,9 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.Utils;
 import com.codahale.metrics.annotation.Timed;
 
-import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 
 @Path("/container")
@@ -35,9 +36,10 @@ public final class ContainerResource {
     @Timed
     public ContainerStats getContainerStats(
             @QueryParam("name") String containerName) {
-        PageSet<? extends StorageMetadata> pageSet = blobStore.list(
+        Iterable<StorageMetadata> metas = Utils.crawlBlobStore(blobStore,
                 containerName);
-        List<String> blobNames = pageSet.stream()
+        List<String> blobNames =
+                StreamSupport.stream(metas.spliterator(), /*parallel=*/ false)
                 .map(sm -> sm.getName())
                 .collect(Collectors.toList());
         long bounceLinkCount = blobNames.stream()
