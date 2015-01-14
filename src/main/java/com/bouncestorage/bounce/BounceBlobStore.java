@@ -246,4 +246,15 @@ public final class BounceBlobStore implements BlobStore {
         BounceLink link = new BounceLink(Optional.of(blobFrom.getMetadata()));
         nearStore.putBlob(containerName, link.toBlob(nearStore));
     }
+
+    public void takeOver(String containerName) throws IOException {
+        // TODO: hook into move service to enable parallelism and cancellation
+        for (StorageMetadata sm : Utils.crawlBlobStore(farStore,
+                containerName)) {
+            BlobMetadata metadata = farStore.blobMetadata(containerName,
+                    sm.getName());
+            BounceLink link = new BounceLink(Optional.of(metadata));
+            nearStore.putBlob(containerName, link.toBlob(nearStore));
+        }
+    }
 }

@@ -135,6 +135,20 @@ public final class BounceTest {
                 metadata.getContentType());
     }
 
+    @Test
+    public void testTakeOverFarStore() throws Exception {
+        String blobName = "blob";
+        ByteSource byteSource = ByteSource.wrap(new byte[1]);
+        Blob blob = makeBlob(farBlobStore, blobName, byteSource);
+        farBlobStore.putBlob(containerName, blob);
+        assertThat(nearBlobStore.blobExists(containerName, blobName)).isFalse();
+
+        bounceBlobStore.takeOver(containerName);
+        assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
+        assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
+                containerName, blobName))).isTrue();
+    }
+
     private static Blob makeBlob(BlobStore blobStore, String blobName,
             ByteSource byteSource) throws IOException {
         return blobStore.blobBuilder(blobName)
