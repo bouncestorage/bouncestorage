@@ -1,19 +1,32 @@
-<script src="test.js"></script>
+<!doctype html>
+<html ng-app="bounce" id="ng-app">
+<head>
+  <meta charset="utf-8">
+  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.5/angular.js">
+  </script>
+  <script src="test.js"></script>
+</head>
 
+<body ng-controller="BounceTest" class="ng-cloak">
 <p>Bucket list:</p>
-<div id="buckets"></div>
+<div>
+<select id="bucket-select" ng-model="options.bucketSelect">
+  <option ng-repeat="b in buckets" value="{{b}}">{{ b }}</option>
+</select>
+</div>
 
 <p>Blob list:</p>
-<p id="blob-list"></p>
+<p>
+  <span ng-repeat="n in blobs.names">{{ n }}, </span>
+</p>
 
 <p>Bounce links:</p>
-<p id="bounce-links"></p>
+<p>{{ blobs.linkCount }}</p>
 
 <form id="bounce-form">
-    <button type="button" onClick="listBlobs()">List blobs</button>
-    <button type="button" onClick="bounceBlobs()">Bounce blobs</button>
+    <button type="button" ng-click="actions.listBlobs()">List blobs</button>
+    <button type="button" ng-click="actions.bounceBlobs()">Bounce blobs</button>
 </form>
 
-<script>
-listBuckets();
-</script>
+</body>
+</html>
