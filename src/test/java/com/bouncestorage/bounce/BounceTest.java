@@ -7,6 +7,7 @@ package com.bouncestorage.bounce;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
@@ -84,11 +85,7 @@ public final class BounceTest {
     public void testCreateLink() throws Exception {
         String blobName = "blob";
         ByteSource byteSource = ByteSource.wrap(new byte[1]);
-        Blob blob = nearBlobStore.blobBuilder(blobName)
-                .payload(byteSource)
-                .contentLength(byteSource.size())
-                .contentMD5(byteSource.hash(Hashing.md5()))
-                .build();
+        Blob blob = makeBlob(nearBlobStore, blobName, byteSource);
         nearBlobStore.putBlob(containerName, blob);
 
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
@@ -119,12 +116,7 @@ public final class BounceTest {
     public void testBounceBlob() throws Exception {
         String blobName = "blob";
         ByteSource byteSource = ByteSource.wrap(new byte[1]);
-        Blob blob = bounceBlobStore.blobBuilder(blobName)
-                .payload(byteSource)
-                .contentLength(byteSource.size())
-                .contentType(MediaType.OCTET_STREAM)
-                .contentMD5(byteSource.hash(Hashing.md5()))
-                .build();
+        Blob blob = makeBlob(bounceBlobStore, blobName, byteSource);
         ContentMetadata metadata = blob.getMetadata().getContentMetadata();
         bounceBlobStore.putBlob(containerName, blob);
 
@@ -141,5 +133,15 @@ public final class BounceTest {
                 metadata.getContentMD5AsHashCode());
         assertThat(metadata2.getContentType()).isEqualTo(
                 metadata.getContentType());
+    }
+
+    private static Blob makeBlob(BlobStore blobStore, String blobName,
+            ByteSource byteSource) throws IOException {
+        return blobStore.blobBuilder(blobName)
+                .payload(byteSource)
+                .contentLength(byteSource.size())
+                .contentType(MediaType.OCTET_STREAM)
+                .contentMD5(byteSource.hash(Hashing.md5()))
+                .build();
     }
 }
