@@ -1,52 +1,41 @@
-function listBuckets() {
-    var request = new XMLHttpRequest();
-    request.onreadystatechange = function() {
-        console.log("List buckets response received");
-        if (request.readyState != 4 || request.status != 200) {
-            return;
-        }
-        var selectHTML = "<select id=\"buckets-select\">";
-        var json = JSON.parse(request.responseText);
-        var containerNames = json["containerNames"];
-        var i;
-        for (i = 0; i < containerNames.length; ++i) {
-            var name = containerNames[i];
-            selectHTML += "<option value=\"" + name + "\">" +
-                    name + "</option>";
-        }
-        selectHTML += "</select>"
-        document.getElementById("buckets").innerHTML = selectHTML;
-    }
-    request.open("GET", "/service", true);
-    request.send();
-}
+var bounce = angular.module('bounce', [])
+    .config(['$locationProvider',
+function($locationProvider) {
+    $locationProvider.html5Mode(false).hashPrefix('!');
+}]);
 
-function listBlobs() {
-    var request = new XMLHttpRequest();
-    request.onreadystatechange = function() {
-        console.log("List blobs response received");
-        if (request.readyState != 4 || request.status != 200) {
-            return;
-        }
-        var json = JSON.parse(request.responseText);
-        document.getElementById("blob-list").innerHTML = json["blobNames"];
-        document.getElementById("bounce-links").innerHTML =
-                json["bounceLinkCount"];
-    }
-    var bucketsSelect = document.getElementById("buckets-select");
-    var name = bucketsSelect.options[bucketsSelect.selectedIndex].value;
-    request.open("GET", "/container?name=" + name, true);
-    request.send();
-}
+bounce.controller('BounceTest',
+               ['$scope', '$http', '$q', '$location', '$timeout',
+function ($scope, $http, $q, $location, $timeout)
+{
+    $scope.actions = {};
+    $scope.options = {};
 
-function bounceBlobs() {
-    var request = new XMLHttpRequest();
-    request.onreadystatechange = function() {
-        console.log("Bounce blobs response received");
+    $http.get("/service").then(
+        function(res) {
+            $scope.buckets = res.data.containerNames;
+            if (!$scope.options.bucketSelect && $scope.buckets) {
+                $scope.options.bucketSelect = $scope.buckets[0];
+            }
+        }
+    );
+
+    $scope.actions.listBlobs = function() {
+        $http.get("/container?name=" + $scope.options.bucketSelect).then(
+            function(res) {
+                $scope.blobs = {}
+                $scope.blobs.names = res.data.blobNames;
+                $scope.blobs.linkCount = res.data.bounceLinkCount;
+            }
+        );
+    };
+
+    $scope.actions.bounceBlobs = function() {
+        $http.post("/bounce?name=" + $scope.options.bucketSelect).then(
+            function(res) {
+                console.log("Bounce blobs response received");
+            }
+        );
     }
-    var bucketsSelect = document.getElementById("buckets-select");
-    var name = bucketsSelect.options[bucketsSelect.selectedIndex].value;
-    request.open("POST", "/bounce?name=" + name, true);
-    request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    request.send();
-}
+}]);
+
