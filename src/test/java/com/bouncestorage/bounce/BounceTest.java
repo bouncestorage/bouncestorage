@@ -132,4 +132,16 @@ public final class BounceTest {
                 metadata.getContentType());
     }
 
+    @Test
+    public void testTakeOverFarStore() throws Exception {
+        String blobName = "blob";
+        Blob blob = UtilsTest.makeBlob(farBlobStore, blobName);
+        farBlobStore.putBlob(containerName, blob);
+        assertThat(nearBlobStore.blobExists(containerName, blobName)).isFalse();
+
+        bounceBlobStore.takeOver(containerName);
+        assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
+        assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
+                containerName, blobName))).isTrue();
+    }
 }
