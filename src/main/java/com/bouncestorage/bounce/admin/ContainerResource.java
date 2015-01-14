@@ -43,7 +43,7 @@ public final class ContainerResource {
                 .map(sm -> sm.getName())
                 .collect(Collectors.toList());
         long bounceLinkCount = blobNames.stream()
-                .filter(blobName -> blobStore.isLink(containerName, blobName))
+                .filter(Utils.logEx(blobName -> blobStore.isLink(containerName, blobName)))
                 .count();
         return new ContainerStats(blobNames, bounceLinkCount);
     }

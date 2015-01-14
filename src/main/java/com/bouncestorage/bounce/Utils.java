@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Properties;
+import java.util.function.Predicate;
 
 import com.google.common.base.Preconditions;
 import com.google.common.hash.HashCode;
@@ -175,5 +176,29 @@ public final class Utils {
             throws IOException {
         copyBlob(from, to, containerNameFrom, containerNameTo, blobName);
         from.removeBlob(containerNameFrom, blobName);
+    }
+
+    static RuntimeException reconstructException(RuntimeException ex, String msg) {
+        try {
+            RuntimeException ret = ex.getClass().getConstructor(String.class)
+                    .newInstance(ex.getMessage() + " " + msg);
+            ret.setStackTrace(ex.getStackTrace());
+            return ret;
+        } catch (Exception e) {
+            return ex;
+        }
+    }
+
+    public static <T> Predicate<T> logEx(final Predicate<T> p) {
+        return new Predicate<T>() {
+            @Override
+            public boolean test(T t) {
+                try {
+                    return p.test(t);
+                } catch (RuntimeException e) {
+                    throw reconstructException(e, "while processing " + t);
+                }
+            }
+        };
     }
 }
