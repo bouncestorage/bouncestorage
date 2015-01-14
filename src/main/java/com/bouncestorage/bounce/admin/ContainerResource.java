@@ -17,6 +17,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.Utils;
 import com.codahale.metrics.annotation.Timed;
 
 import org.jclouds.blobstore.domain.PageSet;
@@ -40,7 +41,7 @@ public final class ContainerResource {
                 .map(sm -> sm.getName())
                 .collect(Collectors.toList());
         long bounceLinkCount = blobNames.stream()
-                .filter(blobName -> blobStore.isLink(containerName, blobName))
+                .filter(Utils.logEx(blobName -> blobStore.isLink(containerName, blobName)))
                 .count();
         return new ContainerStats(blobNames, bounceLinkCount);
     }

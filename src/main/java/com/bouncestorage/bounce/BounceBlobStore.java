@@ -233,7 +233,8 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     public boolean isLink(String containerName, String blobName) {
-        return BounceLink.isLink(nearStore.blobMetadata(containerName, blobName));
+        BlobMetadata meta = nearStore.blobMetadata(containerName, blobName);
+        return meta == null ? false : BounceLink.isLink(meta);
     }
 
     public void copyBlobAndCreateBounceLink(String containerName, String blobName)
