@@ -28,8 +28,8 @@
   <li ng-repeat="n in blobs.names">{{ n }}</li>
 </ul>
 
-<p>Bounce links:</p>
-<p>{{ blobs.linkCount }}</p>
+<p>Bounce links: {{ blobs.linkCount }}</p>
+<p>Bounce status: <pre>{{ status | json }}</pre></p>
 
 <form id="bounce-form">
     <button type="button" ng-click="actions.listBlobs()">List blobs</button>

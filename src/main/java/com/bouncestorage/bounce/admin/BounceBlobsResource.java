@@ -7,38 +7,47 @@ package com.bouncestorage.bounce.admin;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import java.io.IOException;
+import java.util.Collection;
+import java.util.concurrent.ExecutionException;
 
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
-import com.bouncestorage.bounce.BounceBlobStore;
-import com.bouncestorage.bounce.Utils;
 import com.codahale.metrics.annotation.Timed;
 
-import org.jclouds.blobstore.domain.StorageMetadata;
+import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableSet;
 
 @Path("/bounce")
 @Produces(MediaType.APPLICATION_JSON)
 public final class BounceBlobsResource {
-    private final BounceBlobStore blobStore;
+    private final BounceService service;
 
-    public BounceBlobsResource(BounceBlobStore blobStore) {
-        this.blobStore = checkNotNull(blobStore);
+    public BounceBlobsResource(BounceService bounceService) {
+        this.service = checkNotNull(bounceService);
     }
 
     @POST
     @Timed
-    public void bounceBlobs(@QueryParam("name") String name)
-            throws IOException {
-        for (StorageMetadata sm : Utils.crawlBlobStore(blobStore, name)) {
-            String blobName = sm.getName();
-            if (!blobStore.isLink(name, blobName)) {
-                blobStore.copyBlobAndCreateBounceLink(name, blobName);
-            }
+    public BounceService.BounceTaskStatus bounceBlobs(
+            @QueryParam("name") String name,
+            @QueryParam("wait") Optional<Boolean> wait)
+            throws ExecutionException, InterruptedException {
+        BounceService.BounceTaskStatus status = service.bounce(name);
+        if (wait.or(false)) {
+            status.future().get();
+        }
+        return status;
+    }
+
+    @GET
+    @Timed
+    public Collection<BounceService.BounceTaskStatus> status(
+            @QueryParam("name") Optional<String> name) {
+        if (name.isPresent()) {
+            return ImmutableSet.of(service.status(name.get()));
+        } else {
+            return service.status();
         }
     }
 }

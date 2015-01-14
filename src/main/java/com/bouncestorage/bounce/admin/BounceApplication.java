@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce.admin;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import com.bouncestorage.bounce.BounceBlobStore;
 
 import io.dropwizard.Application;
@@ -15,9 +17,11 @@ import io.dropwizard.setup.Environment;
 
 public final class BounceApplication extends Application<BounceConfiguration> {
     private final BounceBlobStore blobStore;
+    private final BounceService bounceService;
 
-    public BounceApplication(BounceBlobStore blobStore) {
-        this.blobStore = blobStore;
+    public BounceApplication(BounceBlobStore blobStore, BounceService bounceService) {
+        this.blobStore = checkNotNull(blobStore);
+        this.bounceService = checkNotNull(bounceService);
     }
 
     @Override
@@ -36,7 +40,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
             Environment environment) {
         environment.jersey().register(new ServiceResource(blobStore));
         environment.jersey().register(new ContainerResource(blobStore));
-        environment.jersey().register(new BounceBlobsResource(blobStore));
+        environment.jersey().register(new BounceBlobsResource(bounceService));
     }
 
 }

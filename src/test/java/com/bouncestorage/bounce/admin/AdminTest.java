@@ -12,6 +12,10 @@ import java.util.Properties;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
+import com.bouncestorage.bounce.admin.policy.BounceEverythingPolicy;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
@@ -62,8 +66,14 @@ public final class AdminTest {
         bounceBlobStore = (BounceBlobStore) bounceContext.getBlobStore();
         bounceBlobStore.initStores(nearProperties, farProperties);
         bounceBlobStore.createContainerInLocation(null, containerName);
+
+        BounceService bounceService = new BounceService(bounceBlobStore);
+        bounceService.installPolicies(ImmutableList.of(
+                new BounceEverythingPolicy()
+        ));
+
         String config = getClass().getResource("/bounce.yml").toExternalForm();
-        new BounceApplication(bounceBlobStore).run(new String[] {
+        new BounceApplication(bounceBlobStore, bounceService).run(new String[] {
             "server", config });
     }
 
@@ -114,7 +124,8 @@ public final class AdminTest {
 
         try {
             httpClient.post(
-                    URI.create(ADMIN_ENDPOINT + "bounce?name=" + containerName),
+                    URI.create(ADMIN_ENDPOINT + "bounce?name=" + containerName
+                            + "&" + "wait=true"),
                     blob.getPayload());
         } catch (HttpException he) {
             // TODO: jclouds expects an ETag but DropWizard does not provide one
@@ -124,5 +135,15 @@ public final class AdminTest {
                 ADMIN_ENDPOINT + "container?name=" + containerName)));
         assertThat(output).isEqualTo(
                 "{\"blobNames\":[\"" + blobName + "\"],\"bounceLinkCount\":1}");
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode status = mapper.readTree(httpClient.get(URI.create(
+                ADMIN_ENDPOINT + "bounce")));
+        assertThat(status).hasSize(1);
+        status = status.get(0);
+        assertThat(status.get("totalObjectCount").asLong()).isEqualTo(1);
+        assertThat(status.get("bouncedObjectCount").asLong()).isEqualTo(1);
+        assertThat(status.get("errorObjectCount").asLong()).isEqualTo(0);
+        assertThat(status.get("done").asBoolean()).isEqualTo(true);
     }
 }

@@ -45,11 +45,13 @@
     <module name="IllegalInstantiation">
       <property name="classes" value="java.lang.Boolean,java.lang.Short,java.lang.Integer,java.lang.Long"/>
     </module>
+    <!--
     <module name="ImportOrder">
       <property name="groups" value="java,javax,com,io,org"/>
       <property name="separated" value="true"/>
       <property name="option" value="top"/>
     </module>
+    -->
     <module name="Indentation">
       <property name="caseIndent" value="0"/>
       <property name="throwsIndent" value="8"/>
@@ -85,9 +87,11 @@
     <module name="NoWhitespaceAfter"/>
     <module name="NoWhitespaceBefore"/>
     <module name="OneStatementPerLine"/>
+    <!--
     <module name="OperatorWrap">
       <property name="option" value="eol"/>
     </module>
+    -->
     <module name="OuterTypeFilename"/>
     <module name="PackageDeclaration"/>
     <module name="PackageName"/>

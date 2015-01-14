@@ -10,6 +10,8 @@ function ($scope, $http, $q, $location, $timeout)
 {
     $scope.actions = {};
     $scope.options = {};
+    $scope.status = {};
+    $scope.handles = {};
 
     $http.get("/service").then(
         function(res) {
@@ -34,8 +36,23 @@ function ($scope, $http, $q, $location, $timeout)
         $http.post("/bounce?name=" + $scope.options.bucketSelect).then(
             function(res) {
                 console.log("Bounce blobs response received");
+                $scope.actions.status();
             }
         );
-    }
+    };
+
+    $scope.actions.status = function() {
+        $timeout.cancel($scope.handles.status);
+
+        $http.get("/bounce").then(
+            function(res) {
+                $scope.status = res.data;
+                if (!$scope.status.every(function(status) { return status.done; })) {
+                    $scope.handles.status = $timeout($scope.actions.status, 1 * 1000/*ms*/);
+                }
+            }
+        );
+    };
+    $scope.actions.status();
 }]);
 
