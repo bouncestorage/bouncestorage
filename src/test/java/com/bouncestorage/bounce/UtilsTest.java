@@ -7,6 +7,7 @@ package com.bouncestorage.bounce;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Random;
 
@@ -156,7 +157,21 @@ public final class UtilsTest {
         return "bounce-" + new Random().nextInt(Integer.MAX_VALUE);
     }
 
-    static String createRandomBlobName() {
+    public static String createRandomBlobName() {
         return "blob-" + new Random().nextInt(Integer.MAX_VALUE);
+    }
+
+    public static Blob makeBlob(BlobStore blobStore, String blobName,
+                                ByteSource byteSource) throws IOException {
+        return blobStore.blobBuilder(blobName)
+                .payload(byteSource)
+                .contentLength(byteSource.size())
+                .contentType(MediaType.OCTET_STREAM)
+                .contentMD5(byteSource.hash(Hashing.md5()))
+                .build();
+    }
+
+    public static Blob makeBlob(BlobStore blobStore, String blobName) throws IOException {
+        return makeBlob(blobStore, blobName, ByteSource.empty());
     }
 }

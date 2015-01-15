@@ -7,14 +7,11 @@ package com.bouncestorage.bounce;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
-import com.google.common.net.MediaType;
 
 import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
@@ -85,7 +82,7 @@ public final class BounceTest {
     public void testCreateLink() throws Exception {
         String blobName = "blob";
         ByteSource byteSource = ByteSource.wrap(new byte[1]);
-        Blob blob = makeBlob(nearBlobStore, blobName, byteSource);
+        Blob blob = UtilsTest.makeBlob(nearBlobStore, blobName, byteSource);
         nearBlobStore.putBlob(containerName, blob);
 
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
@@ -116,7 +113,7 @@ public final class BounceTest {
     public void testBounceBlob() throws Exception {
         String blobName = "blob";
         ByteSource byteSource = ByteSource.wrap(new byte[1]);
-        Blob blob = makeBlob(bounceBlobStore, blobName, byteSource);
+        Blob blob = UtilsTest.makeBlob(bounceBlobStore, blobName, byteSource);
         ContentMetadata metadata = blob.getMetadata().getContentMetadata();
         bounceBlobStore.putBlob(containerName, blob);
 
@@ -135,13 +132,4 @@ public final class BounceTest {
                 metadata.getContentType());
     }
 
-    private static Blob makeBlob(BlobStore blobStore, String blobName,
-            ByteSource byteSource) throws IOException {
-        return blobStore.blobBuilder(blobName)
-                .payload(byteSource)
-                .contentLength(byteSource.size())
-                .contentType(MediaType.OCTET_STREAM)
-                .contentMD5(byteSource.hash(Hashing.md5()))
-                .build();
-    }
 }

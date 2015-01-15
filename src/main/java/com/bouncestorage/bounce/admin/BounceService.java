@@ -14,6 +14,7 @@ import org.jclouds.logging.Logger;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -27,6 +28,8 @@ public final class BounceService {
             new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>());
     private BounceBlobStore bounceStore;
     private List<BouncePolicy> bouncePolicies = ImmutableList.of();
+
+    private Clock clock = Clock.systemUTC();
 
     public BounceService(BounceBlobStore bounceStore) {
         this.bounceStore = checkNotNull(bounceStore);
@@ -57,6 +60,14 @@ public final class BounceService {
         }
 
         bouncePolicies = ImmutableList.copyOf(policies);
+    }
+
+    public Clock getClock() {
+        return clock;
+    }
+
+    void setClock(Clock clock) {
+        this.clock = clock;
     }
 
     class BounceTask implements Runnable {
@@ -120,6 +131,26 @@ public final class BounceService {
         @JsonProperty
         private boolean done() {
             return future.isDone();
+        }
+
+        public long getTotalObjectCount() {
+            return totalObjectCount;
+        }
+
+        public long getBouncedObjectCount() {
+            return bouncedObjectCount;
+        }
+
+        public long getErrorObjectCount() {
+            return errorObjectCount;
+        }
+
+        public Date getStartTime() {
+            return startTime;
+        }
+
+        public Date getEndTime() {
+            return endTime;
         }
     }
 }

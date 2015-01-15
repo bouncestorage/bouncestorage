@@ -266,5 +266,11 @@
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.auto.service</groupId>
+            <artifactId>auto-service</artifactId>
+            <version>1.0-rc1</version>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 </project>

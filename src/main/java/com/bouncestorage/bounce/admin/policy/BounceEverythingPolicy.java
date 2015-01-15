@@ -7,16 +7,18 @@ package com.bouncestorage.bounce.admin.policy;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
 
+import com.google.auto.service.AutoService;
 import org.jclouds.blobstore.domain.StorageMetadata;
 
-public class BounceEverythingPolicy implements BouncePolicy {
+@AutoService(BouncePolicy.class)
+public final class BounceEverythingPolicy implements BouncePolicy {
     @Override
-    public final String toString() {
+    public String toString() {
         return "everything";
     }
 
     @Override
-    public final boolean test(StorageMetadata metadata) {
+    public boolean test(StorageMetadata metadata) {
         return true;
     }
 }
