@@ -32,11 +32,12 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 public final class AdminTest {
-    private static final String ADMIN_ENDPOINT = "http://localhost:9000/";
+    private static final String ADMIN_ENDPOINT = "http://localhost";
     private BlobStoreContext bounceContext;
     private BounceBlobStore bounceBlobStore;
     private String containerName;
     private HttpClient httpClient;
+    private BounceApplication app;
 
     @Before
     public void setUp() throws Exception {
@@ -73,8 +74,11 @@ public final class AdminTest {
         ));
 
         String config = getClass().getResource("/bounce.yml").toExternalForm();
-        new BounceApplication(bounceBlobStore, bounceService).run(new String[] {
-            "server", config });
+        app = new BounceApplication(bounceBlobStore, bounceService);
+        app.useRandomPorts();
+        app.run(new String[] {
+                "server", config
+        });
     }
 
     @After
@@ -91,8 +95,7 @@ public final class AdminTest {
     @Ignore
     @Test
     public void testServiceResource() throws Exception {
-        String output = Strings2.toStringAndClose(httpClient.get(URI.create(
-                ADMIN_ENDPOINT + "service")));
+        String output = Strings2.toStringAndClose(httpClient.get(createURI("service")));
         assertThat(output).isEqualTo("{\"containerNames\":[\"" +
                 containerName + "\"]}");
     }
@@ -101,8 +104,8 @@ public final class AdminTest {
     @Ignore
     @Test
     public void testContainerResource() throws Exception {
-        String output = Strings2.toStringAndClose(httpClient.get(URI.create(
-                ADMIN_ENDPOINT + "container?name=" + containerName)));
+        String output = Strings2.toStringAndClose(httpClient.get(createURI(
+                "container?name=" + containerName)));
         assertThat(output).isEqualTo(
                 "{\"blobNames\":[],\"bounceLinkCount\":0}");
     }
@@ -117,33 +120,35 @@ public final class AdminTest {
                 .build();
         bounceBlobStore.putBlob(containerName, blob);
 
-        String output = Strings2.toStringAndClose(httpClient.get(URI.create(
-                ADMIN_ENDPOINT + "container?name=" + containerName)));
+        String output = Strings2.toStringAndClose(httpClient.get(createURI(
+                "container?name=" + containerName)));
         assertThat(output).isEqualTo(
                 "{\"blobNames\":[\"" + blobName + "\"],\"bounceLinkCount\":0}");
 
         try {
             httpClient.post(
-                    URI.create(ADMIN_ENDPOINT + "bounce?name=" + containerName
-                            + "&" + "wait=true"),
+                    createURI("bounce?name=" + containerName + "&" + "wait=true"),
                     blob.getPayload());
         } catch (HttpException he) {
             // TODO: jclouds expects an ETag but DropWizard does not provide one
         }
 
-        output = Strings2.toStringAndClose(httpClient.get(URI.create(
-                ADMIN_ENDPOINT + "container?name=" + containerName)));
+        output = Strings2.toStringAndClose(httpClient.get(createURI(
+                "container?name=" + containerName)));
         assertThat(output).isEqualTo(
                 "{\"blobNames\":[\"" + blobName + "\"],\"bounceLinkCount\":1}");
 
         ObjectMapper mapper = new ObjectMapper();
-        JsonNode status = mapper.readTree(httpClient.get(URI.create(
-                ADMIN_ENDPOINT + "bounce")));
+        JsonNode status = mapper.readTree(httpClient.get(createURI("bounce")));
         assertThat(status).hasSize(1);
         status = status.get(0);
         assertThat(status.get("totalObjectCount").asLong()).isEqualTo(1);
         assertThat(status.get("bouncedObjectCount").asLong()).isEqualTo(1);
         assertThat(status.get("errorObjectCount").asLong()).isEqualTo(0);
         assertThat(status.get("done").asBoolean()).isEqualTo(true);
+    }
+
+    private URI createURI(String uri) {
+        return URI.create(ADMIN_ENDPOINT + ":" + app.getPort() + "/" + uri);
     }
 }

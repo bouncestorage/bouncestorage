@@ -15,9 +15,14 @@ import io.dropwizard.configuration.UrlConfigurationSourceProvider;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 
+import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.ServerConnector;
+
 public final class BounceApplication extends Application<BounceConfiguration> {
     private final BounceBlobStore blobStore;
     private final BounceService bounceService;
+    private int port = -1;
+    private boolean useRandomPorts;
 
     public BounceApplication(BounceBlobStore blobStore, BounceService bounceService) {
         this.blobStore = checkNotNull(blobStore);
@@ -41,6 +46,32 @@ public final class BounceApplication extends Application<BounceConfiguration> {
         environment.jersey().register(new ServiceResource(blobStore));
         environment.jersey().register(new ContainerResource(blobStore));
         environment.jersey().register(new BounceBlobsResource(bounceService));
+        if (useRandomPorts) {
+            configuration.useRandomPorts();
+        }
+
+        environment.lifecycle().addServerLifecycleListener(server -> {
+            for (Connector connector : server.getConnectors()) {
+                if (connector instanceof ServerConnector) {
+                    ServerConnector serverConnector = (ServerConnector) connector;
+                    if ("application".equals(serverConnector.getName())) {
+                        port = serverConnector.getLocalPort();
+                        break;
+                    }
+                }
+            }
+
+            if (port == -1) {
+                throw new IllegalStateException("Cannot find the application port");
+            }
+        });
     }
 
+    void useRandomPorts() {
+        useRandomPorts = true;
+    }
+
+    public int getPort() {
+        return port;
+    }
 }
