@@ -8,7 +8,6 @@ package com.bouncestorage.bounce.admin;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.Utils;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.ImmutableList;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.logging.Logger;
 
@@ -17,6 +16,9 @@ import java.io.IOException;
 import java.time.Clock;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
+import java.util.stream.StreamSupport;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -27,7 +29,7 @@ public final class BounceService {
     private ExecutorService executor =
             new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>());
     private BounceBlobStore bounceStore;
-    private List<BouncePolicy> bouncePolicies = ImmutableList.of();
+    private Predicate<StorageMetadata> bouncePolicy = x -> false;
 
     private Clock clock = Clock.systemUTC();
 
@@ -54,12 +56,12 @@ public final class BounceService {
         return bounceStatus.values();
     }
 
-    public synchronized void installPolicies(List<BouncePolicy> policies) {
+    public synchronized void installPolicies(Collection<Predicate<StorageMetadata>> policies) {
         if (bounceStatus.values().stream().anyMatch(status -> !status.done())) {
             throw new IllegalStateException("Cannot change policies while bouncing objects");
         }
 
-        bouncePolicies = ImmutableList.copyOf(policies);
+        bouncePolicy = policies.stream().reduce(Predicate::or).orElse(x -> false);
     }
 
     public Clock getClock() {
@@ -81,26 +83,20 @@ public final class BounceService {
 
         @Override
         public void run() {
-            for (StorageMetadata sm : Utils.crawlBlobStore(bounceStore, container)) {
-                status.totalObjectCount++;
-
-                if (!bouncePolicies.stream().anyMatch(p -> p.test(sm))) {
-                    continue;
-                }
-
-                String blobName = sm.getName();
-                if (bounceStore.isLink(container, blobName)) {
-                    continue;
-                }
-
-                try {
-                    bounceStore.copyBlobAndCreateBounceLink(container, blobName);
-                    status.bouncedObjectCount++;
-                } catch (IOException e) {
-                    logger.error(e, "could not bounce %s", blobName);
-                    status.errorObjectCount++;
-                }
-            }
+            StreamSupport.stream(Utils.crawlBlobStore(bounceStore, container).spliterator(), /*parallel=*/ false)
+                    .peek(x -> status.totalObjectCount.getAndIncrement())
+                    .filter(bouncePolicy)
+                    .map(StorageMetadata::getName)
+                    .filter(blobName -> !bounceStore.isLink(container, blobName))
+                    .forEach(blobName -> {
+                        try {
+                            bounceStore.copyBlobAndCreateBounceLink(container, blobName);
+                            status.bouncedObjectCount.getAndIncrement();
+                        } catch (IOException e) {
+                            logger.error(e, "could not bounce %s", blobName);
+                            status.errorObjectCount.getAndIncrement();
+                        }
+                    });
 
             status.endTime = new Date();
         }
@@ -108,11 +104,11 @@ public final class BounceService {
 
     public static final class BounceTaskStatus {
         @JsonProperty
-        private volatile long totalObjectCount;
+        private final AtomicLong totalObjectCount = new AtomicLong();
         @JsonProperty
-        private volatile long bouncedObjectCount;
+        private final AtomicLong bouncedObjectCount = new AtomicLong();
         @JsonProperty
-        private volatile long errorObjectCount;
+        private final AtomicLong errorObjectCount = new AtomicLong();
         @JsonProperty
         private final Date startTime;
         @JsonProperty
@@ -134,15 +130,15 @@ public final class BounceService {
         }
 
         public long getTotalObjectCount() {
-            return totalObjectCount;
+            return totalObjectCount.get();
         }
 
         public long getBouncedObjectCount() {
-            return bouncedObjectCount;
+            return bouncedObjectCount.get();
         }
 
         public long getErrorObjectCount() {
-            return errorObjectCount;
+            return errorObjectCount.get();
         }
 
         public Date getStartTime() {
