@@ -140,7 +140,6 @@ public final class UtilsTest {
                 .contentMD5(byteSource.hash(Hashing.md5()))
                 .contentType(MediaType.OCTET_STREAM)
                 .build();
-        ContentMetadata metadata = blob.getMetadata().getContentMetadata();
         nearBlobStore.putBlob(containerName, blob);
 
         assertThat(Utils.crawlBlobStore(nearBlobStore, containerName))
