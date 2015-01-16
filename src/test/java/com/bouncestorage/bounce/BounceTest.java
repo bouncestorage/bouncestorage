@@ -116,8 +116,11 @@ public final class BounceTest {
         Blob blob = UtilsTest.makeBlob(bounceBlobStore, blobName, byteSource);
         ContentMetadata metadata = blob.getMetadata().getContentMetadata();
         bounceBlobStore.putBlob(containerName, blob);
+        BlobMetadata meta1 = bounceBlobStore.blobMetadata(containerName, blobName);
 
         bounceBlobStore.copyBlobAndCreateBounceLink(containerName, blobName);
+        BlobMetadata meta2 = bounceBlobStore.blobMetadata(containerName, blobName);
+        assertThat((Object) meta2).isEqualToComparingFieldByField(meta1);
 
         Blob blob2 = bounceBlobStore.getBlob(containerName, blobName);
         try (InputStream is = blob2.getPayload().openStream();
@@ -138,10 +141,12 @@ public final class BounceTest {
         Blob blob = UtilsTest.makeBlob(farBlobStore, blobName);
         farBlobStore.putBlob(containerName, blob);
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isFalse();
+        assertThat(bounceBlobStore.sanityCheck(containerName)).isFalse();
 
         bounceBlobStore.takeOver(containerName);
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
                 containerName, blobName))).isTrue();
+        assertThat(bounceBlobStore.sanityCheck(containerName)).isTrue();
     }
 }

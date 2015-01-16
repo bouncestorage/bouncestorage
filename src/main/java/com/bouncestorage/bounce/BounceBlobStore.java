@@ -257,4 +257,24 @@ public final class BounceBlobStore implements BlobStore {
             nearStore.putBlob(containerName, link.toBlob(nearStore));
         }
     }
+
+    /**
+     * Sanity check that near store and far store are in sync, if they aren't,
+     * we need to perform takeover.
+
+     * @return true if the near store and farstore are in sync
+     */
+    public boolean sanityCheck(String containerName) throws IOException {
+        PageSet<? extends StorageMetadata> res = farStore.list(containerName);
+        for (StorageMetadata sm : res) {
+            BlobMetadata meta = blobMetadata(containerName, sm.getName());
+            if (!Utils.equals(sm, meta)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
 }

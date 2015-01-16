@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.Properties;
 
 import com.google.common.base.Preconditions;
@@ -175,5 +176,25 @@ public final class Utils {
             throws IOException {
         copyBlob(from, to, containerNameFrom, containerNameTo, blobName);
         from.removeBlob(containerNameFrom, blobName);
+    }
+
+    /**
+     * we don't want to use StorageMetadata.equals directly because that compares
+     * fields like URI and ProviderID which we don't care about.
+     */
+    static boolean equals(StorageMetadata meta1, StorageMetadata meta2) {
+        if (meta1 == meta2) {
+            return true;
+        }
+        if (meta1 == null || meta2 == null) {
+            return false;
+        }
+        return Objects.equals(meta1.getCreationDate(), meta2.getCreationDate())
+                && Objects.equals(meta1.getETag(), meta2.getETag())
+                && Objects.equals(meta1.getLastModified(), meta2.getLastModified())
+                && Objects.equals(meta1.getName(), meta2.getName())
+                && Objects.equals(meta1.getSize(), meta2.getSize())
+                && Objects.equals(meta1.getType(), meta2.getType())
+                ;
     }
 }

@@ -33,7 +33,7 @@ public final class BounceLink implements Serializable {
     private static final Map<String, String> BOUNCE_ATTR = ImmutableMap.of(
             BOUNCE_LINK, ""
     );
-    private final MutableBlobMetadata metadata;
+    private MutableBlobMetadata metadata;
 
     BounceLink(Optional<BlobMetadata> metadata) {
         if (metadata.isPresent()) {
@@ -87,6 +87,7 @@ public final class BounceLink implements Serializable {
         oos.writeObject(metadata.getLastModified());
         oos.writeObject(metadata.getName());
         //oos.writeObject(metadata.getProviderId());
+        oos.writeLong(metadata.getSize());
         oos.writeObject(metadata.getType());
         oos.writeObject(metadata.getUri());
         oos.writeObject(metadata.getUserMetadata());
@@ -113,12 +114,14 @@ public final class BounceLink implements Serializable {
     }
 
     private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+        metadata = new MutableBlobMetadataImpl();
         metadata.setContainer(readStr(ois));
         metadata.setPublicUri(readFrom(ois, URI.class));
         metadata.setCreationDate(readFrom(ois, Date.class));
         metadata.setETag(readStr(ois));
         metadata.setLastModified(readFrom(ois, Date.class));
         metadata.setName(readStr(ois));
+        metadata.setSize(ois.readLong());
         metadata.setType(readFrom(ois, StorageType.class));
         metadata.setUri(readFrom(ois, URI.class));
         @SuppressWarnings("unchecked")
