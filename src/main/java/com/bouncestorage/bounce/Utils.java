@@ -9,10 +9,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.Properties;
+import java.util.*;
 
 import com.google.common.base.Preconditions;
 import com.google.common.hash.HashCode;
@@ -176,6 +173,22 @@ public final class Utils {
             throws IOException {
         copyBlob(from, to, containerNameFrom, containerNameTo, blobName);
         from.removeBlob(containerNameFrom, blobName);
+    }
+
+    static Properties extractProperties(Properties properties, String prefix) {
+        Properties subtree = new Properties();
+        properties.entrySet().stream()
+                .filter(e -> ((String) e.getKey()).startsWith(prefix))
+                .forEach(e -> {
+                    String k = ((String) e.getKey()).substring(prefix.length());
+                    subtree.put(k, e.getValue());
+                });
+        return subtree;
+    }
+
+    public static void insertAllWithPrefix(Properties dest, String prefix,
+                                           Map<String, String> src) {
+        src.forEach((k, v) -> dest.put(prefix + k, v));
     }
 
     /**

@@ -9,14 +9,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Properties;
 import java.util.Random;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
 import com.google.common.net.MediaType;
 import com.google.inject.Module;
 
+import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -35,6 +38,24 @@ public final class UtilsTest {
     private BlobStore nearBlobStore;
     private BlobStore farBlobStore;
     private String containerName;
+
+    public static BlobStoreContext createTransientBounceBlobStore() {
+        Properties properties = new Properties();
+        Utils.insertAllWithPrefix(properties,
+                BounceBlobStore.STORE_PROPERTY_1 + ".",
+                ImmutableMap.of(
+                        Constants.PROPERTY_PROVIDER, "transient"
+                ));
+        Utils.insertAllWithPrefix(properties,
+                BounceBlobStore.STORE_PROPERTY_2 + ".",
+                ImmutableMap.of(
+                        Constants.PROPERTY_PROVIDER, "transient"
+                ));
+        return ContextBuilder
+                .newBuilder("bounce")
+                .overrides(properties)
+                .build(BlobStoreContext.class);
+    }
 
     @Before
     public void setUp() throws Exception {

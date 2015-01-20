@@ -12,8 +12,6 @@ import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
 import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.jclouds.Constants;
-import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.junit.After;
@@ -37,28 +35,8 @@ public final class BounceServiceTest {
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        Properties nearProperties = new Properties();
-        nearProperties.putAll(ImmutableMap.of(
-                Constants.PROPERTY_PROVIDER, "transient"
-        ));
-
-        Properties farProperties = new Properties();
-        farProperties.putAll(ImmutableMap.of(
-                Constants.PROPERTY_PROVIDER, "transient"
-        ));
-
-        Properties dummy = new Properties();
-        dummy.putAll(ImmutableMap.of(
-                BounceBlobStore.STORE_PROPERTY_1, "",
-                BounceBlobStore.STORE_PROPERTY_2, ""
-        ));
-        bounceContext = ContextBuilder
-                .newBuilder("bounce")
-                .overrides(dummy)
-                .build(BlobStoreContext.class);
-
+        bounceContext = UtilsTest.createTransientBounceBlobStore();
         blobStore = (BounceBlobStore) bounceContext.getBlobStore();
-        blobStore.initStores(nearProperties, farProperties);
         blobStore.createContainerInLocation(null, containerName);
 
         bounceService = new BounceService(blobStore);

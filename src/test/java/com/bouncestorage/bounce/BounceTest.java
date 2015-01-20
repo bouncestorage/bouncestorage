@@ -8,13 +8,9 @@ package com.bouncestorage.bounce;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
-import java.util.Properties;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
-import org.jclouds.Constants;
-import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
@@ -35,28 +31,8 @@ public final class BounceTest {
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        Properties nearProperties = new Properties();
-        nearProperties.putAll(ImmutableMap.of(
-                Constants.PROPERTY_PROVIDER, "transient"
-        ));
-
-        Properties farProperties = new Properties();
-        farProperties.putAll(ImmutableMap.of(
-                Constants.PROPERTY_PROVIDER, "transient"
-        ));
-
-        Properties dummy = new Properties();
-        dummy.putAll(ImmutableMap.of(
-                BounceBlobStore.STORE_PROPERTY_1, "",
-                BounceBlobStore.STORE_PROPERTY_2, ""
-        ));
-        bounceContext = ContextBuilder
-                .newBuilder("bounce")
-                .overrides(dummy)
-                .build(BlobStoreContext.class);
-
+        bounceContext = UtilsTest.createTransientBounceBlobStore();
         bounceBlobStore = (BounceBlobStore) bounceContext.getBlobStore();
-        bounceBlobStore.initStores(nearProperties, farProperties);
         nearBlobStore = bounceBlobStore.getNearStore();
         farBlobStore = bounceBlobStore.getFarStore();
         bounceBlobStore.createContainerInLocation(null, containerName);

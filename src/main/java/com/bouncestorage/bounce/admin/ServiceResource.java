@@ -15,7 +15,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.codahale.metrics.annotation.Timed;
 
 import org.jclouds.blobstore.domain.PageSet;

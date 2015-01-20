@@ -48,19 +48,11 @@ public final class Main {
                 S3ProxyConstants.PROPERTY_ENDPOINT);
         String s3ProxyAuthorization = properties.getProperty(
                 S3ProxyConstants.PROPERTY_AUTHORIZATION);
-        String nearStorePropertiesPath = properties.getProperty(
-                BounceBlobStore.STORE_PROPERTY_1);
-        String farStorePropertiesPath = properties.getProperty(
-                BounceBlobStore.STORE_PROPERTY_2);
         if (s3ProxyEndpointString == null ||
-                s3ProxyAuthorization == null ||
-                nearStorePropertiesPath == null ||
-                farStorePropertiesPath == null) {
+                s3ProxyAuthorization == null) {
             System.err.println("Properties file must contain:\n" +
                     S3ProxyConstants.PROPERTY_ENDPOINT + "\n" +
-                    S3ProxyConstants.PROPERTY_AUTHORIZATION + "\n" +
-                    BounceBlobStore.STORE_PROPERTY_1 + "\n" +
-                    BounceBlobStore.STORE_PROPERTY_2 + "\n"
+                    S3ProxyConstants.PROPERTY_AUTHORIZATION + "\n"
             );
             System.exit(1);
         }
@@ -109,14 +101,10 @@ public final class Main {
 
         ContextBuilder builder = ContextBuilder
                 .newBuilder("bounce")
-                .modules(ImmutableList.<Module>of(new SLF4JLoggingModule()));
+                .modules(ImmutableList.<Module>of(new SLF4JLoggingModule()))
+                .overrides(properties);
         BlobStoreContext context = builder.build(BlobStoreContext.class);
         BounceBlobStore bounceStore = (BounceBlobStore) context.getBlobStore();
-        File nearStoreFile = new File(nearStorePropertiesPath);
-        File farStoreFile = new File(farStorePropertiesPath);
-        Properties nearStoreProps = Utils.propertiesFromFile(nearStoreFile);
-        Properties farStoreProps = Utils.propertiesFromFile(farStoreFile);
-        bounceStore.initStores(nearStoreProps, farStoreProps);
         URI s3ProxyEndpoint = new URI(s3ProxyEndpointString);
         S3Proxy s3Proxy = new S3Proxy(context.getBlobStore(), s3ProxyEndpoint,
                 localIdentity, localCredential, keyStorePath,

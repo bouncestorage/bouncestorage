@@ -17,7 +17,6 @@ import io.dropwizard.setup.Environment;
 
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.ServerConnector;
-import org.jclouds.blobstore.BlobStore;
 
 public final class BounceApplication extends Application<BounceConfiguration> {
     private BounceBlobStore blobStore;
@@ -28,8 +27,8 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     public BounceApplication() {
     }
 
-    public void useBlobStore(BounceBlobStore blobStore) {
-        this.blobStore = checkNotNull(blobStore);
+    public void useBlobStore(BounceBlobStore newBlobStore) {
+        this.blobStore = checkNotNull(newBlobStore);
         this.bounceService = new BounceService(blobStore);
     }
 

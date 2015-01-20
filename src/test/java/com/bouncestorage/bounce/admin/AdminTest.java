@@ -8,7 +8,6 @@ package com.bouncestorage.bounce.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
-import java.util.Properties;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
@@ -16,11 +15,8 @@ import com.bouncestorage.bounce.admin.policy.BounceEverythingPolicy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
-import org.jclouds.Constants;
-import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.http.HttpException;
@@ -43,29 +39,10 @@ public final class AdminTest {
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        Properties nearProperties = new Properties();
-        nearProperties.putAll(ImmutableMap.of(
-                Constants.PROPERTY_PROVIDER, "transient"
-        ));
-
-        Properties farProperties = new Properties();
-        farProperties.putAll(ImmutableMap.of(
-                Constants.PROPERTY_PROVIDER, "transient"
-        ));
-
-        Properties dummy = new Properties();
-        dummy.putAll(ImmutableMap.of(
-                BounceBlobStore.STORE_PROPERTY_1, "",
-                BounceBlobStore.STORE_PROPERTY_2, ""
-        ));
-        bounceContext = ContextBuilder
-                .newBuilder("bounce")
-                .overrides(dummy)
-                .build(BlobStoreContext.class);
+        bounceContext = UtilsTest.createTransientBounceBlobStore();
         httpClient = bounceContext.utils().http();
 
         bounceBlobStore = (BounceBlobStore) bounceContext.getBlobStore();
-        bounceBlobStore.initStores(nearProperties, farProperties);
         bounceBlobStore.createContainerInLocation(null, containerName);
 
 
