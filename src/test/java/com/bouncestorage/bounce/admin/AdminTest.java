@@ -68,17 +68,18 @@ public final class AdminTest {
         bounceBlobStore.initStores(nearProperties, farProperties);
         bounceBlobStore.createContainerInLocation(null, containerName);
 
-        BounceService bounceService = new BounceService(bounceBlobStore);
-        bounceService.installPolicies(ImmutableList.of(
-                new BounceEverythingPolicy()
-        ));
 
         String config = getClass().getResource("/bounce.yml").toExternalForm();
-        app = new BounceApplication(bounceBlobStore, bounceService);
+        app = new BounceApplication();
         app.useRandomPorts();
         app.run(new String[] {
                 "server", config
         });
+        app.useBlobStore(bounceBlobStore);
+        BounceService bounceService = app.getBounceService();
+        bounceService.installPolicies(ImmutableList.of(
+                new BounceEverythingPolicy()
+        ));
     }
 
     @After

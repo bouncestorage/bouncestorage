@@ -21,10 +21,10 @@ import com.google.common.collect.ImmutableSet;
 @Path("/bounce")
 @Produces(MediaType.APPLICATION_JSON)
 public final class BounceBlobsResource {
-    private final BounceService service;
+    private final BounceApplication app;
 
-    public BounceBlobsResource(BounceService bounceService) {
-        this.service = checkNotNull(bounceService);
+    public BounceBlobsResource(BounceApplication app) {
+        this.app = checkNotNull(app);
     }
 
     @POST
@@ -33,6 +33,7 @@ public final class BounceBlobsResource {
             @QueryParam("name") String name,
             @QueryParam("wait") Optional<Boolean> wait)
             throws ExecutionException, InterruptedException {
+        BounceService service = app.getBounceService();
         BounceService.BounceTaskStatus status = service.bounce(name);
         if (wait.or(false)) {
             status.future().get();
@@ -44,6 +45,7 @@ public final class BounceBlobsResource {
     @Timed
     public Collection<BounceService.BounceTaskStatus> status(
             @QueryParam("name") Optional<String> name) {
+        BounceService service = app.getBounceService();
         if (name.isPresent()) {
             return ImmutableSet.of(service.status(name.get()));
         } else {

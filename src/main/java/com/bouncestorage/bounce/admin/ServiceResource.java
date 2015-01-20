@@ -24,16 +24,16 @@ import org.jclouds.blobstore.domain.StorageMetadata;
 @Path("/service")
 @Produces(MediaType.APPLICATION_JSON)
 public final class ServiceResource {
-    private final BounceBlobStore blobStore;
+    private final BounceApplication app;
 
-    public ServiceResource(BounceBlobStore blobStore) {
-        this.blobStore = checkNotNull(blobStore);
+    public ServiceResource(BounceApplication app) {
+        this.app = checkNotNull(app);
     }
 
     @GET
     @Timed
     public ServiceStats getServiceStats() {
-        PageSet<? extends StorageMetadata> pageSet = blobStore.list();
+        PageSet<? extends StorageMetadata> pageSet = app.getBlobStore().list();
         List<String> containerNames = pageSet.stream()
                 .map(sm -> sm.getName())
                 .collect(Collectors.toList());

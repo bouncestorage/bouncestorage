@@ -17,16 +17,28 @@ import io.dropwizard.setup.Environment;
 
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.ServerConnector;
+import org.jclouds.blobstore.BlobStore;
 
 public final class BounceApplication extends Application<BounceConfiguration> {
-    private final BounceBlobStore blobStore;
-    private final BounceService bounceService;
+    private BounceBlobStore blobStore;
+    private BounceService bounceService;
     private int port = -1;
     private boolean useRandomPorts;
 
-    public BounceApplication(BounceBlobStore blobStore, BounceService bounceService) {
+    public BounceApplication() {
+    }
+
+    public void useBlobStore(BounceBlobStore blobStore) {
         this.blobStore = checkNotNull(blobStore);
-        this.bounceService = checkNotNull(bounceService);
+        this.bounceService = new BounceService(blobStore);
+    }
+
+    public BounceService getBounceService() {
+        return bounceService;
+    }
+
+    BounceBlobStore getBlobStore() {
+        return blobStore;
     }
 
     @Override
@@ -43,9 +55,9 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     @Override
     public void run(BounceConfiguration configuration,
             Environment environment) {
-        environment.jersey().register(new ServiceResource(blobStore));
-        environment.jersey().register(new ContainerResource(blobStore));
-        environment.jersey().register(new BounceBlobsResource(bounceService));
+        environment.jersey().register(new ServiceResource(this));
+        environment.jersey().register(new ContainerResource(this));
+        environment.jersey().register(new BounceBlobsResource(this));
         if (useRandomPorts) {
             configuration.useRandomPorts();
         }

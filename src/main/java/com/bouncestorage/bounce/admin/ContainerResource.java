@@ -26,16 +26,17 @@ import org.jclouds.blobstore.domain.StorageMetadata;
 @Path("/container")
 @Produces(MediaType.APPLICATION_JSON)
 public final class ContainerResource {
-    private final BounceBlobStore blobStore;
+    private final BounceApplication app;
 
-    public ContainerResource(BounceBlobStore blobStore) {
-        this.blobStore = checkNotNull(blobStore);
+    public ContainerResource(BounceApplication app) {
+        this.app = checkNotNull(app);
     }
 
     @GET
     @Timed
     public ContainerStats getContainerStats(
             @QueryParam("name") String containerName) {
+        BounceBlobStore blobStore = app.getBlobStore();
         Iterable<StorageMetadata> metas = Utils.crawlBlobStore(blobStore,
                 containerName);
         List<String> blobNames =
