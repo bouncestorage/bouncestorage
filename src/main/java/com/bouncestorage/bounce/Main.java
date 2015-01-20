@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce;
 
+import static com.google.common.base.Throwables.propagate;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -12,17 +14,12 @@ import java.net.URI;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
+import com.bouncestorage.bounce.admin.ConfigurationResource;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
-import com.google.inject.Module;
 
 import org.gaul.s3proxy.S3Proxy;
 import org.gaul.s3proxy.S3ProxyConstants;
-
-import org.jclouds.ContextBuilder;
-import org.jclouds.blobstore.BlobStoreContext;
-import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 
 public final class Main {
     /* hide useless constructor */
@@ -57,8 +54,8 @@ public final class Main {
             System.exit(1);
         }
 
-        String localIdentity = null;
-        String localCredential = null;
+        final String localIdentity;
+        final String localCredential;
         if (s3ProxyAuthorization.equalsIgnoreCase("aws-v2")) {
             localIdentity = properties.getProperty(
                     S3ProxyConstants.PROPERTY_IDENTITY);
@@ -75,6 +72,11 @@ public final class Main {
             System.err.println(S3ProxyConstants.PROPERTY_AUTHORIZATION +
                     " must be aws-v2 or none, was: " + s3ProxyAuthorization);
             System.exit(1);
+            localIdentity = null;
+            localCredential = null;
+        } else {
+            localIdentity = null;
+            localCredential = null;
         }
 
         String keyStorePath = properties.getProperty(
@@ -99,23 +101,28 @@ public final class Main {
                 properties.getProperty(
                         S3ProxyConstants.PROPERTY_VIRTUAL_HOST));
 
-        ContextBuilder builder = ContextBuilder
-                .newBuilder("bounce")
-                .modules(ImmutableList.<Module>of(new SLF4JLoggingModule()))
-                .overrides(properties);
-        BlobStoreContext context = builder.build(BlobStoreContext.class);
-        BounceBlobStore bounceStore = (BounceBlobStore) context.getBlobStore();
         URI s3ProxyEndpoint = new URI(s3ProxyEndpointString);
-        S3Proxy s3Proxy = new S3Proxy(context.getBlobStore(), s3ProxyEndpoint,
-                localIdentity, localCredential, keyStorePath,
-                keyStorePassword,
-                "true".equalsIgnoreCase(forceMultiPartUpload), virtualHost);
 
-        String config = Main.class.getResource("/bounce.yml").toExternalForm();
         BounceApplication app = new BounceApplication();
-        app.run(new String[]{
-                "server", config});
-        app.useBlobStore(bounceStore);
-        s3Proxy.start();
+        String config = Main.class.getResource("/bounce.yml").toExternalForm();
+        app.run(new String[] {"server", config});
+
+        ConfigurationResource backendConfig = new ConfigurationResource(properties);
+        backendConfig.addBlobStoreListener(context -> {
+            BounceBlobStore bounceStore = (BounceBlobStore) context.getBlobStore();
+
+            S3Proxy s3Proxy = new S3Proxy(context.getBlobStore(), s3ProxyEndpoint,
+                    localIdentity, localCredential, keyStorePath,
+                    keyStorePassword,
+                    "true".equalsIgnoreCase(forceMultiPartUpload), virtualHost);
+
+            app.useBlobStore(bounceStore);
+            try {
+                s3Proxy.start();
+            } catch (Exception e) {
+                throw propagate(e);
+            }
+        });
+        backendConfig.init();
     }
 }

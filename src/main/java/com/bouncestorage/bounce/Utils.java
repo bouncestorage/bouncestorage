@@ -12,9 +12,14 @@ import java.io.InputStream;
 import java.util.*;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.hash.HashCode;
 
+import com.google.inject.Module;
+import org.jclouds.Constants;
+import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
+import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobBuilder.PayloadBlobBuilder;
 import org.jclouds.blobstore.domain.PageSet;
@@ -22,6 +27,7 @@ import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.StorageType;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.io.ContentMetadata;
+import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 
 public final class Utils {
     private Utils() {
@@ -40,12 +46,22 @@ public final class Utils {
         return new CrawlBlobStoreIterable(blobStore, containerName, options);
     }
 
-    static Properties propertiesFromFile(File file) throws IOException {
+    public static Properties propertiesFromFile(File file) throws IOException {
         Properties properties = new Properties();
         try (InputStream is = new FileInputStream(file)) {
             properties.load(is);
         }
         return properties;
+    }
+
+    public static BlobStore storeFromProperties(Properties properties) {
+        String provider = properties.getProperty(Constants.PROPERTY_PROVIDER);
+        ContextBuilder builder = ContextBuilder
+                .newBuilder(provider)
+                .modules(ImmutableList.<Module>of(new SLF4JLoggingModule()))
+                .overrides(properties);
+        BlobStoreContext context = builder.build(BlobStoreContext.class);
+        return context.getBlobStore();
     }
 
     private static class CrawlBlobStoreIterable

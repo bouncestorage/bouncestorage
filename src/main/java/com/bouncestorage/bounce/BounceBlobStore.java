@@ -15,12 +15,8 @@ import java.util.Set;
 
 import javax.annotation.Resource;
 
-import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
-import com.google.inject.Module;
 
-import org.jclouds.Constants;
-import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.*;
@@ -30,7 +26,6 @@ import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.domain.Location;
 import org.jclouds.logging.Logger;
-import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.jclouds.providers.ProviderMetadata;
 
 public final class BounceBlobStore implements BlobStore {
@@ -55,23 +50,8 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     private void initStores(Properties prop1, Properties prop2) {
-        this.nearStore = storeFromProperties(checkNotNull(prop1));
-        this.farStore = storeFromProperties(checkNotNull(prop2));
-    }
-
-    private static BlobStore storeFromProperties(Properties properties) {
-        /*
-        properties.keySet().stream()
-                .map(k -> String.format("keys: %s", k))
-                .forEach(s -> System.err.println(s));
-         */
-        String provider = properties.getProperty(Constants.PROPERTY_PROVIDER);
-        ContextBuilder builder = ContextBuilder
-                .newBuilder(provider)
-                .modules(ImmutableList.<Module>of(new SLF4JLoggingModule()))
-                .overrides(properties);
-        BlobStoreContext context = builder.build(BlobStoreContext.class);
-        return context.getBlobStore();
+        this.nearStore = Utils.storeFromProperties(checkNotNull(prop1));
+        this.farStore = Utils.storeFromProperties(checkNotNull(prop2));
     }
 
     BlobStore getNearStore() {
