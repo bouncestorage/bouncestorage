@@ -39,7 +39,6 @@ public final class Main {
         try (InputStream is = new FileInputStream(new File(args[1]))) {
             properties.load(is);
         }
-        properties.putAll(System.getProperties());
 
         String s3ProxyEndpointString = properties.getProperty(
                 S3ProxyConstants.PROPERTY_ENDPOINT);

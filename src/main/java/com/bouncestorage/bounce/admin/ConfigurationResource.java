@@ -38,6 +38,7 @@ public final class ConfigurationResource {
     private static BlobStoreContext initProperties(Properties props) {
         return ContextBuilder
                 .newBuilder("bounce")
+                .overrides(System.getProperties())
                 .overrides(props)
                 .build(BlobStoreContext.class);
     }
