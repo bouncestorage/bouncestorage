@@ -1,0 +1,36 @@
+<!doctype html>
+<html ng-app="bounce" id="ng-app">
+<head>
+  <meta charset="utf-8">
+  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.5/angular.js">
+  </script>
+  <script src="test.js"></script>
+  <style>
+    html, body {
+      height: 100%;
+      width: 100%;
+      padding: 0;
+      margin: 0;
+    }
+  </style>
+</head>
+
+<body ng-controller="BounceConfig" class="ng-cloak">
+
+<table>
+  <tr ng-repeat="(k, v) in config | orderBy:k">
+    <td><code>{{ k }}</code></td>
+    <td><code>:</code></td>
+    <td><code>{{ v }}</code></td>
+  </tr>
+</table>
+
+<form>
+  <pre>{{ status.config }}</pre>
+  <textarea ng-model="options.config" cols=80 rows=10>
+  </textarea>
+  <button type="button" ng-click="actions.config()">Configure</button>
+</form>
+
+</body>
+</html>

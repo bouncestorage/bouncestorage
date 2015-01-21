@@ -56,3 +56,25 @@ function ($scope, $http, $q, $location, $timeout)
     $scope.actions.status();
 }]);
 
+bounce.controller('BounceConfig',
+               ['$scope', '$http', '$q', '$location', '$timeout',
+function ($scope, $http, $q, $location, $timeout)
+{
+    $scope.options = {};
+    $scope.actions = {};
+    $scope.status = {};
+
+    $http.get("/config").then(
+        function(res) {
+            $scope.config = res.data;
+        }
+    );
+
+    $scope.actions.config = function() {
+        $http.post("/config", $scope.options.config).then(
+            function(res) {
+                $scope.status.config = res.data;
+            }
+        );
+    };
+}]);
