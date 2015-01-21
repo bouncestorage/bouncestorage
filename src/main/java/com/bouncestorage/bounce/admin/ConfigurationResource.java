@@ -17,6 +17,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import com.google.inject.CreationException;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.logging.Logger;
@@ -46,7 +47,11 @@ public final class ConfigurationResource {
     }
 
     public void init() {
-        BlobStoreContext context = initProperties(properties);
-        blobStoreListeners.forEach(cb -> cb.accept(context));
+        try {
+            BlobStoreContext context = initProperties(properties);
+            blobStoreListeners.forEach(cb -> cb.accept(context));
+        } catch (CreationException e) {
+            logger.error("Unable to initialize blob: %s", e.getErrorMessages());
+        }
     }
 }
