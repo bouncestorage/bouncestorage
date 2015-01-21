@@ -19,12 +19,14 @@ import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.ServerConnector;
 
 public final class BounceApplication extends Application<BounceConfiguration> {
+    private final ConfigurationResource config;
     private BounceBlobStore blobStore;
     private BounceService bounceService;
     private int port = -1;
     private boolean useRandomPorts;
 
-    public BounceApplication() {
+    public BounceApplication(ConfigurationResource config) {
+        this.config = checkNotNull(config);
     }
 
     public void useBlobStore(BounceBlobStore newBlobStore) {
@@ -57,6 +59,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
         environment.jersey().register(new ServiceResource(this));
         environment.jersey().register(new ContainerResource(this));
         environment.jersey().register(new BounceBlobsResource(this));
+        environment.jersey().register(config);
         if (useRandomPorts) {
             configuration.useRandomPorts();
         }

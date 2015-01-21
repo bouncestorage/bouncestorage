@@ -103,11 +103,11 @@ public final class Main {
 
         URI s3ProxyEndpoint = new URI(s3ProxyEndpointString);
 
-        BounceApplication app = new BounceApplication();
-        String config = Main.class.getResource("/bounce.yml").toExternalForm();
-        app.run(new String[] {"server", config});
 
         ConfigurationResource backendConfig = new ConfigurationResource(properties);
+        BounceApplication app = new BounceApplication(backendConfig);
+        String config = Main.class.getResource("/bounce.yml").toExternalForm();
+        app.run(new String[] {"server", config});
         backendConfig.addBlobStoreListener(context -> {
             BounceBlobStore bounceStore = (BounceBlobStore) context.getBlobStore();
 

@@ -13,10 +13,10 @@ import java.util.Properties;
 import java.util.function.Consumer;
 
 import javax.annotation.Resource;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
+import com.codahale.metrics.annotation.Timed;
 import com.google.inject.CreationException;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -47,11 +47,32 @@ public final class ConfigurationResource {
     }
 
     public void init() {
+        useProperties(properties);
+    }
+
+    private void useProperties(Properties newProperties) {
         try {
-            BlobStoreContext context = initProperties(properties);
+            BlobStoreContext context = initProperties(newProperties);
             blobStoreListeners.forEach(cb -> cb.accept(context));
+            properties = newProperties;
         } catch (CreationException e) {
             logger.error("Unable to initialize blob: %s", e.getErrorMessages());
         }
+    }
+
+    @POST
+    @Timed
+    @Consumes(MediaType.APPLICATION_JSON)
+    public void updateConfig(Properties newProperties) {
+        Properties prop = new Properties();
+        prop.putAll(properties);
+        prop.putAll(newProperties);
+        useProperties(prop);
+    }
+
+    @GET
+    @Timed
+    public Properties getConfig() {
+        return properties;
     }
 }
