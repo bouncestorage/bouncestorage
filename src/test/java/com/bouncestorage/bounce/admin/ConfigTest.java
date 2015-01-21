@@ -11,7 +11,6 @@ import com.bouncestorage.bounce.UtilsTest;
 import com.google.common.collect.ImmutableMap;
 import org.jclouds.Constants;
 import org.jclouds.blobstore.BlobStoreContext;
-import org.jclouds.rest.HttpClient;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;

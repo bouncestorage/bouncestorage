@@ -126,7 +126,7 @@
     <module name="VisibilityModifier">
       <property name="protectedAllowed" value="true"/>
       <property name="publicMemberPattern"
-          value="(^thrown$|^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$)"/>
+          value="(^thrown$|^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$)|^expectedException$"/>
     </module>
     <module name="WhitespaceAfter"/>
     <module name="WhitespaceAround"/>
