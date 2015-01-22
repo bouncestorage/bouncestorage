@@ -21,17 +21,17 @@ import org.eclipse.jetty.server.ServerConnector;
 public final class BounceApplication extends Application<BounceConfiguration> {
     private final ConfigurationResource config;
     private BounceBlobStore blobStore;
-    private BounceService bounceService;
+    private final BounceService bounceService;
     private int port = -1;
     private boolean useRandomPorts;
 
     public BounceApplication(ConfigurationResource config) {
         this.config = checkNotNull(config);
+        this.bounceService = new BounceService(this);
     }
 
     public void useBlobStore(BounceBlobStore newBlobStore) {
         this.blobStore = checkNotNull(newBlobStore);
-        this.bounceService = new BounceService(blobStore);
     }
 
     public BounceService getBounceService() {

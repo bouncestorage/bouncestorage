@@ -28,13 +28,13 @@ public final class BounceService {
     private Map<String, BounceTaskStatus> bounceStatus = new HashMap<>();
     private ExecutorService executor =
             new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>());
-    private BounceBlobStore bounceStore;
+    private final BounceApplication app;
     private Predicate<StorageMetadata> bouncePolicy = x -> false;
 
     private Clock clock = Clock.systemUTC();
 
-    public BounceService(BounceBlobStore bounceStore) {
-        this.bounceStore = checkNotNull(bounceStore);
+    public BounceService(BounceApplication app) {
+        this.app = checkNotNull(app);
     }
 
     synchronized BounceTaskStatus bounce(String container) {
@@ -83,6 +83,7 @@ public final class BounceService {
 
         @Override
         public void run() {
+            BounceBlobStore bounceStore = app.getBlobStore();
             StreamSupport.stream(Utils.crawlBlobStore(bounceStore, container).spliterator(), /*parallel=*/ false)
                     .peek(x -> status.totalObjectCount.getAndIncrement())
                     .filter(bouncePolicy)
