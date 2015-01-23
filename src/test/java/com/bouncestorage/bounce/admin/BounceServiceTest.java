@@ -10,7 +10,6 @@ import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.policy.BounceEverythingPolicy;
 import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
 import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.configuration.MapConfiguration;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -23,6 +22,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Optional;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -98,9 +98,7 @@ public final class BounceServiceTest {
 
     @Test
     public void testBounceLastModifiedTimePolicy() throws Exception {
-        bounceService.installPolicies(ImmutableList.of(
-                lastModifiedTimePolicy(Duration.ofHours(1))
-        ));
+        bounceService.setDefaultPolicy(lastModifiedTimePolicy(Duration.ofHours(1)));
 
         Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
         blobStore.putBlob(containerName, blob);
@@ -120,13 +118,11 @@ public final class BounceServiceTest {
     }
 
     private void toggleBounceNothing() {
-        bounceService.installPolicies(ImmutableList.of());
+        bounceService.setDefaultPolicy(Optional.empty());
     }
 
     private void toggleBounceEverything() {
-        bounceService.installPolicies(ImmutableList.of(
-                new BounceEverythingPolicy()
-        ));
+        bounceService.setDefaultPolicy(new BounceEverythingPolicy());
     }
 
     private BouncePolicy lastModifiedTimePolicy(Duration duration) {

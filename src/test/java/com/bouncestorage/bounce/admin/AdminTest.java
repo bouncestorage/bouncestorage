@@ -52,9 +52,7 @@ public final class AdminTest {
         }
         app.useBlobStore(bounceBlobStore);
         BounceService bounceService = app.getBounceService();
-        bounceService.installPolicies(ImmutableList.of(
-                new BounceEverythingPolicy()
-        ));
+        bounceService.setDefaultPolicy(new BounceEverythingPolicy());
     }
 
     @After

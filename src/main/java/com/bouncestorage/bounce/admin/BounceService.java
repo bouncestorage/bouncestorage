@@ -8,7 +8,6 @@ package com.bouncestorage.bounce.admin;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.Utils;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.ImmutableSet;
 import org.apache.commons.configuration.event.ConfigurationListener;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.logging.Logger;
@@ -19,20 +18,20 @@ import java.time.Clock;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public final class BounceService {
     public static final String BOUNCE_POLICY_PREFIX = "bounce.service.bounce-policy";
+    private static final BouncePolicy BOUNCE_NOTHING = x -> false;
     @Resource
     private Logger logger = Logger.NULL;
     private Map<String, BounceTaskStatus> bounceStatus = new HashMap<>();
     private ExecutorService executor =
             new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>());
     private final BounceApplication app;
-    private Predicate<StorageMetadata> bouncePolicy = x -> false;
+    private BouncePolicy bouncePolicy = BOUNCE_NOTHING;
 
     private Clock clock = Clock.systemUTC();
 
@@ -71,22 +70,23 @@ public final class BounceService {
             if (event.getPropertyName().equals(BOUNCE_POLICY_PREFIX)) {
                 Optional<BouncePolicy> policy =
                         getBouncePolicyFromName((String) event.getPropertyValue());
-                if (policy.isPresent()) {
-                    policy.get().init(this, app.getConfiguration().subset(BOUNCE_POLICY_PREFIX));
-                    installPolicies(ImmutableSet.of(policy.get()));
-                } else {
-                    installPolicies(ImmutableSet.of());
-                }
+                policy.ifPresent(p ->
+                        p.init(this, app.getConfiguration().subset(BOUNCE_POLICY_PREFIX)));
+                setDefaultPolicy(policy);
             }
         };
     }
 
-    public synchronized void installPolicies(Collection<Predicate<StorageMetadata>> policies) {
+    public synchronized void setDefaultPolicy(BouncePolicy policy) {
         if (bounceStatus.values().stream().anyMatch(status -> !status.done())) {
             throw new IllegalStateException("Cannot change policies while bouncing objects");
         }
 
-        bouncePolicy = policies.stream().reduce(Predicate::or).orElse(x -> false);
+        bouncePolicy = checkNotNull(policy);
+    }
+
+    public synchronized void setDefaultPolicy(Optional<BouncePolicy> policy) {
+        setDefaultPolicy(policy.orElse(BOUNCE_NOTHING));
     }
 
     public Clock getClock() {
