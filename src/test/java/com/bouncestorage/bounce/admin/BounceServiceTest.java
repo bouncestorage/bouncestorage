@@ -41,7 +41,7 @@ public final class BounceServiceTest {
 
         String config = getClass().getResource("/bounce.yml").toExternalForm();
         BounceApplication app = new BounceApplication(
-                new ConfigurationResource(new Properties()));
+                UtilsTest.createConfigurationResource());
         app.useRandomPorts();
         app.run(new String[] {
                 "server", config

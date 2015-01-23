@@ -35,7 +35,7 @@ public final class ConfigTest {
         containerName = UtilsTest.createRandomContainerName();
 
         String config = getClass().getResource("/bounce.yml").toExternalForm();
-        backendConfig = new ConfigurationResource(new Properties());
+        backendConfig = UtilsTest.createConfigurationResource();
         app = new BounceApplication(backendConfig);
         app.useRandomPorts();
         app.run(new String[]{

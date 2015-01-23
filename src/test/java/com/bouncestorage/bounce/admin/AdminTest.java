@@ -8,7 +8,6 @@ package com.bouncestorage.bounce.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collection;
-import java.util.Properties;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
@@ -41,7 +40,7 @@ public final class AdminTest {
 
 
         String config = getClass().getResource("/bounce.yml").toExternalForm();
-        app = new BounceApplication(new ConfigurationResource(new Properties()));
+        app = new BounceApplication(UtilsTest.createConfigurationResource());
         app.useRandomPorts();
         app.run(new String[] {
                 "server", config

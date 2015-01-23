@@ -18,6 +18,7 @@ import javax.ws.rs.core.MediaType;
 
 import com.codahale.metrics.annotation.Timed;
 import com.google.inject.CreationException;
+import org.apache.commons.configuration.Configuration;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.logging.Logger;
@@ -28,11 +29,13 @@ public final class ConfigurationResource {
     @Resource
     private Logger logger = Logger.NULL;
 
-    private Properties properties;
+    private final Configuration config;
+    private final Properties properties;
     private final List<Consumer<BlobStoreContext>> blobStoreListeners = new ArrayList<>();
 
-    public ConfigurationResource(Properties properties) {
-        this.properties = checkNotNull(properties);
+    public ConfigurationResource(Configuration config) {
+        this.config = checkNotNull(config);
+        this.properties = new ConfigurationPropertiesView(config);
     }
 
     private static BlobStoreContext initProperties(Properties props) {
@@ -55,7 +58,9 @@ public final class ConfigurationResource {
         try {
             BlobStoreContext context = initProperties(newProperties);
             blobStoreListeners.forEach(cb -> cb.accept(context));
-            properties = newProperties;
+            newProperties.entrySet().forEach(e ->
+                config.setProperty((String) e.getKey(), e.getValue())
+            );
         } catch (CreationException e) {
             logger.error("Unable to initialize blob: %s", e.getErrorMessages());
         }

@@ -279,5 +279,10 @@
             <version>1.0-rc1</version>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>commons-configuration</groupId>
+            <artifactId>commons-configuration</artifactId>
+            <version>1.10</version>
+        </dependency>
     </dependencies>
 </project>
