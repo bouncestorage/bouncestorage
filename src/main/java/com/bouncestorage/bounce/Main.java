@@ -14,7 +14,6 @@ import java.net.URI;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
-import com.bouncestorage.bounce.admin.ConfigurationResource;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 
@@ -105,26 +104,20 @@ public final class Main {
         URI s3ProxyEndpoint = new URI(s3ProxyEndpointString);
 
         AbstractConfiguration config = new MapConfiguration(properties);
-        ConfigurationResource backendConfig =
-                new ConfigurationResource(config);
-        BounceApplication app = new BounceApplication(backendConfig);
+        BounceApplication app = new BounceApplication(config);
         String webConfig = Main.class.getResource("/bounce.yml").toExternalForm();
         app.run(new String[] {"server", webConfig});
-        backendConfig.addBlobStoreListener(context -> {
-            BounceBlobStore bounceStore = (BounceBlobStore) context.getBlobStore();
-
+        app.addBlobStoreListener(context -> {
             S3Proxy s3Proxy = new S3Proxy(context.getBlobStore(), s3ProxyEndpoint,
                     localIdentity, localCredential, keyStorePath,
                     keyStorePassword,
                     "true".equalsIgnoreCase(forceMultiPartUpload), virtualHost);
 
-            app.useBlobStore(bounceStore);
             try {
                 s3Proxy.start();
             } catch (Exception e) {
                 throw propagate(e);
             }
         });
-        backendConfig.init();
     }
 }

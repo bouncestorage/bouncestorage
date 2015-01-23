@@ -9,6 +9,7 @@ import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.google.common.collect.ImmutableMap;
+import org.apache.commons.configuration.MapConfiguration;
 import org.jclouds.Constants;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.junit.After;
@@ -17,6 +18,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.util.HashMap;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,23 +30,18 @@ public final class ConfigTest {
     private BounceBlobStore bounceBlobStore;
     private String containerName;
     private BounceApplication app;
-    private ConfigurationResource backendConfig;
+    private MapConfiguration configuration;
 
     @Before
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        String config = getClass().getResource("/bounce.yml").toExternalForm();
-        backendConfig = UtilsTest.createConfigurationResource();
-        app = new BounceApplication(backendConfig);
+        configuration = new MapConfiguration(new HashMap<>());
+        app = new BounceApplication(configuration);
         app.useRandomPorts();
+        String config = getClass().getResource("/bounce.yml").toExternalForm();
         app.run(new String[]{
                 "server", config
-        });
-        backendConfig.addBlobStoreListener(context -> {
-            bounceBlobStore = (BounceBlobStore) context.getBlobStore();
-            bounceContext = context;
-            app.useBlobStore(bounceBlobStore);
         });
     }
 
@@ -74,9 +71,10 @@ public final class ConfigTest {
 
     @Test
     public void testGetConfig() throws Exception {
-        assertThat(backendConfig.getConfig()).isEmpty();
+        ConfigurationResource config = new ConfigurationResource(app);
+        assertThat(config.getConfig()).isEmpty();
         setTransientBackend();
-        assertThat(backendConfig.getConfig()).hasSize(2);
+        assertThat(config.getConfig()).hasSize(2);
     }
 
     private void setTransientBackend() throws Exception {
@@ -92,6 +90,6 @@ public final class ConfigTest {
                         Constants.PROPERTY_PROVIDER, "transient"
                 ));
 
-        backendConfig.updateConfig(properties);
+        new ConfigurationResource(app).updateConfig(properties);
     }
 }

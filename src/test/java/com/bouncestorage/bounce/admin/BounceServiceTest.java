@@ -12,6 +12,7 @@ import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
 import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.commons.configuration.MapConfiguration;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.junit.After;
@@ -21,6 +22,7 @@ import org.junit.Test;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,7 +43,7 @@ public final class BounceServiceTest {
 
         String config = getClass().getResource("/bounce.yml").toExternalForm();
         BounceApplication app = new BounceApplication(
-                UtilsTest.createConfigurationResource());
+                new MapConfiguration(new HashMap<>()));
         app.useRandomPorts();
         app.run(new String[] {
                 "server", config

@@ -7,31 +7,89 @@ package com.bouncestorage.bounce.admin;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.function.Consumer;
+
+import javax.annotation.Resource;
+
 import com.bouncestorage.bounce.BounceBlobStore;
 
+import com.google.inject.CreationException;
 import io.dropwizard.Application;
 import io.dropwizard.assets.AssetsBundle;
 import io.dropwizard.configuration.UrlConfigurationSourceProvider;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 
+import org.apache.commons.configuration.AbstractConfiguration;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.ServerConnector;
+import org.jclouds.ContextBuilder;
+import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.logging.Logger;
+
 
 public final class BounceApplication extends Application<BounceConfiguration> {
-    private final ConfigurationResource config;
+    @Resource
+    private Logger logger = Logger.NULL;
+
+    private final AbstractConfiguration config;
+    private final Properties configView;
     private BounceBlobStore blobStore;
+    private final List<Consumer<BlobStoreContext>> blobStoreListeners =
+            new ArrayList<>();
     private final BounceService bounceService;
     private int port = -1;
     private boolean useRandomPorts;
 
-    public BounceApplication(ConfigurationResource config) {
+    public BounceApplication(AbstractConfiguration config) {
         this.config = checkNotNull(config);
         this.bounceService = new BounceService(this);
+        this.configView = new ConfigurationPropertiesView(config);
+
+        config.addConfigurationListener(evt -> {
+            boolean storeChanged = false;
+            if (evt.getPropertyName().startsWith("bounce.store.properties.")) {
+                storeChanged = true;
+            }
+            if (storeChanged) {
+                reinitBlobStore();
+            }
+        });
+
+        reinitBlobStore();
     }
 
-    public void useBlobStore(BounceBlobStore newBlobStore) {
-        this.blobStore = checkNotNull(newBlobStore);
+    private void reinitBlobStore() {
+        try {
+            BlobStoreContext context = ContextBuilder
+                    .newBuilder("bounce")
+                    .overrides(System.getProperties())
+                    .overrides(configView)
+                    .build(BlobStoreContext.class);
+            useBlobStore((BounceBlobStore) context.getBlobStore());
+            blobStoreListeners.forEach(cb -> cb.accept(context));
+        } catch (CreationException e) {
+            logger.error("Unable to initialize blob: %s", e.getErrorMessages());
+        }
+    }
+
+    public void useBlobStore(BounceBlobStore bounceBlobStore) {
+        this.blobStore = bounceBlobStore;
+    }
+
+    public AbstractConfiguration getConfiguration() {
+        return config;
+    }
+
+    public Properties getConfigView() {
+        return configView;
+    }
+
+    public void addBlobStoreListener(Consumer<BlobStoreContext> listener) {
+        blobStoreListeners.add(listener);
     }
 
     public BounceService getBounceService() {
@@ -59,7 +117,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
         environment.jersey().register(new ServiceResource(this));
         environment.jersey().register(new ContainerResource(this));
         environment.jersey().register(new BounceBlobsResource(this));
-        environment.jersey().register(config);
+        environment.jersey().register(new ConfigurationResource(this));
         if (useRandomPorts) {
             configuration.useRandomPorts();
         }

@@ -9,11 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Properties;
 import java.util.Random;
 
-import com.bouncestorage.bounce.admin.ConfigurationResource;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.hash.Hashing;
@@ -21,7 +19,6 @@ import com.google.common.io.ByteSource;
 import com.google.common.net.MediaType;
 import com.google.inject.Module;
 
-import org.apache.commons.configuration.MapConfiguration;
 import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
@@ -198,8 +195,4 @@ public final class UtilsTest {
         return makeBlob(blobStore, blobName, ByteSource.empty());
     }
 
-    public static ConfigurationResource createConfigurationResource() {
-        return new ConfigurationResource(
-                new MapConfiguration(new HashMap<String, String>()));
-    }
 }

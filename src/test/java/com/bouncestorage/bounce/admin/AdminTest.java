@@ -8,6 +8,7 @@ package com.bouncestorage.bounce.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collection;
+import java.util.HashMap;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
@@ -16,6 +17,7 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 
+import org.apache.commons.configuration.MapConfiguration;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.junit.After;
@@ -40,7 +42,8 @@ public final class AdminTest {
 
 
         String config = getClass().getResource("/bounce.yml").toExternalForm();
-        app = new BounceApplication(UtilsTest.createConfigurationResource());
+        app = new BounceApplication(
+                new MapConfiguration(new HashMap<>()));
         app.useRandomPorts();
         app.run(new String[] {
                 "server", config
