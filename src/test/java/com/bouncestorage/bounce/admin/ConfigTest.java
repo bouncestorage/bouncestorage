@@ -40,12 +40,6 @@ public final class ConfigTest {
         configuration = new MapConfiguration(new HashMap<>());
         app = new BounceApplication(configuration);
         app.useRandomPorts();
-        String config = getClass().getResource("/bounce.yml").toExternalForm();
-        synchronized (BounceApplication.class) {
-            app.run(new String[]{
-                    "server", config
-            });
-        }
     }
 
     @After

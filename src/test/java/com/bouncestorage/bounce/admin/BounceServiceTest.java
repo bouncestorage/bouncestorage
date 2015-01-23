@@ -41,15 +41,9 @@ public final class BounceServiceTest {
         blobStore = (BounceBlobStore) bounceContext.getBlobStore();
         blobStore.createContainerInLocation(null, containerName);
 
-        String config = getClass().getResource("/bounce.yml").toExternalForm();
         BounceApplication app = new BounceApplication(
                 new MapConfiguration(new HashMap<>()));
         app.useRandomPorts();
-        synchronized (BounceApplication.class) {
-            app.run(new String[]{
-                    "server", config
-            });
-        }
         app.useBlobStore(blobStore);
         bounceService = app.getBounceService();
     }
