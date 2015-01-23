@@ -45,9 +45,11 @@ public final class BounceServiceTest {
         BounceApplication app = new BounceApplication(
                 new MapConfiguration(new HashMap<>()));
         app.useRandomPorts();
-        app.run(new String[] {
-                "server", config
-        });
+        synchronized (BounceApplication.class) {
+            app.run(new String[]{
+                    "server", config
+            });
+        }
         app.useBlobStore(blobStore);
         bounceService = app.getBounceService();
     }

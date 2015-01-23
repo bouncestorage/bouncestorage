@@ -45,9 +45,11 @@ public final class AdminTest {
         app = new BounceApplication(
                 new MapConfiguration(new HashMap<>()));
         app.useRandomPorts();
-        app.run(new String[] {
-                "server", config
-        });
+        synchronized (BounceApplication.class) {
+            app.run(new String[]{
+                    "server", config
+            });
+        }
         app.useBlobStore(bounceBlobStore);
         BounceService bounceService = app.getBounceService();
         bounceService.installPolicies(ImmutableList.of(

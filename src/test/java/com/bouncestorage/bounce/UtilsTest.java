@@ -194,5 +194,4 @@ public final class UtilsTest {
     public static Blob makeBlob(BlobStore blobStore, String blobName) throws IOException {
         return makeBlob(blobStore, blobName, ByteSource.empty());
     }
-
 }

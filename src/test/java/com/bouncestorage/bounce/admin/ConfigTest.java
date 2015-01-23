@@ -41,9 +41,11 @@ public final class ConfigTest {
         app = new BounceApplication(configuration);
         app.useRandomPorts();
         String config = getClass().getResource("/bounce.yml").toExternalForm();
-        app.run(new String[]{
-                "server", config
-        });
+        synchronized (BounceApplication.class) {
+            app.run(new String[]{
+                    "server", config
+            });
+        }
     }
 
     @After
