@@ -11,6 +11,7 @@ import com.bouncestorage.bounce.UtilsTest;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.configuration.MapConfiguration;
 import org.jclouds.Constants;
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.junit.After;
 import org.junit.Before;
@@ -62,7 +63,7 @@ public final class ConfigTest {
     }
 
     @Test
-    public void testUpdateConfig() throws Exception {
+    public void testConfigBackend() throws Exception {
         setTransientBackend();
         assertThat(app.getBlobStore()).isNotNull();
         ServiceStats stats = new ServiceResource(app).getServiceStats();
@@ -75,6 +76,32 @@ public final class ConfigTest {
         assertThat(config.getConfig()).isEmpty();
         setTransientBackend();
         assertThat(config.getConfig()).hasSize(2);
+    }
+
+    @Test
+    public void testConfigBouncePolicy() throws Exception {
+        setTransientBackend();
+        BlobStore blobStore = app.getBlobStore();
+        blobStore.createContainerInLocation(null, containerName);
+        BounceService bounceService = app.getBounceService();
+        blobStore.putBlob(containerName,
+                UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName()));
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getTotalObjectCount()).isEqualTo(1);
+        assertThat(status.getBouncedObjectCount()).isEqualTo(0);
+        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+
+        Properties properties = new Properties();
+        properties.putAll(ImmutableMap.of(
+                "bounce.service.bounce-policy", "BounceEverythingPolicy"
+        ));
+        new ConfigurationResource(app).updateConfig(properties);
+        status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getTotalObjectCount()).isEqualTo(1);
+        assertThat(status.getBouncedObjectCount()).isEqualTo(1);
+        assertThat(status.getErrorObjectCount()).isEqualTo(0);
     }
 
     private void setTransientBackend() throws Exception {

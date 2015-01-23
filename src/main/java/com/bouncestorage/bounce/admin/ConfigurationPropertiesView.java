@@ -27,13 +27,7 @@ public final class ConfigurationPropertiesView extends Properties {
 
     @Override
     public synchronized int size() {
-        Iterator<String> keys = config.getKeys();
-        int count = 0;
-        while (keys.hasNext()) {
-            count++;
-            keys.next();
-        }
-        return count;
+        return Iterators.size(config.getKeys());
     }
 
     @Override

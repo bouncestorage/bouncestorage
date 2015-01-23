@@ -58,6 +58,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
                 reinitBlobStore();
             }
         });
+        config.addConfigurationListener(bounceService.getConfigurationListener());
 
         reinitBlobStore();
     }

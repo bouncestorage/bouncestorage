@@ -8,6 +8,8 @@ package com.bouncestorage.bounce.admin;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.Utils;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableSet;
+import org.apache.commons.configuration.event.ConfigurationListener;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.logging.Logger;
 
@@ -54,6 +56,27 @@ public final class BounceService {
 
     synchronized Collection<BounceTaskStatus> status() {
         return bounceStatus.values();
+    }
+
+    static Optional<BouncePolicy> getBouncePolicyFromName(String name) {
+        ServiceLoader<BouncePolicy> loader = ServiceLoader.load(BouncePolicy.class);
+        return StreamSupport.stream(loader.spliterator(), false)
+                .filter(p -> p.getClass().getSimpleName().equals(name))
+                .findAny();
+    }
+
+    ConfigurationListener getConfigurationListener() {
+        return event -> {
+            if (event.getPropertyName().equals("bounce.service.bounce-policy")) {
+                Optional<BouncePolicy> policy =
+                        getBouncePolicyFromName((String) event.getPropertyValue());
+                if (policy.isPresent()) {
+                    installPolicies(ImmutableSet.of(policy.get()));
+                } else {
+                    installPolicies(ImmutableSet.of());
+                }
+            }
+        };
     }
 
     public synchronized void installPolicies(Collection<Predicate<StorageMetadata>> policies) {
