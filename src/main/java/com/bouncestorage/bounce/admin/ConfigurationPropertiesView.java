@@ -52,7 +52,7 @@ public final class ConfigurationPropertiesView extends Properties {
 
             @Override
             public Object nextElement() {
-                return keys.next();
+                return config.getString(keys.next());
             }
         };
     }
