@@ -141,7 +141,7 @@ public final class BounceServiceTest {
         properties.putAll(ImmutableMap.of(
                 LastModifiedTimePolicy.DURATION, duration.toString()
         ));
-        p.init(bounceService, properties);
+        p.init(bounceService, new MapConfiguration(properties));
         return p;
     }
 

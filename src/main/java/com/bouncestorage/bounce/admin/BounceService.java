@@ -25,6 +25,7 @@ import java.util.stream.StreamSupport;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public final class BounceService {
+    public static final String BOUNCE_POLICY_PREFIX = "bounce.service.bounce-policy";
     @Resource
     private Logger logger = Logger.NULL;
     private Map<String, BounceTaskStatus> bounceStatus = new HashMap<>();
@@ -67,10 +68,11 @@ public final class BounceService {
 
     ConfigurationListener getConfigurationListener() {
         return event -> {
-            if (event.getPropertyName().equals("bounce.service.bounce-policy")) {
+            if (event.getPropertyName().equals(BOUNCE_POLICY_PREFIX)) {
                 Optional<BouncePolicy> policy =
                         getBouncePolicyFromName((String) event.getPropertyValue());
                 if (policy.isPresent()) {
+                    policy.get().init(this, app.getConfiguration().subset(BOUNCE_POLICY_PREFIX));
                     installPolicies(ImmutableSet.of(policy.get()));
                 } else {
                     installPolicies(ImmutableSet.of());

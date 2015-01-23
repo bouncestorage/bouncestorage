@@ -9,23 +9,23 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 
 import com.bouncestorage.bounce.admin.BounceService;
 import com.google.auto.service.AutoService;
+import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.domain.StorageMetadata;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Properties;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @AutoService(BouncePolicy.class)
 public final class LastModifiedTimePolicy implements BouncePolicy {
-    public static final String DURATION = LastModifiedTimePolicy.class.getCanonicalName() + ".DURATION";
+    public static final String DURATION = "duration";
     private BounceService service;
     private Duration timeAgo;
 
-    public void init(BounceService inService, Properties properties) {
+    public void init(BounceService inService, Configuration config) {
         this.service = checkNotNull(inService);
-        this.timeAgo = checkNotNull(Duration.parse(properties.getProperty(DURATION)));
+        this.timeAgo = checkNotNull(Duration.parse(config.getString(DURATION)));
     }
 
     @Override

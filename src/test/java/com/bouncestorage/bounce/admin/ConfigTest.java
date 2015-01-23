@@ -81,7 +81,7 @@ public final class ConfigTest {
     }
 
     @Test
-    public void testConfigBouncePolicy() throws Exception {
+    public void testConfigBounceEverythingPolicy() throws Exception {
         setTransientBackend();
         BlobStore blobStore = app.getBlobStore();
         blobStore.createContainerInLocation(null, containerName);
@@ -103,6 +103,33 @@ public final class ConfigTest {
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
         assertThat(status.getBouncedObjectCount()).isEqualTo(1);
+        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+    }
+
+    @Test
+    public void testConfigBounceLastModifiedPolicy() throws Exception {
+        setTransientBackend();
+        BlobStore blobStore = app.getBlobStore();
+        blobStore.createContainerInLocation(null, containerName);
+        BounceService bounceService = app.getBounceService();
+        blobStore.putBlob(containerName,
+                UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName()));
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getTotalObjectCount()).isEqualTo(1);
+        assertThat(status.getBouncedObjectCount()).isEqualTo(0);
+        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+
+        Properties properties = new Properties();
+        properties.putAll(ImmutableMap.of(
+                "bounce.service.bounce-policy", "LastModifiedTimePolicy",
+                "bounce.service.bounce-policy.duration", "PT1H"
+        ));
+        new ConfigurationResource(app).updateConfig(properties);
+        status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getTotalObjectCount()).isEqualTo(1);
+        assertThat(status.getBouncedObjectCount()).isEqualTo(0);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
     }
 
