@@ -12,11 +12,15 @@
       padding: 0;
       margin: 0;
     }
+    .error {
+      color: red;
+    }
   </style>
 </head>
 
 <body ng-controller="BounceConfig" class="ng-cloak">
 
+  <pre ng-show="errors.getConfig" class="error">{{ errors.getConfig }}</pre>
 <table>
   <tr ng-repeat="(k, v) in config | orderBy:k">
     <td><code>{{ k }}</code></td>
@@ -27,6 +31,7 @@
 
 <form>
   <pre>{{ status.config }}</pre>
+  <pre ng-show="errors.status" class="error">{{ errors.config }}</pre>
   <textarea ng-model="options.config" cols=80 rows=10>
   </textarea>
   <button type="button" ng-click="actions.config()">Configure</button>

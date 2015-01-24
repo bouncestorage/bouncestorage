@@ -12,10 +12,14 @@
       padding: 0;
       margin: 0;
     }
+    .error {
+      color: red;
+    }
   </style>
 </head>
 
 <body ng-controller="BounceTest" class="ng-cloak">
+<pre ng-show="errors.buckets" class="error">{{ errors.buckets }}</pre>
 <p>Bucket list:</p>
 <div>
 <select id="bucket-select" ng-model="options.bucketSelect">
@@ -24,6 +28,7 @@
 </div>
 
 <p>Blob list:</p>
+<pre ng-show="errors.listBlobs" class="error">{{ errors.listBlobs }}</pre>
 <ul style="max-height: 50%; overflow-y: auto">
   <li ng-repeat="n in blobs.names">{{ n }}</li>
 </ul>
@@ -31,6 +36,8 @@
 <p>Bounce links: {{ blobs.linkCount }}</p>
 <p>Bounce status: <pre>{{ status | json }}</pre></p>
 
+<pre ng-show="errors.bounceBlobs" class="error">{{ errors.bounceBlobs }}</pre>
+<pre ng-show="errors.status" class="error">{{ errors.status }}</pre>
 <form id="bounce-form">
     <button type="button" ng-click="actions.listBlobs()">List blobs</button>
     <button type="button" ng-click="actions.bounceBlobs()">Bounce blobs</button>

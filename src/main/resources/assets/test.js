@@ -12,6 +12,7 @@ function ($scope, $http, $q, $location, $timeout)
     $scope.options = {};
     $scope.status = {};
     $scope.handles = {};
+    $scope.errors = {};
 
     $http.get("/service").then(
         function(res) {
@@ -19,6 +20,11 @@ function ($scope, $http, $q, $location, $timeout)
             if (!$scope.options.bucketSelect && $scope.buckets) {
                 $scope.options.bucketSelect = $scope.buckets[0];
             }
+            $scope.errors.buckets = null;
+        }
+    ).catch(
+        function(res) {
+            $scope.errors.buckets = res.data.message;
         }
     );
 
@@ -28,6 +34,11 @@ function ($scope, $http, $q, $location, $timeout)
                 $scope.blobs = {}
                 $scope.blobs.names = res.data.blobNames;
                 $scope.blobs.linkCount = res.data.bounceLinkCount;
+                $scope.errors.listBlobs = null;
+            }
+        ).catch(
+            function(res) {
+                $scope.errors.listBlobs = res.data.message;
             }
         );
     };
@@ -36,7 +47,12 @@ function ($scope, $http, $q, $location, $timeout)
         $http.post("/bounce?name=" + $scope.options.bucketSelect).then(
             function(res) {
                 console.log("Bounce blobs response received");
+                $scope.errors.bounceBlobs = null;
                 $scope.actions.status();
+            }
+        ).catch(
+            function(res) {
+                $scope.errors.bounceBlobs = res.data.message;
             }
         );
     };
@@ -50,6 +66,11 @@ function ($scope, $http, $q, $location, $timeout)
                 if (!$scope.status.every(function(status) { return status.done; })) {
                     $scope.handles.status = $timeout($scope.actions.status, 1 * 1000/*ms*/);
                 }
+                $scope.errors.status = null;
+            }
+        ).catch(
+            function(res) {
+                $scope.errors.status = res.data.message;
             }
         );
     };
@@ -63,10 +84,16 @@ function ($scope, $http, $q, $location, $timeout)
     $scope.options = {};
     $scope.actions = {};
     $scope.status = {};
+    $scope.errors = {};
 
     $http.get("/config").then(
         function(res) {
             $scope.config = res.data;
+            $scope.errors.getConfig = null;
+        }
+    ).catch(
+        function(res) {
+            $scope.errors.getConfig = res.data.message;
         }
     );
 
@@ -74,6 +101,11 @@ function ($scope, $http, $q, $location, $timeout)
         $http.post("/config", $scope.options.config).then(
             function(res) {
                 $scope.status.config = res.data;
+                $scope.errors.config = null;
+            }
+        ).catch(
+            function(res) {
+                $scope.errors.config = res.data.message;
             }
         );
     };
