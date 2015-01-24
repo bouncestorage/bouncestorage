@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.Map;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
@@ -103,7 +104,7 @@ public final class Main {
 
         URI s3ProxyEndpoint = new URI(s3ProxyEndpointString);
 
-        AbstractConfiguration config = new MapConfiguration(properties);
+        AbstractConfiguration config = new MapConfiguration((Map) properties);
         BounceApplication app = new BounceApplication(config);
         String webConfig = Main.class.getResource("/bounce.yml").toExternalForm();
         app.run(new String[] {"server", webConfig});
