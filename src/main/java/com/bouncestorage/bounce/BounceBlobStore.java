@@ -99,6 +99,17 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     @Override
+    public ContainerAccess getContainerAccess(String s) {
+        return nearStore.getContainerAccess(s);
+    }
+
+    @Override
+    public void setContainerAccess(String s, ContainerAccess containerAccess) {
+        nearStore.setContainerAccess(s, containerAccess);
+        farStore.setContainerAccess(s, containerAccess);
+    }
+
+    @Override
     public PageSet<? extends StorageMetadata> list(String s) {
         return nearStore.list(s);
     }
@@ -210,6 +221,12 @@ public final class BounceBlobStore implements BlobStore {
     public void removeBlob(String s, String s1) {
         nearStore.removeBlob(s, s1);
         farStore.removeBlob(s, s1);
+    }
+
+    @Override
+    public void removeBlobs(String s, Iterable<String> iterable) {
+        nearStore.removeBlobs(s, iterable);
+        farStore.removeBlobs(s, iterable);
     }
 
     @Override
