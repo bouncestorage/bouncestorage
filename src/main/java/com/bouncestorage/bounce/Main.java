@@ -22,19 +22,21 @@ import org.apache.commons.configuration.AbstractConfiguration;
 import org.apache.commons.configuration.MapConfiguration;
 import org.gaul.s3proxy.S3Proxy;
 import org.gaul.s3proxy.S3ProxyConstants;
+import org.jclouds.logging.Logger;
 
 public final class Main {
+    private static Logger logger = Logger.NULL;
+
     /* hide useless constructor */
     private Main() {
     }
 
     public static void main(String[] args) throws Exception {
         if (args.length == 1 && args[0].equals("--version")) {
-            System.err.println(
-                    Main.class.getPackage().getImplementationVersion());
+            logger.error(Main.class.getPackage().getImplementationVersion());
             System.exit(0);
         } else if (args.length != 2) {
-            System.err.println("Usage: bounce --properties FILE");
+            logger.error("Usage: bounce --properties FILE");
             System.exit(1);
         }
         Properties properties = new Properties();
@@ -48,10 +50,9 @@ public final class Main {
                 S3ProxyConstants.PROPERTY_AUTHORIZATION);
         if (s3ProxyEndpointString == null ||
                 s3ProxyAuthorization == null) {
-            System.err.println("Properties file must contain:\n" +
-                    S3ProxyConstants.PROPERTY_ENDPOINT + "\n" +
-                    S3ProxyConstants.PROPERTY_AUTHORIZATION + "\n"
-            );
+            logger.error("Properties file must contain: {} {}",
+                    S3ProxyConstants.PROPERTY_ENDPOINT,
+                    S3ProxyConstants.PROPERTY_AUTHORIZATION);
             System.exit(1);
         }
 
@@ -63,15 +64,15 @@ public final class Main {
             localCredential = properties.getProperty(
                     S3ProxyConstants.PROPERTY_CREDENTIAL);
             if (localIdentity == null || localCredential == null) {
-                System.err.println(
-                        "Both " + S3ProxyConstants.PROPERTY_IDENTITY +
-                                " and " + S3ProxyConstants.PROPERTY_CREDENTIAL +
-                                " must be set");
+                logger.error("Both {} and {} must be set",
+                        S3ProxyConstants.PROPERTY_IDENTITY,
+                        S3ProxyConstants.PROPERTY_CREDENTIAL);
                 System.exit(1);
             }
         } else if (!s3ProxyAuthorization.equalsIgnoreCase("none")) {
-            System.err.println(S3ProxyConstants.PROPERTY_AUTHORIZATION +
-                    " must be aws-v2 or none, was: " + s3ProxyAuthorization);
+            logger.error("{} must be aws-v2 or none, was: ",
+                    S3ProxyConstants.PROPERTY_AUTHORIZATION,
+                    s3ProxyAuthorization);
             System.exit(1);
             localIdentity = null;
             localCredential = null;
@@ -87,10 +88,9 @@ public final class Main {
         if (s3ProxyEndpointString.startsWith("https")) {
             if (Strings.isNullOrEmpty(keyStorePath) ||
                     Strings.isNullOrEmpty(keyStorePassword)) {
-                System.err.println(
-                        "Both " + S3ProxyConstants.PROPERTY_KEYSTORE_PATH +
-                                " and " + S3ProxyConstants.PROPERTY_KEYSTORE_PASSWORD +
-                                " must be set with an HTTP endpoint");
+                logger.error("Both {} and {} must be set with an HTTPS endpoint",
+                        S3ProxyConstants.PROPERTY_KEYSTORE_PATH,
+                        S3ProxyConstants.PROPERTY_KEYSTORE_PASSWORD);
                 System.exit(1);
             }
         }
