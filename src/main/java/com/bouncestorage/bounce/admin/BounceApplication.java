@@ -16,6 +16,7 @@ import javax.annotation.Resource;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.CreationException;
 import io.dropwizard.Application;
 import io.dropwizard.assets.AssetsBundle;
@@ -37,6 +38,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
 
     private final AbstractConfiguration config;
     private final Properties configView;
+    private BlobStoreContext blobStoreContext;
     private BounceBlobStore blobStore;
     private final List<Consumer<BlobStoreContext>> blobStoreListeners =
             new ArrayList<>();
@@ -63,13 +65,16 @@ public final class BounceApplication extends Application<BounceConfiguration> {
 
     private void reinitBlobStore() {
         try {
-            BlobStoreContext context = ContextBuilder
+            if (blobStoreContext != null) {
+                blobStoreContext.close();
+            }
+            blobStoreContext = ContextBuilder
                     .newBuilder("bounce")
                     .overrides(System.getProperties())
                     .overrides(configView)
                     .build(BlobStoreContext.class);
-            useBlobStore((BounceBlobStore) context.getBlobStore());
-            blobStoreListeners.forEach(cb -> cb.accept(context));
+            useBlobStore((BounceBlobStore) blobStoreContext.getBlobStore());
+            blobStoreListeners.forEach(cb -> cb.accept(blobStoreContext));
         } catch (CreationException e) {
             logger.error("Unable to initialize blob: %s", e.getErrorMessages());
         }
@@ -97,6 +102,19 @@ public final class BounceApplication extends Application<BounceConfiguration> {
 
     BounceBlobStore getBlobStore() {
         return blobStore;
+    }
+
+    @VisibleForTesting
+    BlobStoreContext getBlobStoreContext() {
+        return blobStoreContext;
+    }
+
+    @VisibleForTesting
+    void setBlobStoreContext(BlobStoreContext context) {
+        if (blobStoreContext != null) {
+            blobStoreContext.close();
+        }
+        blobStoreContext = context;
     }
 
     @Override
