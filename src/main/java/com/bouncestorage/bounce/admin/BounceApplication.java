@@ -59,8 +59,6 @@ public final class BounceApplication extends Application<BounceConfiguration> {
             }
         });
         config.addConfigurationListener(bounceService.getConfigurationListener());
-
-        reinitBlobStore();
     }
 
     private void reinitBlobStore() {
@@ -138,6 +136,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
                 throw new IllegalStateException("Cannot find the application port");
             }
         });
+        reinitBlobStore();
     }
 
     void useRandomPorts() {

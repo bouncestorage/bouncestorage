@@ -5,6 +5,7 @@
 
 package com.bouncestorage.bounce;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.File;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 
@@ -97,6 +99,22 @@ public final class Main {
             }
         });
         app.run(new String[] {"server", webConfig});
+    }
+
+    @VisibleForTesting
+    Properties getProperties() {
+        return properties;
+    }
+
+    @VisibleForTesting
+    void setProperties(Properties newProperties) {
+        checkNotNull(newProperties);
+        properties = newProperties;
+    }
+
+    @VisibleForTesting
+    S3Proxy getS3Proxy() {
+        return s3Proxy;
     }
 
     private void startS3Proxy(BlobStore store) throws Exception {
