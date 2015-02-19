@@ -19,7 +19,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.util.HashMap;
+import java.io.InputStream;
+import java.util.Map;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,7 +38,11 @@ public final class ConfigTest {
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        configuration = new MapConfiguration(new HashMap<>());
+        Properties properties = new Properties();
+        try (InputStream is = ConfigTest.class.getResourceAsStream("/bounce.properties")) {
+            properties.load(is);
+        }
+        configuration = new MapConfiguration((Map) properties);
         app = new BounceApplication(configuration);
         app.useRandomPorts();
     }
@@ -50,6 +55,8 @@ public final class ConfigTest {
         if (bounceContext != null) {
             bounceContext.close();
         }
+
+        app.stop();
     }
 
     @Test
@@ -69,9 +76,14 @@ public final class ConfigTest {
     @Test
     public void testGetConfig() throws Exception {
         ConfigurationResource config = new ConfigurationResource(app);
-        assertThat(config.getConfig()).isEmpty();
+        Properties properties = config.getConfig();
+        String[] blobStores = {BounceBlobStore.STORE_PROPERTY_1 + "." + Constants.PROPERTY_PROVIDER,
+                BounceBlobStore.STORE_PROPERTY_2 + "." + Constants.PROPERTY_PROVIDER };
+        for (String bs : blobStores) {
+            assertThat(properties).doesNotContainKey(bs);
+        }
         setTransientBackend();
-        assertThat(config.getConfig()).hasSize(2);
+        assertThat(properties).containsKeys(blobStores);
     }
 
     @Test
