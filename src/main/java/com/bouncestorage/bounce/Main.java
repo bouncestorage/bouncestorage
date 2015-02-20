@@ -5,8 +5,6 @@
 
 package com.bouncestorage.bounce;
 
-import static com.google.common.base.Throwables.propagate;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -20,7 +18,6 @@ import com.google.common.base.Strings;
 
 import org.apache.commons.configuration.AbstractConfiguration;
 import org.apache.commons.configuration.MapConfiguration;
-import org.gaul.s3proxy.S3Proxy;
 import org.gaul.s3proxy.S3ProxyConstants;
 import org.jclouds.logging.Logger;
 
@@ -108,17 +105,5 @@ public final class Main {
         BounceApplication app = new BounceApplication(config);
         String webConfig = Main.class.getResource("/bounce.yml").toExternalForm();
         app.run(new String[] {"server", webConfig});
-        app.addBlobStoreListener(context -> {
-            S3Proxy s3Proxy = new S3Proxy(context.getBlobStore(), s3ProxyEndpoint,
-                    localIdentity, localCredential, keyStorePath,
-                    keyStorePassword,
-                    "true".equalsIgnoreCase(forceMultiPartUpload), virtualHost);
-
-            try {
-                s3Proxy.start();
-            } catch (Exception e) {
-                throw propagate(e);
-            }
-        });
     }
 }
