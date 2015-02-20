@@ -167,11 +167,11 @@ public final class BounceService {
         }
 
         public Date getStartTime() {
-            return startTime;
+            return (Date) startTime.clone();
         }
 
         public Date getEndTime() {
-            return endTime;
+            return (Date) endTime.clone();
         }
     }
 }
