@@ -9,19 +9,18 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.Properties;
 
-import javax.annotation.Resource;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
 import com.codahale.metrics.annotation.Timed;
 import org.apache.commons.configuration.Configuration;
-import org.jclouds.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Path("/config")
 @Produces(MediaType.APPLICATION_JSON)
 public final class ConfigurationResource {
-    @Resource
-    private Logger logger = Logger.NULL;
+    private Logger logger = LoggerFactory.getLogger(getClass());
 
     private final BounceApplication app;
 
