@@ -99,6 +99,7 @@ public final class UtilsTest {
                 .contentLength(byteSource.size())
                 .contentMD5(byteSource.hash(Hashing.md5()))
                 .contentType(MediaType.OCTET_STREAM)
+                .userMetadata(ImmutableMap.of("key1", "value1"))
                 .build();
         ContentMetadata metadata = blob.getMetadata().getContentMetadata();
         nearBlobStore.putBlob(containerName, blob);
@@ -127,6 +128,8 @@ public final class UtilsTest {
                     metadata.getContentType());
             assertThat(metadata2.getExpires()).isEqualTo(
                     metadata.getExpires());
+            assertThat(blob2.getMetadata().getUserMetadata()).isEqualTo(
+                    blob.getMetadata().getUserMetadata());
             assertThat(is2).hasContentEqualTo(is);
         }
         assertThat(nearBlobStore.blobExists(containerName, blobName))

@@ -142,7 +142,9 @@ public final class Utils {
         }
         ContentMetadata metadata = blobFrom.getMetadata().getContentMetadata();
         try (InputStream is = blobFrom.getPayload().openStream()) {
-            PayloadBlobBuilder builder = to.blobBuilder(blobName).payload(is);
+            PayloadBlobBuilder builder = to.blobBuilder(blobName)
+                    .userMetadata(blobFrom.getMetadata().getUserMetadata())
+                    .payload(is);
 
             String contentDisposition = metadata.getContentDisposition();
             if (contentDisposition != null) {
