@@ -168,16 +168,16 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     @Override
-    public String putBlob(String s, Blob blob) {
-        String etag = nearStore.putBlob(s, blob);
-        farStore.removeBlob(s, blob.getMetadata().getName());
+    public String putBlob(String containerName, Blob blob) {
+        String etag = nearStore.putBlob(containerName, blob);
+        farStore.removeBlob(containerName, blob.getMetadata().getName());
         return etag;
     }
 
     @Override
-    public String putBlob(String s, Blob blob, PutOptions putOptions) {
-        String etag = nearStore.putBlob(s, blob, putOptions);
-        farStore.removeBlob(s, blob.getMetadata().getName());
+    public String putBlob(String containerName, Blob blob, PutOptions putOptions) {
+        String etag = nearStore.putBlob(containerName, blob, putOptions);
+        farStore.removeBlob(containerName, blob.getMetadata().getName());
         return etag;
     }
 
@@ -198,22 +198,22 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     @Override
-    public Blob getBlob(String s, String s1) {
-        Blob b = nearStore.getBlob(s, s1);
+    public Blob getBlob(String containerName, String blobName) {
+        Blob b = nearStore.getBlob(containerName, blobName);
         if (BounceLink.isLink(b.getMetadata())) {
-            return farStore.getBlob(s, s1);
+            return farStore.getBlob(containerName, blobName);
         } else {
             return b;
         }
     }
 
     @Override
-    public Blob getBlob(String s, String s1, GetOptions getOptions) {
-        BlobMetadata meta = nearStore.blobMetadata(s, s1);
+    public Blob getBlob(String containerName, String blobName, GetOptions getOptions) {
+        BlobMetadata meta = nearStore.blobMetadata(containerName, blobName);
         if (BounceLink.isLink(meta)) {
-            return farStore.getBlob(s, s1, getOptions);
+            return farStore.getBlob(containerName, blobName, getOptions);
         } else {
-            return nearStore.getBlob(s, s1, getOptions);
+            return nearStore.getBlob(containerName, blobName, getOptions);
         }
     }
 
