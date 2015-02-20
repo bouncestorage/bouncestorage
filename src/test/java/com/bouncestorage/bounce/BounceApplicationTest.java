@@ -41,7 +41,9 @@ public final class BounceApplicationTest {
                 Constants.PROPERTY_PROVIDER, "transient");
         AbstractConfiguration config = new MapConfiguration((Map) properties);
         BounceApplication app = new BounceApplication(config);
-        app.run(new String[] {"server", webConfig});
+        synchronized (BounceApplication.class) {
+            app.run(new String[]{"server", webConfig});
+        }
 
         while (!app.getS3ProxyState().equals(AbstractLifeCycle.STARTED)) {
             Thread.sleep(10);
