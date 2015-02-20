@@ -169,9 +169,7 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public String putBlob(String containerName, Blob blob) {
-        String etag = nearStore.putBlob(containerName, blob);
-        farStore.removeBlob(containerName, blob.getMetadata().getName());
-        return etag;
+        return putBlob(containerName, blob, PutOptions.NONE);
     }
 
     @Override
@@ -199,12 +197,7 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public Blob getBlob(String containerName, String blobName) {
-        Blob b = nearStore.getBlob(containerName, blobName);
-        if (BounceLink.isLink(b.getMetadata())) {
-            return farStore.getBlob(containerName, blobName);
-        } else {
-            return b;
-        }
+        return getBlob(containerName, blobName, GetOptions.NONE);
     }
 
     @Override
