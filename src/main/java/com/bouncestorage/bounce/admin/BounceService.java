@@ -10,9 +10,9 @@ import com.bouncestorage.bounce.Utils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.configuration.event.ConfigurationListener;
 import org.jclouds.blobstore.domain.StorageMetadata;
-import org.jclouds.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import javax.annotation.Resource;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.*;
@@ -25,8 +25,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public final class BounceService {
     public static final String BOUNCE_POLICY_PREFIX = "bounce.service.bounce-policy";
     private static final BouncePolicy BOUNCE_NOTHING = x -> false;
-    @Resource
-    private Logger logger = Logger.NULL;
+    private Logger logger = LoggerFactory.getLogger(getClass());
     private Map<String, BounceTaskStatus> bounceStatus = new HashMap<>();
     private ExecutorService executor =
             new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>());
@@ -119,7 +118,7 @@ public final class BounceService {
                             bounceStore.copyBlobAndCreateBounceLink(container, blobName);
                             status.bouncedObjectCount.getAndIncrement();
                         } catch (IOException e) {
-                            logger.error(e, "could not bounce %s", blobName);
+                            logger.error(String.format("could not bounce %s", blobName), e);
                             status.errorObjectCount.getAndIncrement();
                         }
                     });
