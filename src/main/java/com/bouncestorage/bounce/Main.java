@@ -51,9 +51,9 @@ public final class Main {
             System.exit(1);
         }
 
-        if (s3ProxyAuthorization.equalsIgnoreCase("aws-v2") ||
-                s3ProxyAuthorization.equalsIgnoreCase("none")) {
-            logger.error("{} must be aws-v2 or none, was: ",
+        if (!(s3ProxyAuthorization.equalsIgnoreCase("aws-v2") ||
+                s3ProxyAuthorization.equalsIgnoreCase("none"))) {
+            logger.error("{} must be aws-v2 or none, was: {}",
                     S3ProxyConstants.PROPERTY_AUTHORIZATION,
                     s3ProxyAuthorization);
             System.exit(1);
