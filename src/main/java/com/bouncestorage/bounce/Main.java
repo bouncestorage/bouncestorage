@@ -19,10 +19,11 @@ import com.google.common.base.Strings;
 import org.apache.commons.configuration.AbstractConfiguration;
 import org.apache.commons.configuration.MapConfiguration;
 import org.gaul.s3proxy.S3ProxyConstants;
-import org.jclouds.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class Main {
-    private static Logger logger = Logger.NULL;
+    private static Logger logger = LoggerFactory.getLogger(Main.class);
 
     /* hide useless constructor */
     private Main() {
