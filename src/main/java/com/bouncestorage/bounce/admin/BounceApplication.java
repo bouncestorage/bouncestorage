@@ -16,7 +16,6 @@ import java.util.function.Consumer;
 
 import ch.qos.logback.classic.Level;
 import com.bouncestorage.bounce.BounceBlobStore;
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.inject.CreationException;
@@ -77,21 +76,37 @@ public final class BounceApplication extends Application<BounceConfiguration> {
                 if (s3Proxy != null) {
                     s3Proxy.stop();
                 }
-                s3Proxy = new S3Proxy(context.getBlobStore(),
-                    new URI(config.getString(
-                            S3ProxyConstants.PROPERTY_ENDPOINT)),
-                        (String) configView.get(
-                                S3ProxyConstants.PROPERTY_IDENTITY),
-                        (String) configView.get(
-                                S3ProxyConstants.PROPERTY_CREDENTIAL),
-                        (String) configView.get(
-                                S3ProxyConstants.PROPERTY_KEYSTORE_PATH),
-                        (String) configView.get(
-                                S3ProxyConstants.PROPERTY_KEYSTORE_PASSWORD),
-                    "true".equalsIgnoreCase((String) configView.get(
-                            S3ProxyConstants.PROPERTY_FORCE_MULTI_PART_UPLOAD)),
-                    Optional.fromNullable(config.getString(
-                            S3ProxyConstants.PROPERTY_VIRTUAL_HOST)));
+                S3Proxy.Builder builder = S3Proxy.builder()
+                        .blobStore(context.getBlobStore())
+                        .endpoint(new URI(config.getString(
+                                S3ProxyConstants.PROPERTY_ENDPOINT)))
+                        .forceMultiPartUpload(
+                                "true".equalsIgnoreCase((String) configView.get(
+                                        S3ProxyConstants.PROPERTY_FORCE_MULTI_PART_UPLOAD)));
+
+                String identity = (String) configView.get(
+                        S3ProxyConstants.PROPERTY_IDENTITY);
+                String credential = (String) configView.get(
+                        S3ProxyConstants.PROPERTY_CREDENTIAL);
+                if (identity != null || credential != null) {
+                    builder.awsAuthentication(identity, credential);
+                }
+
+                String keyStorePath = (String) configView.get(
+                        S3ProxyConstants.PROPERTY_KEYSTORE_PATH);
+                String keyStorePassword = (String) configView.get(
+                        S3ProxyConstants.PROPERTY_KEYSTORE_PASSWORD);
+                if (keyStorePath != null || keyStorePassword != null) {
+                    builder.keyStore(keyStorePath, keyStorePassword);
+                }
+
+                String virtualHost = config.getString(
+                        S3ProxyConstants.PROPERTY_VIRTUAL_HOST);
+                if (virtualHost != null) {
+                    builder.virtualHost(virtualHost);
+                }
+
+                s3Proxy = builder.build();
                 s3Proxy.start();
             } catch (Exception e) {
                 throw propagate(e);
