@@ -14,8 +14,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.function.Consumer;
 
-import javax.annotation.Resource;
-
+import ch.qos.logback.classic.Level;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
@@ -25,6 +24,7 @@ import com.google.inject.CreationException;
 import io.dropwizard.Application;
 import io.dropwizard.assets.AssetsBundle;
 import io.dropwizard.configuration.UrlConfigurationSourceProvider;
+import io.dropwizard.logging.LoggingFactory;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 
@@ -35,7 +35,8 @@ import org.gaul.s3proxy.S3Proxy;
 import org.gaul.s3proxy.S3ProxyConstants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStoreContext;
-import org.jclouds.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public final class BounceApplication extends Application<BounceConfiguration> {
@@ -44,8 +45,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
                     S3ProxyConstants.PROPERTY_IDENTITY,
                     S3ProxyConstants.PROPERTY_CREDENTIAL);
 
-    @Resource
-    private Logger logger = Logger.NULL;
+    private Logger logger = LoggerFactory.getLogger(getClass());
 
     private final AbstractConfiguration config;
     private final Properties configView;
@@ -107,7 +107,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
 
     private void reinitBlobStore() {
         if (!isConfigValid()) {
-            logger.error("Missing parameters: %s.", Sets.difference(REQUIRED_PROPERTIES,
+            logger.error("Missing parameters: {}.", Sets.difference(REQUIRED_PROPERTIES,
                     configView.stringPropertyNames()));
             return;
         }
@@ -120,7 +120,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
             useBlobStore((BounceBlobStore) context.getBlobStore());
             blobStoreListeners.forEach(cb -> cb.accept(context));
         } catch (CreationException e) {
-            logger.error("Unable to initialize blob: %s", e.getErrorMessages());
+            logger.error("Unable to initialize blob: {}", e.getErrorMessages());
         }
     }
 
@@ -209,5 +209,11 @@ public final class BounceApplication extends Application<BounceConfiguration> {
 
     public int getPort() {
         return port;
+    }
+
+    static {
+        // DropWizard's Application class has a static initializer that forces the filter
+        // to be at WARN, this overrides that
+        LoggingFactory.bootstrap(Level.toLevel(System.getProperty("LOG_LEVEL"), Level.INFO));
     }
 }
