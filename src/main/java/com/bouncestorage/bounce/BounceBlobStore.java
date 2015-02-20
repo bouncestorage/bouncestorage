@@ -211,10 +211,14 @@ public final class BounceBlobStore implements BlobStore {
     public Blob getBlob(String containerName, String blobName, GetOptions getOptions) {
         BlobMetadata meta = nearStore.blobMetadata(containerName, blobName);
         if (BounceLink.isLink(meta)) {
-            return farStore.getBlob(containerName, blobName, getOptions);
-        } else {
-            return nearStore.getBlob(containerName, blobName, getOptions);
+            // Unbounce the object
+            Blob blob = farStore.getBlob(containerName, blobName, getOptions);
+            if (blob == null) {
+                return blob;
+            }
+            nearStore.putBlob(containerName, blob);
         }
+        return nearStore.getBlob(containerName, blobName, getOptions);
     }
 
     @Override
