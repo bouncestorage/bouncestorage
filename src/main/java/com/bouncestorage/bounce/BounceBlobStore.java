@@ -223,6 +223,17 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     @Override
+    public BlobAccess getBlobAccess(String container, String name) {
+        return nearStore.getBlobAccess(container, name);
+    }
+
+    @Override
+    public void setBlobAccess(String container, String name, BlobAccess access) {
+        nearStore.setBlobAccess(container, name, access);
+        farStore.setBlobAccess(container, name, access);
+    }
+
+    @Override
     public long countBlobs(String s) {
         return nearStore.countBlobs(s);
     }
