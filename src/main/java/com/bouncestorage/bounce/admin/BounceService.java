@@ -5,13 +5,7 @@
 
 package com.bouncestorage.bounce.admin;
 
-import com.bouncestorage.bounce.BounceBlobStore;
-import com.bouncestorage.bounce.Utils;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import org.apache.commons.configuration.event.ConfigurationListener;
-import org.jclouds.blobstore.domain.StorageMetadata;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.IOException;
 import java.time.Clock;
@@ -20,17 +14,25 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.StreamSupport;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.Utils;
+import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import org.apache.commons.configuration.event.ConfigurationListener;
+import org.jclouds.blobstore.domain.StorageMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class BounceService {
     public static final String BOUNCE_POLICY_PREFIX = "bounce.service.bounce-policy";
-    private static final BouncePolicy BOUNCE_NOTHING = x -> false;
+
     private Logger logger = LoggerFactory.getLogger(getClass());
     private Map<String, BounceTaskStatus> bounceStatus = new HashMap<>();
     private ExecutorService executor =
             new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>());
     private final BounceApplication app;
-    private BouncePolicy bouncePolicy = BOUNCE_NOTHING;
+    private BouncePolicy bouncePolicy = new BounceNothingPolicy();
 
     private Clock clock = Clock.systemUTC();
 
@@ -85,7 +87,7 @@ public final class BounceService {
     }
 
     public synchronized void setDefaultPolicy(Optional<BouncePolicy> policy) {
-        setDefaultPolicy(policy.orElse(BOUNCE_NOTHING));
+        setDefaultPolicy(policy.orElse(new BounceNothingPolicy()));
     }
 
     public Clock getClock() {
