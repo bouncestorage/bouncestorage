@@ -175,7 +175,6 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions putOptions) {
         String etag = nearStore.putBlob(containerName, blob, putOptions);
-        farStore.removeBlob(containerName, blob.getMetadata().getName());
         return etag;
     }
 
