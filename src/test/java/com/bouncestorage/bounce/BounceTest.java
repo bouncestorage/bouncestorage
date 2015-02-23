@@ -15,6 +15,7 @@ import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
+import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.io.ContentMetadata;
 import org.junit.After;
 import org.junit.Before;
@@ -99,16 +100,7 @@ public final class BounceTest {
         assertThat((Object) meta2).isEqualToComparingFieldByField(meta1);
 
         Blob blob2 = bounceBlobStore.getBlob(containerName, blobName);
-        try (InputStream is = blob2.getPayload().openStream();
-             InputStream is2 = byteSource.openStream()) {
-            assertThat(is2).hasContentEqualTo(is);
-        }
-        // TODO: assert more metadata, including user metadata
-        ContentMetadata metadata2 = blob2.getMetadata().getContentMetadata();
-        assertThat(metadata2.getContentMD5AsHashCode()).isEqualTo(
-                metadata.getContentMD5AsHashCode());
-        assertThat(metadata2.getContentType()).isEqualTo(
-                metadata.getContentType());
+        assertEqualBlobs(blob, blob2);
     }
 
     @Test
@@ -124,5 +116,41 @@ public final class BounceTest {
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
                 containerName, blobName))).isTrue();
         assertThat(bounceBlobStore.sanityCheck(containerName)).isTrue();
+    }
+
+    @Test
+    public void testUnbounce() throws Exception {
+        String blobName = "blob";
+        Blob blob = UtilsTest.makeBlob(farBlobStore, blobName);
+        nearBlobStore.putBlob(containerName, blob);
+        bounceBlobStore.copyBlobAndCreateBounceLink(containerName, blobName);
+
+        assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
+        assertThat(farBlobStore.blobExists(containerName, blobName)).isTrue();
+        Blob nearBlob = nearBlobStore.getBlob(containerName, blobName);
+        assertThat(BounceLink.isLink(nearBlob.getMetadata())).isTrue();
+
+        bounceBlobStore.getBlob(containerName, blobName, GetOptions.NONE);
+        assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
+        assertThat(farBlobStore.blobExists(containerName, blobName)).isTrue();
+        nearBlob = nearBlobStore.getBlob(containerName, blobName);
+        assertThat(BounceLink.isLink(nearBlob.getMetadata())).isFalse();
+        Blob farBlob = farBlobStore.getBlob(containerName, blobName);
+        assertEqualBlobs(nearBlob, blob);
+        assertEqualBlobs(farBlob, blob);
+    }
+
+    private void assertEqualBlobs(Blob one, Blob two) throws Exception {
+        try (InputStream is = one.getPayload().openStream();
+             InputStream is2 = two.getPayload().openStream()) {
+            assertThat(is2).hasContentEqualTo(is);
+        }
+        // TODO: assert more metadata, including user metadata
+        ContentMetadata metadata = one.getMetadata().getContentMetadata();
+        ContentMetadata metadata2 = two.getMetadata().getContentMetadata();
+        assertThat(metadata2.getContentMD5AsHashCode()).isEqualTo(
+                metadata.getContentMD5AsHashCode());
+        assertThat(metadata2.getContentType()).isEqualTo(
+                metadata.getContentType());
     }
 }
