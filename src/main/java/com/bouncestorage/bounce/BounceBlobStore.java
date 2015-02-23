@@ -253,13 +253,16 @@ public final class BounceBlobStore implements BlobStore {
 
     public void copyBlobAndCreateBounceLink(String containerName, String blobName)
             throws IOException {
-        Blob blobFrom = Utils.copyBlob(nearStore, farStore, containerName,
-                containerName, blobName);
+        Blob blobFrom = copyBlob(containerName, blobName);
         if (blobFrom == null) {
             return;
         }
         BounceLink link = new BounceLink(Optional.of(blobFrom.getMetadata()));
         nearStore.putBlob(containerName, link.toBlob(nearStore));
+    }
+
+    public Blob copyBlob(String containerName, String blobName) throws IOException {
+        return Utils.copyBlob(nearStore, farStore, containerName, containerName, blobName);
     }
 
     public void takeOver(String containerName) throws IOException {

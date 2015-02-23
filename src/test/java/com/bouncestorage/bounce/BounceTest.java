@@ -140,6 +140,17 @@ public final class BounceTest {
         assertEqualBlobs(farBlob, blob);
     }
 
+    @Test
+    public void testCopyBlob() throws Exception {
+        String blobName = "blob";
+        Blob blob = UtilsTest.makeBlob(nearBlobStore, blobName);
+        nearBlobStore.putBlob(containerName, blob);
+        assertThat(nearBlobStore.blobExists(containerName, blobName));
+        bounceBlobStore.copyBlob(containerName, blobName);
+        Blob farBlob = farBlobStore.getBlob(containerName, blobName);
+        assertEqualBlobs(farBlob, blob);
+    }
+
     private void assertEqualBlobs(Blob one, Blob two) throws Exception {
         try (InputStream is = one.getPayload().openStream();
              InputStream is2 = two.getPayload().openStream()) {
