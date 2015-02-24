@@ -122,9 +122,10 @@ public final class BounceService {
                                 case MOVE:
                                     status.movedObjectCount.getAndIncrement();
                                     break;
-                                case NO_OP:
-                                    break;
                                 case COPY:
+                                    status.copiedObjectCount.getAndIncrement();
+                                    break;
+                                case NO_OP:
                                     break;
                                 default:
                                     throw new NullPointerException("res is null");
@@ -142,6 +143,8 @@ public final class BounceService {
     public static final class BounceTaskStatus {
         @JsonProperty
         private final AtomicLong totalObjectCount = new AtomicLong();
+        @JsonProperty
+        private final AtomicLong copiedObjectCount = new AtomicLong();
         @JsonProperty
         private final AtomicLong movedObjectCount = new AtomicLong();
         @JsonProperty
@@ -172,6 +175,10 @@ public final class BounceService {
 
         public long getMovedObjectCount() {
             return movedObjectCount.get();
+        }
+
+        public long getCopiedObjectCount() {
+            return copiedObjectCount.get();
         }
 
         public long getErrorObjectCount() {
