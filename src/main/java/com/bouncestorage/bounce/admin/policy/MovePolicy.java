@@ -14,8 +14,8 @@ import org.jclouds.blobstore.domain.BlobMetadata;
 
 public abstract class MovePolicy implements BouncePolicy {
     @Override
-    public final BounceResult bounce(String container, BlobMetadata meta, BounceBlobStore bounceBlobStore) throws IOException {
-        bounceBlobStore.copyBlobAndCreateBounceLink(container, meta.getName());
+    public final BounceResult bounce(BlobMetadata meta, BounceBlobStore bounceBlobStore) throws IOException {
+        bounceBlobStore.copyBlobAndCreateBounceLink(meta.getContainer(), meta.getName());
         return BounceResult.MOVE;
     }
 }

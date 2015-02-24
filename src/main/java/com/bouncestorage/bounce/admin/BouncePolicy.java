@@ -23,7 +23,7 @@ public interface BouncePolicy extends Predicate<StorageMetadata> {
     default void init(BounceService service, Configuration config) {
     }
 
-    default BounceResult bounce(String container, BlobMetadata meta, BounceBlobStore blobStore) throws IOException {
+    default BounceResult bounce(BlobMetadata meta, BounceBlobStore blobStore) throws IOException {
         return BounceResult.NO_OP;
     }
 }

@@ -117,7 +117,7 @@ public final class BounceService {
                     .filter(meta -> !BounceLink.isLink(meta))
                     .forEach(meta -> {
                         try {
-                            BounceResult res = bouncePolicy.bounce(container, meta, bounceStore);
+                            BounceResult res = bouncePolicy.bounce(meta, bounceStore);
                             switch (res) {
                                 case MOVE:
                                     status.movedObjectCount.getAndIncrement();
