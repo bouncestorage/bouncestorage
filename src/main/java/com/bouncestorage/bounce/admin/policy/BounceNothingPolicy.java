@@ -5,13 +5,12 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
-
-import org.jclouds.blobstore.domain.StorageMetadata;
 
 public final class BounceNothingPolicy implements BouncePolicy {
     @Override
-    public boolean test(StorageMetadata metadata) {
+    public boolean test(Utils.ListBlobMetadata blobMetadata) {
         return false;
     }
 }

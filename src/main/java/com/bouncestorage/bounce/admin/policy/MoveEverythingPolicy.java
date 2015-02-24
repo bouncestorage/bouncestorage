@@ -5,10 +5,9 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.google.auto.service.AutoService;
-
-import org.jclouds.blobstore.domain.StorageMetadata;
 
 @AutoService(BouncePolicy.class)
 public final class MoveEverythingPolicy extends MovePolicy {
@@ -18,7 +17,7 @@ public final class MoveEverythingPolicy extends MovePolicy {
     }
 
     @Override
-    public boolean test(StorageMetadata metadata) {
+    public boolean test(Utils.ListBlobMetadata blobMetadata) {
         return true;
     }
 }

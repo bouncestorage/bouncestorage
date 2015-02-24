@@ -9,11 +9,11 @@ import java.io.IOException;
 import java.util.function.Predicate;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.Utils;
 
 import org.apache.commons.configuration.Configuration;
-import org.jclouds.blobstore.domain.StorageMetadata;
 
-public interface BouncePolicy extends Predicate<StorageMetadata> {
+public interface BouncePolicy extends Predicate<Utils.ListBlobMetadata> {
     default void init(BounceService service, Configuration config) {
     }
 

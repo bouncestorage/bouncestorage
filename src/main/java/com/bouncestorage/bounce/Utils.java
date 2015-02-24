@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
+import com.google.auto.value.AutoValue;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.hash.HashCode;
@@ -34,13 +35,13 @@ public final class Utils {
         throw new AssertionError("intentionally unimplemented");
     }
 
-    public static Iterable<StorageMetadata> crawlBlobStore(
+    public static Iterable<ListBlobMetadata> crawlBlobStore(
             BlobStore blobStore, String containerName) {
         return crawlBlobStore(blobStore, containerName,
                 new ListContainerOptions());
     }
 
-    public static Iterable<StorageMetadata> crawlBlobStore(
+    public static Iterable<ListBlobMetadata> crawlBlobStore(
             BlobStore blobStore, String containerName,
             ListContainerOptions options) {
         return new CrawlBlobStoreIterable(blobStore, containerName, options);
@@ -64,8 +65,19 @@ public final class Utils {
         return context.getBlobStore();
     }
 
+    @AutoValue
+    public abstract static class ListBlobMetadata {
+        public abstract BlobStore blobStore();
+        public abstract String container();
+        public abstract StorageMetadata metadata();
+
+        public static ListBlobMetadata create(BlobStore store, String containerName, StorageMetadata metadata) {
+            return new AutoValue_Utils_ListBlobMetadata(store, containerName, metadata);
+        }
+    }
+
     private static class CrawlBlobStoreIterable
-            implements Iterable<StorageMetadata> {
+            implements Iterable<ListBlobMetadata> {
         private final BlobStore blobStore;
         private final String containerName;
         private final ListContainerOptions options;
@@ -78,14 +90,14 @@ public final class Utils {
         }
 
         @Override
-        public Iterator<StorageMetadata> iterator() {
+        public Iterator<ListBlobMetadata> iterator() {
             return new CrawlBlobStoreIterator(blobStore, containerName,
                     options);
         }
     }
 
     private static class CrawlBlobStoreIterator
-            implements Iterator<StorageMetadata> {
+            implements Iterator<ListBlobMetadata> {
         private final BlobStore blobStore;
         private final String containerName;
         private final ListContainerOptions options;
@@ -116,7 +128,7 @@ public final class Utils {
         }
 
         @Override
-        public StorageMetadata next() {
+        public ListBlobMetadata next() {
             while (true) {
                 if (!iterator.hasNext()) {
                     advance();
@@ -126,7 +138,7 @@ public final class Utils {
                 if (metadata.getType() == StorageType.FOLDER) {
                     continue;
                 }
-                return metadata;
+                return ListBlobMetadata.create(blobStore, containerName, metadata);
             }
         }
     }

@@ -24,7 +24,6 @@ import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
-import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.io.ContentMetadata;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
@@ -104,10 +103,10 @@ public final class UtilsTest {
         ContentMetadata metadata = blob.getMetadata().getContentMetadata();
         nearBlobStore.putBlob(containerName, blob);
 
-        for (StorageMetadata sm : Utils.crawlBlobStore(nearBlobStore,
+        for (Utils.ListBlobMetadata blobMetadata : Utils.crawlBlobStore(nearBlobStore,
                 containerName)) {
             Utils.moveBlob(nearBlobStore, farBlobStore, containerName,
-                    containerName, sm.getName());
+                    containerName, blobMetadata.metadata().getName());
         }
 
         Blob blob2 = farBlobStore.getBlob(containerName, blobName);
@@ -169,10 +168,10 @@ public final class UtilsTest {
         assertThat(Utils.crawlBlobStore(nearBlobStore, containerName))
                 .hasSize(1);
 
-        for (StorageMetadata sm : Utils.crawlBlobStore(nearBlobStore,
+        for (Utils.ListBlobMetadata blobMetadata : Utils.crawlBlobStore(nearBlobStore,
                 containerName)) {
             Utils.moveBlob(nearBlobStore, farBlobStore, containerName,
-                    containerName, sm.getName());
+                    containerName, blobMetadata.metadata().getName());
         }
     }
 

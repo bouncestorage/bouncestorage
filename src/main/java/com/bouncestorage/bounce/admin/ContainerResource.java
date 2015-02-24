@@ -21,8 +21,6 @@ import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.Utils;
 import com.codahale.metrics.annotation.Timed;
 
-import org.jclouds.blobstore.domain.StorageMetadata;
-
 @Path("/container")
 @Produces(MediaType.APPLICATION_JSON)
 public final class ContainerResource {
@@ -37,11 +35,11 @@ public final class ContainerResource {
     public ContainerStats getContainerStats(
             @QueryParam("name") String containerName) {
         BounceBlobStore blobStore = app.getBlobStore();
-        Iterable<StorageMetadata> metas = Utils.crawlBlobStore(blobStore,
+        Iterable<Utils.ListBlobMetadata> metas = Utils.crawlBlobStore(blobStore,
                 containerName);
         List<String> blobNames =
                 StreamSupport.stream(metas.spliterator(), /*parallel=*/ false)
-                .map(sm -> sm.getName())
+                .map(sm -> sm.metadata().getName())
                 .collect(Collectors.toList());
         long bounceLinkCount = blobNames.stream()
                 .filter(blobName -> blobStore.isLink(containerName, blobName))

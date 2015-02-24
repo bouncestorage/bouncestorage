@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
 import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
@@ -90,11 +91,11 @@ public final class BounceServiceTest {
         BouncePolicy p = lastModifiedTimePolicy(Duration.ofHours(1));
         Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
         blob.getMetadata().setLastModified(Date.from(bounceService.getClock().instant()));
-        assertThat(p.test(blob.getMetadata())).isFalse();
+        assertThat(p.test(Utils.ListBlobMetadata.create(blobStore, containerName, blob.getMetadata()))).isFalse();
 
         advanceServiceClock(Duration.ofHours(2));
 
-        assertThat(p.test(blob.getMetadata())).isTrue();
+        assertThat(p.test(Utils.ListBlobMetadata.create(blobStore, containerName, blob.getMetadata()))).isTrue();
     }
 
     @Test

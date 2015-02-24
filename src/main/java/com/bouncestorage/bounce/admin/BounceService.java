@@ -20,7 +20,6 @@ import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import org.apache.commons.configuration.event.ConfigurationListener;
-import org.jclouds.blobstore.domain.StorageMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,7 +112,7 @@ public final class BounceService {
             StreamSupport.stream(Utils.crawlBlobStore(bounceStore, container).spliterator(), /*parallel=*/ false)
                     .peek(x -> status.totalObjectCount.getAndIncrement())
                     .filter(bouncePolicy)
-                    .map(StorageMetadata::getName)
+                    .map(blobMetadata -> blobMetadata.metadata().getName())
                     .filter(blobName -> !bounceStore.isLink(container, blobName))
                     .forEach(blobName -> {
                         try {

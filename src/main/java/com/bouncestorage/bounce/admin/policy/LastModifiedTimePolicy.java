@@ -10,12 +10,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import java.time.Duration;
 import java.time.Instant;
 
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.google.auto.service.AutoService;
 
 import org.apache.commons.configuration.Configuration;
-import org.jclouds.blobstore.domain.StorageMetadata;
 
 @AutoService(BouncePolicy.class)
 public final class LastModifiedTimePolicy extends MovePolicy {
@@ -29,9 +29,9 @@ public final class LastModifiedTimePolicy extends MovePolicy {
     }
 
     @Override
-    public boolean test(StorageMetadata metadata) {
+    public boolean test(Utils.ListBlobMetadata blobMetadata) {
         Instant now = service.getClock().instant();
-        Instant then = metadata.getLastModified().toInstant();
+        Instant then = blobMetadata.metadata().getLastModified().toInstant();
         return now.minus(timeAgo).isAfter(then);
     }
 }
