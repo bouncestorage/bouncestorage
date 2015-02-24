@@ -11,7 +11,7 @@ import com.google.auto.service.AutoService;
 import org.jclouds.blobstore.domain.StorageMetadata;
 
 @AutoService(BouncePolicy.class)
-public final class BounceEverythingPolicy implements BouncePolicy {
+public final class MoveEverythingPolicy extends MovePolicy {
     @Override
     public String toString() {
         return "everything";
