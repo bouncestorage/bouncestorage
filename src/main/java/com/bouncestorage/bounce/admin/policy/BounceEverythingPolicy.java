@@ -6,8 +6,8 @@
 package com.bouncestorage.bounce.admin.policy;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
-
 import com.google.auto.service.AutoService;
+
 import org.jclouds.blobstore.domain.StorageMetadata;
 
 @AutoService(BouncePolicy.class)

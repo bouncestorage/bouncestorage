@@ -5,10 +5,17 @@
 
 package com.bouncestorage.bounce.admin;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.InputStream;
+import java.util.Map;
+import java.util.Properties;
+
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.google.common.collect.ImmutableMap;
+
 import org.apache.commons.configuration.MapConfiguration;
 import org.jclouds.Constants;
 import org.jclouds.blobstore.BlobStore;
@@ -18,12 +25,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-
-import java.io.InputStream;
-import java.util.Map;
-import java.util.Properties;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public final class ConfigTest {
     @Rule

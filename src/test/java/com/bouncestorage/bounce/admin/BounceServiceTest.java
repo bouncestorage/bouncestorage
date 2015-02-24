@@ -5,18 +5,7 @@
 
 package com.bouncestorage.bounce.admin;
 
-import com.bouncestorage.bounce.BounceBlobStore;
-import com.bouncestorage.bounce.UtilsTest;
-import com.bouncestorage.bounce.admin.policy.BounceEverythingPolicy;
-import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
-import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
-import com.google.common.collect.ImmutableMap;
-import org.apache.commons.configuration.MapConfiguration;
-import org.jclouds.blobstore.BlobStoreContext;
-import org.jclouds.blobstore.domain.Blob;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -25,7 +14,19 @@ import java.util.HashMap;
 import java.util.Optional;
 import java.util.Properties;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.UtilsTest;
+import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
+import com.bouncestorage.bounce.admin.policy.BounceEverythingPolicy;
+import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
+import com.google.common.collect.ImmutableMap;
+
+import org.apache.commons.configuration.MapConfiguration;
+import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.blobstore.domain.Blob;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 public final class BounceServiceTest {
     private BlobStoreContext bounceContext;

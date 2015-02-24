@@ -5,17 +5,17 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
-import com.bouncestorage.bounce.admin.BouncePolicy;
-
-import com.bouncestorage.bounce.admin.BounceService;
-import com.google.auto.service.AutoService;
-import org.apache.commons.configuration.Configuration;
-import org.jclouds.blobstore.domain.StorageMetadata;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.time.Duration;
 import java.time.Instant;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.admin.BounceService;
+import com.google.auto.service.AutoService;
+
+import org.apache.commons.configuration.Configuration;
+import org.jclouds.blobstore.domain.StorageMetadata;
 
 @AutoService(BouncePolicy.class)
 public final class LastModifiedTimePolicy implements BouncePolicy {
