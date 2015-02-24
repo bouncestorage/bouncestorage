@@ -18,7 +18,7 @@ import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.domain.StorageMetadata;
 
 @AutoService(BouncePolicy.class)
-public final class LastModifiedTimePolicy implements BouncePolicy {
+public final class LastModifiedTimePolicy extends MovePolicy {
     public static final String DURATION = "duration";
     private BounceService service;
     private Duration timeAgo;

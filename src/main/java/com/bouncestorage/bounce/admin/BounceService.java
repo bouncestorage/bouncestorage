@@ -117,7 +117,7 @@ public final class BounceService {
                     .filter(blobName -> !bounceStore.isLink(container, blobName))
                     .forEach(blobName -> {
                         try {
-                            bounceStore.copyBlobAndCreateBounceLink(container, blobName);
+                            bouncePolicy.bounce(container, blobName, bounceStore);
                             status.bouncedObjectCount.getAndIncrement();
                         } catch (IOException e) {
                             logger.error(String.format("could not bounce %s", blobName), e);

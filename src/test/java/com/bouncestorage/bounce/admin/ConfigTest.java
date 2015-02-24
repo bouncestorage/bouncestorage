@@ -88,7 +88,7 @@ public final class ConfigTest {
     }
 
     @Test
-    public void testConfigBounceEverythingPolicy() throws Exception {
+    public void testConfigMoveEverythingPolicy() throws Exception {
         setTransientBackend();
         BlobStore blobStore = app.getBlobStore();
         blobStore.createContainerInLocation(null, containerName);
@@ -103,7 +103,7 @@ public final class ConfigTest {
 
         Properties properties = new Properties();
         properties.putAll(ImmutableMap.of(
-                "bounce.service.bounce-policy", "BounceEverythingPolicy"
+                "bounce.service.bounce-policy", "MoveEverythingPolicy"
         ));
         new ConfigurationResource(app).updateConfig(properties);
         status = bounceService.bounce(containerName);

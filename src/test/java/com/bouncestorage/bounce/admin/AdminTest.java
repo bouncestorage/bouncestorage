@@ -12,7 +12,7 @@ import java.util.HashMap;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
-import com.bouncestorage.bounce.admin.policy.BounceEverythingPolicy;
+import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
@@ -52,7 +52,7 @@ public final class AdminTest {
         }
         app.useBlobStore(bounceBlobStore);
         BounceService bounceService = app.getBounceService();
-        bounceService.setDefaultPolicy(new BounceEverythingPolicy());
+        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
     }
 
     @After

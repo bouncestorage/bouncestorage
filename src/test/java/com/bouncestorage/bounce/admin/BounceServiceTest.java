@@ -17,8 +17,8 @@ import java.util.Properties;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
-import com.bouncestorage.bounce.admin.policy.BounceEverythingPolicy;
 import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
+import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.google.common.collect.ImmutableMap;
 
 import org.apache.commons.configuration.MapConfiguration;
@@ -73,8 +73,8 @@ public final class BounceServiceTest {
     }
 
     @Test
-    public void testBounceEverythingPolicy() throws Exception {
-        toggleBounceEverything();
+    public void testMoveEverythingPolicy() throws Exception {
+        toggleMoveEverything();
 
         blobStore.putBlob(containerName,
                 UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName()));
@@ -122,8 +122,8 @@ public final class BounceServiceTest {
         bounceService.setDefaultPolicy(Optional.empty());
     }
 
-    private void toggleBounceEverything() {
-        bounceService.setDefaultPolicy(new BounceEverythingPolicy());
+    private void toggleMoveEverything() {
+        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
     }
 
     private BouncePolicy lastModifiedTimePolicy(Duration duration) {
