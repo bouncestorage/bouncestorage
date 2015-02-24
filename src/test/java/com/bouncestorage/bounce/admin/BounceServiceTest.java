@@ -68,7 +68,7 @@ public final class BounceServiceTest {
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getBouncedObjectCount()).isEqualTo(0);
+        assertThat(status.getMovedObjectCount()).isEqualTo(0);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
     }
 
@@ -81,7 +81,7 @@ public final class BounceServiceTest {
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getBouncedObjectCount()).isEqualTo(1);
+        assertThat(status.getMovedObjectCount()).isEqualTo(1);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
     }
 
@@ -107,14 +107,14 @@ public final class BounceServiceTest {
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getBouncedObjectCount()).isEqualTo(0);
+        assertThat(status.getMovedObjectCount()).isEqualTo(0);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
 
         advanceServiceClock(Duration.ofHours(2));
         status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getBouncedObjectCount()).isEqualTo(1);
+        assertThat(status.getMovedObjectCount()).isEqualTo(1);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
     }
 

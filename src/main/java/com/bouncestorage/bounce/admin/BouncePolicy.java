@@ -11,12 +11,19 @@ import java.util.function.Predicate;
 import com.bouncestorage.bounce.BounceBlobStore;
 
 import org.apache.commons.configuration.Configuration;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 
 public interface BouncePolicy extends Predicate<StorageMetadata> {
+    enum BounceResult {
+        NO_OP,
+        COPY,
+        MOVE,
+    }
     default void init(BounceService service, Configuration config) {
     }
 
-    default void bounce(String container, String blobName, BounceBlobStore blobStore) throws IOException {
+    default BounceResult bounce(String container, BlobMetadata meta, BounceBlobStore blobStore) throws IOException {
+        return BounceResult.NO_OP;
     }
 }

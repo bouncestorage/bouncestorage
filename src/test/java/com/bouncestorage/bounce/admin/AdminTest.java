@@ -111,7 +111,7 @@ public final class AdminTest {
                 bounceBlobsResource.status(Optional.absent());
         assertThat(res).hasSize(1);
         BounceService.BounceTaskStatus status = res.iterator().next();
-        assertThat(status.getBouncedObjectCount()).isEqualTo(1);
+        assertThat(status.getMovedObjectCount()).isEqualTo(1);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
         assertThat(status.future().isDone()).isTrue();

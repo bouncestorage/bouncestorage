@@ -7,7 +7,6 @@ package com.bouncestorage.bounce.admin;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import java.io.IOException;
 import java.time.Clock;
 import java.util.*;
 import java.util.concurrent.*;
@@ -15,12 +14,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.StreamSupport;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.Utils;
+import com.bouncestorage.bounce.admin.BouncePolicy.BounceResult;
 import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import org.apache.commons.configuration.event.ConfigurationListener;
-import org.jclouds.blobstore.domain.StorageMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,14 +113,24 @@ public final class BounceService {
             StreamSupport.stream(Utils.crawlBlobStore(bounceStore, container).spliterator(), /*parallel=*/ false)
                     .peek(x -> status.totalObjectCount.getAndIncrement())
                     .filter(bouncePolicy)
-                    .map(StorageMetadata::getName)
-                    .filter(blobName -> !bounceStore.isLink(container, blobName))
-                    .forEach(blobName -> {
+                    .map(meta -> bounceStore.blobMetadata(container, meta.getName()))
+                    .filter(meta -> !BounceLink.isLink(meta))
+                    .forEach(meta -> {
                         try {
-                            bouncePolicy.bounce(container, blobName, bounceStore);
-                            status.bouncedObjectCount.getAndIncrement();
-                        } catch (IOException e) {
-                            logger.error(String.format("could not bounce %s", blobName), e);
+                            BounceResult res = bouncePolicy.bounce(container, meta, bounceStore);
+                            switch (res) {
+                                case MOVE:
+                                    status.movedObjectCount.getAndIncrement();
+                                    break;
+                                case NO_OP:
+                                    break;
+                                case COPY:
+                                    break;
+                                default:
+                                    throw new NullPointerException("res is null");
+                            }
+                        } catch (Throwable e) {
+                            logger.error(String.format("could not bounce %s", meta.getName()), e);
                             status.errorObjectCount.getAndIncrement();
                         }
                     });
@@ -133,7 +143,7 @@ public final class BounceService {
         @JsonProperty
         private final AtomicLong totalObjectCount = new AtomicLong();
         @JsonProperty
-        private final AtomicLong bouncedObjectCount = new AtomicLong();
+        private final AtomicLong movedObjectCount = new AtomicLong();
         @JsonProperty
         private final AtomicLong errorObjectCount = new AtomicLong();
         @JsonProperty
@@ -160,8 +170,8 @@ public final class BounceService {
             return totalObjectCount.get();
         }
 
-        public long getBouncedObjectCount() {
-            return bouncedObjectCount.get();
+        public long getMovedObjectCount() {
+            return movedObjectCount.get();
         }
 
         public long getErrorObjectCount() {

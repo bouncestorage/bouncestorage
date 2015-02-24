@@ -47,7 +47,7 @@ public final class BounceLink implements Serializable {
         return metadata;
     }
 
-    static boolean isLink(BlobMetadata metadata) {
+    public static boolean isLink(BlobMetadata metadata) {
         return metadata.getUserMetadata().containsKey(BOUNCE_LINK);
     }
 

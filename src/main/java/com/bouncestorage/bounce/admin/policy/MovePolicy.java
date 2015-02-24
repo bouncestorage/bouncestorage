@@ -10,9 +10,12 @@ import java.io.IOException;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 
+import org.jclouds.blobstore.domain.BlobMetadata;
+
 public abstract class MovePolicy implements BouncePolicy {
     @Override
-    public final void bounce(String container, String blobName, BounceBlobStore bounceBlobStore) throws IOException {
-        bounceBlobStore.copyBlobAndCreateBounceLink(container, blobName);
+    public final BounceResult bounce(String container, BlobMetadata meta, BounceBlobStore bounceBlobStore) throws IOException {
+        bounceBlobStore.copyBlobAndCreateBounceLink(container, meta.getName());
+        return BounceResult.MOVE;
     }
 }
