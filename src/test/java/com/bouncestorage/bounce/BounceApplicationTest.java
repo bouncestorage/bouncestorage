@@ -5,19 +5,20 @@
 
 package com.bouncestorage.bounce;
 
+import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.util.Map;
+import java.util.Properties;
+
 import com.bouncestorage.bounce.admin.BounceApplication;
+
 import org.apache.commons.configuration.AbstractConfiguration;
 import org.apache.commons.configuration.MapConfiguration;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
 import org.jclouds.Constants;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.util.Map;
-import java.util.Properties;
 
 public final class BounceApplicationTest {
     private Properties properties;

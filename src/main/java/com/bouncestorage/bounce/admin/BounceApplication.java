@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.function.Consumer;
 
-import ch.qos.logback.classic.Level;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
@@ -36,6 +35,8 @@ import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ch.qos.logback.classic.Level;
 
 
 public final class BounceApplication extends Application<BounceConfiguration> {

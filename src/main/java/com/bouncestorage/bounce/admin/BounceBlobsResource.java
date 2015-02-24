@@ -14,7 +14,6 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
 import com.codahale.metrics.annotation.Timed;
-
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 

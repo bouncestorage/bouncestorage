@@ -5,14 +5,14 @@
 
 package com.bouncestorage.bounce.admin;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import java.util.*;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
+
 import org.apache.commons.configuration.Configuration;
-
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * this provides a read only <code>Properties</code> view for a
