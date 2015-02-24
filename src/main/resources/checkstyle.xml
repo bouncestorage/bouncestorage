@@ -12,7 +12,9 @@
   <module name="Translation"/>
   <module name="TreeWalker">
     <property name="cacheFile" value="target/cachefile"/>
+<!--
     <module name="AbstractClassName"/>
+-->
     <module name="ArrayTypeStyle"/>
     <module name="AvoidNestedBlocks"/>
 <!--
