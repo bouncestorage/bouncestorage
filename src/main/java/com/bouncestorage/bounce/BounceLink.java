@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce;
 
+import static com.google.common.base.Throwables.propagate;
+
 import java.io.*;
 import java.net.URI;
 import java.util.Date;
@@ -64,19 +66,23 @@ public final class BounceLink implements Serializable {
         }
     }
 
-    Blob toBlob(BlobStore store) throws IOException {
+    Blob toBlob(BlobStore store) {
         return store.blobBuilder(metadata.getName())
                 .payload(toBlobPayload())
                 .userMetadata(BounceLink.BOUNCE_ATTR)
                 .build();
     }
 
-    private Payload toBlobPayload() throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        try (ObjectOutputStream oos = new ObjectOutputStream(bos)) {
-            oos.writeObject(this);
+    private Payload toBlobPayload() {
+        try {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            try (ObjectOutputStream oos = new ObjectOutputStream(bos)) {
+                oos.writeObject(this);
+            }
+            return new ByteSourcePayload(ByteSource.wrap(bos.toByteArray()));
+        } catch (IOException e) {
+            throw propagate(e);
         }
-        return new ByteSourcePayload(ByteSource.wrap(bos.toByteArray()));
     }
 
     private void writeObject(ObjectOutputStream oos) throws IOException {

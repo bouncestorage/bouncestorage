@@ -44,8 +44,10 @@ public final class BounceServiceTest {
         blobStore = (BounceBlobStore) bounceContext.getBlobStore();
         blobStore.createContainerInLocation(null, containerName);
 
-        BounceApplication app = new BounceApplication(
-                new MapConfiguration(new HashMap<>()));
+        BounceApplication app;
+        synchronized (BounceApplication.class) {
+            app = new BounceApplication(new MapConfiguration(new HashMap<>()));
+        }
         app.useRandomPorts();
         app.useBlobStore(blobStore);
         bounceService = app.getBounceService();
@@ -148,7 +150,6 @@ public final class BounceServiceTest {
         bounceService.setDefaultPolicy(new CopyPolicy());
         Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
         blobStore.putBlob(containerName, blob);
-        assertThat(blob.getMetadata().getUserMetadata()).doesNotContainKey(CopyPolicy.COPIED_METADATA_KEY);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getCopiedObjectCount()).isEqualTo(1);
@@ -204,7 +205,6 @@ public final class BounceServiceTest {
 
     private void checkCopiedBlob(String blobName) throws Exception {
         Blob nearBlob = blobStore.getFromNearStore(containerName, blobName);
-        assertThat(nearBlob.getMetadata().getUserMetadata()).containsKey(CopyPolicy.COPIED_METADATA_KEY);
         Blob farBlob = blobStore.getFromFarStore(containerName, blobName);
         try (InputStream nearPayload = nearBlob.getPayload().openStream();
              InputStream farPayload = farBlob.getPayload().openStream()) {

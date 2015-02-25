@@ -45,6 +45,12 @@ public final class Utils {
         return new CrawlBlobStoreIterable(blobStore, containerName, options);
     }
 
+    public static Iterable<StorageMetadata> crawlFarBlobStore(
+            BounceBlobStore blobStore, String containerName) {
+        return crawlBlobStore(blobStore.getFarStore(), containerName,
+                new ListContainerOptions());
+    }
+
     public static Properties propertiesFromFile(File file) throws IOException {
         Properties properties = new Properties();
         try (InputStream is = new FileInputStream(file)) {
@@ -136,7 +142,7 @@ public final class Utils {
             String containerNameFrom, String containerNameTo, String blobName)
             throws IOException {
         Blob blobFrom = from.getBlob(containerNameFrom, blobName);
-        if (blobFrom == null) {
+        if (blobFrom == null || BounceLink.isLink(blobFrom.getMetadata())) {
             return null;
         }
         ContentMetadata metadata = blobFrom.getMetadata().getContentMetadata();
@@ -212,7 +218,7 @@ public final class Utils {
      * we don't want to use StorageMetadata.equals directly because that compares
      * fields like URI and ProviderID which we don't care about.
      */
-    static boolean equals(StorageMetadata meta1, StorageMetadata meta2) {
+    public static boolean equals(StorageMetadata meta1, StorageMetadata meta2) {
         if (meta1 == meta2) {
             return true;
         }
@@ -222,6 +228,20 @@ public final class Utils {
         return Objects.equals(meta1.getCreationDate(), meta2.getCreationDate())
                 && Objects.equals(meta1.getETag(), meta2.getETag())
                 && Objects.equals(meta1.getLastModified(), meta2.getLastModified())
+                && Objects.equals(meta1.getName(), meta2.getName())
+                && Objects.equals(meta1.getSize(), meta2.getSize())
+                && Objects.equals(meta1.getType(), meta2.getType())
+                ;
+    }
+
+    public static boolean equalsOtherThanTime(StorageMetadata meta1, StorageMetadata meta2) {
+        if (meta1 == meta2) {
+            return true;
+        }
+        if (meta1 == null || meta2 == null) {
+            return false;
+        }
+        return Objects.equals(meta1.getETag(), meta2.getETag())
                 && Objects.equals(meta1.getName(), meta2.getName())
                 && Objects.equals(meta1.getSize(), meta2.getSize())
                 && Objects.equals(meta1.getType(), meta2.getType())

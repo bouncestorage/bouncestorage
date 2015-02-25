@@ -9,9 +9,9 @@ import java.io.IOException;
 import java.util.function.Predicate;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.BounceStorageMetadata;
 
 import org.apache.commons.configuration.Configuration;
-import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 
 public interface BouncePolicy extends Predicate<StorageMetadata> {
@@ -23,7 +23,8 @@ public interface BouncePolicy extends Predicate<StorageMetadata> {
     default void init(BounceService service, Configuration config) {
     }
 
-    default BounceResult bounce(BlobMetadata meta, BounceBlobStore blobStore) throws IOException {
+    default BounceResult bounce(BounceBlobStore blobStore, String container, BounceStorageMetadata meta) throws
+            IOException {
         return BounceResult.NO_OP;
     }
 }

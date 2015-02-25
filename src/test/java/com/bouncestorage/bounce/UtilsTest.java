@@ -233,4 +233,8 @@ public final class UtilsTest {
                 .forEach(key -> out.put(key, in.getProperty(key))
                 );
     }
+
+    public static Blob makeBlobRandomSize(BlobStore blobStore, String blobName) throws IOException {
+        return makeBlob(blobStore, blobName, ByteSource.wrap(new byte[new Random().nextInt(1000)]));
+    }
 }

@@ -15,12 +15,15 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.StreamSupport;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import com.bouncestorage.bounce.admin.FsckTask;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.PeekingIterator;
 import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.BlobStore;
@@ -47,6 +50,15 @@ public final class BounceBlobStore implements BlobStore {
     public static final String STORE_PROPERTY_2 = "bounce.store.properties.2";
 
     public static final String LOG_MARKER_SUFFIX = "%01log";
+
+    public enum Region {
+        NEAR,
+        FAR,
+    }
+
+    public static final ImmutableSet<Region> NEAR_ONLY = ImmutableSet.of(Region.NEAR);
+    public static final ImmutableSet<Region> FAR_ONLY = ImmutableSet.of(Region.FAR);
+    public static final ImmutableSet<Region> EVERYWHERE = ImmutableSet.of(Region.NEAR, Region.FAR);
 
     @Resource
     private Logger logger = Logger.NULL;
@@ -126,24 +138,137 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public PageSet<? extends StorageMetadata> list(String s) {
-        return nearStore.list(s, ListContainerOptions.NONE);
+        return list(s, new ListContainerOptions().maxResults(1000));
+    }
+
+    private static boolean isMarkerBlob(String name) {
+        return name.endsWith(LOG_MARKER_SUFFIX);
+    }
+
+    private static String markerBlobGetName(String marker) {
+        return marker.substring(0, marker.length() - LOG_MARKER_SUFFIX.length());
     }
 
     @Override
     public PageSet<? extends StorageMetadata> list(String s, ListContainerOptions listContainerOptions) {
-        PageSet<? extends StorageMetadata> farPage = farStore.list(s, listContainerOptions.clone());
-        PageSet<? extends StorageMetadata> nearPage = nearStore.list(s, listContainerOptions);
-        // every live object in far store should also be in near store, but not necessarily the
-        // other way around. locally removed objects may show up in far store but not near store
-        TreeMap<String, StorageMetadata> contents = new TreeMap<>();
-        StreamSupport.stream(nearPage.spliterator(), false)
-                .filter(meta -> !meta.getName().endsWith(LOG_MARKER_SUFFIX))
-                .forEach(meta -> contents.put(meta.getName(), meta));
-        StreamSupport.stream(farPage.spliterator(), false)
-                .filter(meta -> contents.containsKey(meta.getName()))
-                .forEach(meta -> contents.put(meta.getName(), meta));
+        PeekingIterator<StorageMetadata> nearPage = Iterators.peekingIterator(
+                Utils.crawlBlobStore(nearStore, s, listContainerOptions).iterator());
+        PeekingIterator<StorageMetadata> farPage = Iterators.peekingIterator(
+                Utils.crawlBlobStore(farStore, s, listContainerOptions).iterator());
+        TreeMap<String, BounceStorageMetadata> contents = new TreeMap<>();
+        int maxResults = listContainerOptions.getMaxResults() == null ?
+                1000 : listContainerOptions.getMaxResults();
 
-        return new PageSetImpl<>(contents.values(), nearPage.getNextMarker());
+        while (nearPage.hasNext() && contents.size() < maxResults) {
+            StorageMetadata nearMeta = nearPage.next();
+            String name = nearMeta.getName();
+
+            logger.info("found near blob: %s", name);
+            if (isMarkerBlob(name)) {
+                BounceStorageMetadata meta = contents.get(markerBlobGetName(name));
+                if (meta != null) {
+                    meta.hasMarkerBlob(true);
+                }
+                logger.info("skipping marker blob: %s", name);
+                continue;
+            }
+
+            int compare = -1;
+            StorageMetadata farMeta = null;
+            while (farPage.hasNext()) {
+                farMeta = farPage.peek();
+                compare = name.compareTo(farMeta.getName());
+                if (compare <= 0) {
+                    break;
+                } else {
+                    farPage.next();
+                    logger.info("skipping far blob: %s", farMeta.getName());
+                }
+            }
+
+            if (compare == 0) {
+                farPage.next();
+                logger.info("found far blob with the same name: %s", name);
+                boolean nextIsMarker = false;
+                if (nearPage.hasNext()) {
+                    StorageMetadata next = nearPage.peek();
+                    logger.info("next blob: %s", next.getName());
+                    if (next.getName().equals(name + LOG_MARKER_SUFFIX)) {
+                        nextIsMarker = true;
+                    }
+                }
+
+                BounceStorageMetadata meta;
+
+                if (nextIsMarker) {
+                    if (isLink(s, name)) {
+                        meta = new BounceStorageMetadata(farMeta, FAR_ONLY);
+                    } else if (nearMeta.getETag().equals(farMeta.getETag())) {
+                        meta = new BounceStorageMetadata(nearMeta, EVERYWHERE);
+                    } else {
+                        meta = new BounceStorageMetadata(nearMeta, NEAR_ONLY);
+                    }
+
+                    meta.hasMarkerBlob(true);
+                    contents.put(name, meta);
+                } else {
+                    if (nearMeta.getETag().equals(farMeta.getETag())) {
+                        meta = new BounceStorageMetadata(nearMeta, EVERYWHERE);
+                    } else {
+                        meta = new BounceStorageMetadata(farMeta, FAR_ONLY);
+                    }
+                }
+
+                contents.put(name, meta);
+            } else {
+                contents.put(name, new BounceStorageMetadata(nearMeta, NEAR_ONLY));
+            }
+        }
+
+        if (nearPage.hasNext()) {
+            StorageMetadata nearMeta = nearPage.next();
+            String name = nearMeta.getName();
+
+            logger.info("found near blob: %s", name);
+            if (isMarkerBlob(name)) {
+                BounceStorageMetadata meta = contents.get(markerBlobGetName(name));
+                if (meta != null) {
+                    meta.hasMarkerBlob(true);
+                }
+            }
+        }
+
+        return new PageSetImpl<>(contents.values(),
+                nearPage.hasNext() ? nearPage.next().getName() : null);
+    }
+
+    private FsckTask.Result maybeRemoveStaleFarBlob(String container, String key) {
+        BlobMetadata near = nearStore.blobMetadata(container, key);
+        BlobMetadata far = farStore.blobMetadata(container, key);
+
+        if ((near == null || !BounceLink.isLink(near)) &&
+                (far != null && (near == null || !near.getETag().equals(far.getETag())))) {
+            farStore.removeBlob(container, key);
+            return FsckTask.Result.REMOVED;
+        }
+
+        return FsckTask.Result.NO_OP;
+    }
+
+    // TODO: this assumes during reconciliation the blob store is not modified
+    public FsckTask.Result reconcileObject(String container, BounceStorageMetadata user, StorageMetadata far) {
+        String s = user != null ? user.getName() : far.getName();
+        if (user != null) {
+            logger.info("reconciling %s regions=%s %s %s", s, user.getRegions(), user, far);
+            if (user.getRegions() == NEAR_ONLY && far != null) {
+                return maybeRemoveStaleFarBlob(container, s);
+            }
+        } else {
+            // we have a blob that's only in far store but nothing (not even link) in near store
+            return maybeRemoveStaleFarBlob(container, s);
+        }
+
+        return FsckTask.Result.NO_OP;
     }
 
     @Override
@@ -186,7 +311,6 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public void deleteDirectory(String s, String s1) {
         nearStore.deleteDirectory(s, s1);
-        farStore.deleteDirectory(s, s1);
     }
 
     @Override
@@ -207,9 +331,7 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions putOptions) {
         putMarkerBlob(containerName, blob.getMetadata().getName());
-        String etag = nearStore.putBlob(containerName, blob, putOptions);
-        farStore.removeBlob(containerName, blob.getMetadata().getName());
-        return etag;
+        return nearStore.putBlob(containerName, blob, putOptions);
     }
 
     public BlobMetadata blobMetadataNoFollow(String container, String s) {
@@ -254,13 +376,11 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public void removeBlob(String s, String s1) {
         nearStore.removeBlob(s, s1);
-        farStore.removeBlob(s, s1);
     }
 
     @Override
     public void removeBlobs(String s, Iterable<String> iterable) {
         nearStore.removeBlobs(s, iterable);
-        farStore.removeBlobs(s, iterable);
     }
 
     @Override
@@ -288,21 +408,24 @@ public final class BounceBlobStore implements BlobStore {
         return BounceLink.isLink(nearStore.blobMetadata(containerName, blobName));
     }
 
-    public void copyBlobAndCreateBounceLink(String containerName, String blobName)
+    public Blob copyBlobAndCreateBounceLink(String containerName, String blobName)
             throws IOException {
         Blob blobFrom = copyBlob(containerName, blobName);
-        if (blobFrom == null) {
-            return;
+        if (blobFrom != null) {
+            createBounceLink(blobFrom.getMetadata());
         }
-        createBounceLink(blobFrom.getMetadata());
+        return blobFrom;
     }
 
     public void createBounceLink(BlobMetadata blobMetadata) throws IOException {
+        logger.info("link %s", blobMetadata.getName());
         BounceLink link = new BounceLink(Optional.of(blobMetadata));
         nearStore.putBlob(blobMetadata.getContainer(), link.toBlob(nearStore));
+        nearStore.removeBlob(blobMetadata.getContainer(), blobMetadata.getName() + LOG_MARKER_SUFFIX);
     }
 
     public Blob copyBlob(String containerName, String blobName) throws IOException {
+        logger.info("copying blob %s", blobName);
         return Utils.copyBlob(nearStore, farStore, containerName, containerName, blobName);
     }
 

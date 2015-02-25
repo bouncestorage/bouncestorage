@@ -41,7 +41,9 @@ public final class ConfigTest {
             properties.load(is);
         }
         configuration = new MapConfiguration((Map) properties);
-        app = new BounceApplication(configuration);
+        synchronized (BounceApplication.class) {
+            app = new BounceApplication(configuration);
+        }
         app.useRandomPorts();
     }
 

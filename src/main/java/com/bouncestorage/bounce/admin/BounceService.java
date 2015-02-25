@@ -8,13 +8,22 @@ package com.bouncestorage.bounce.admin;
 import static java.util.Objects.requireNonNull;
 
 import java.time.Clock;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.StreamSupport;
 
 import com.bouncestorage.bounce.BounceBlobStore;
-import com.bouncestorage.bounce.BounceLink;
+import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy.BounceResult;
 import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
@@ -45,6 +54,17 @@ public final class BounceService {
         if (status == null || status.done()) {
             status = new BounceTaskStatus();
             Future<?> future = executor.submit(new BounceTask(container, status));
+            status.future = future;
+            bounceStatus.put(container, status);
+        }
+        return status;
+    }
+
+    synchronized BounceTaskStatus fsck(String container) {
+        BounceTaskStatus status = bounceStatus.get(container);
+        if (status == null || status.done()) {
+            status = new BounceTaskStatus();
+            Future<?> future = executor.submit(new FsckTask(app.getBlobStore(), container, status));
             status.future = future;
             bounceStatus.put(container, status);
         }
@@ -112,12 +132,12 @@ public final class BounceService {
             BounceBlobStore bounceStore = app.getBlobStore();
             StreamSupport.stream(Utils.crawlBlobStore(bounceStore, container).spliterator(), /*parallel=*/ false)
                     .peek(x -> status.totalObjectCount.getAndIncrement())
+                    .map(meta -> (BounceStorageMetadata) meta)
+                    .filter(meta -> meta.getRegions() != BounceBlobStore.FAR_ONLY)
                     .filter(bouncePolicy)
-                    .map(meta -> bounceStore.blobMetadataNoFollow(container, meta.getName()))
-                    .filter(meta -> !BounceLink.isLink(meta))
                     .forEach(meta -> {
                         try {
-                            BounceResult res = bouncePolicy.bounce(meta, bounceStore);
+                            BounceResult res = bouncePolicy.bounce(bounceStore, container, meta);
                             switch (res) {
                                 case MOVE:
                                     status.movedObjectCount.getAndIncrement();
@@ -142,17 +162,19 @@ public final class BounceService {
 
     public static final class BounceTaskStatus {
         @JsonProperty
-        private final AtomicLong totalObjectCount = new AtomicLong();
+        final AtomicLong totalObjectCount = new AtomicLong();
         @JsonProperty
-        private final AtomicLong copiedObjectCount = new AtomicLong();
+        final AtomicLong copiedObjectCount = new AtomicLong();
         @JsonProperty
-        private final AtomicLong movedObjectCount = new AtomicLong();
+        final AtomicLong movedObjectCount = new AtomicLong();
         @JsonProperty
-        private final AtomicLong errorObjectCount = new AtomicLong();
+        final AtomicLong removedObjectCount = new AtomicLong();
         @JsonProperty
-        private final Date startTime;
+        final AtomicLong errorObjectCount = new AtomicLong();
         @JsonProperty
-        private volatile Date endTime;
+        final Date startTime;
+        @JsonProperty
+        volatile Date endTime;
 
         private Future<?> future;
 
