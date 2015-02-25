@@ -17,6 +17,7 @@ import java.util.Properties;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
+import com.bouncestorage.bounce.admin.policy.CopyPolicy;
 import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
 import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.google.common.collect.ImmutableMap;
@@ -139,6 +140,65 @@ public final class BounceServiceTest {
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
+    }
+
+    @Test
+    public void testCopyBouncePolicy() throws Exception {
+        bounceService.setDefaultPolicy(new CopyPolicy());
+        Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
+        blobStore.putBlob(containerName, blob);
+        assertThat(blob.getMetadata().getUserMetadata()).doesNotContainKey(CopyPolicy.COPIED_METADATA_KEY);
+        BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getCopiedObjectCount()).isEqualTo(1);
+        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        Blob retrievedBlob = blobStore.getBlob(containerName, blob.getMetadata().getName());
+        assertThat(retrievedBlob.getMetadata().getUserMetadata()).containsKey(CopyPolicy.COPIED_METADATA_KEY);
+    }
+
+    @Test
+    public void testCopyTwice() throws Exception {
+        bounceService.setDefaultPolicy(new CopyPolicy());
+        Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
+        blobStore.putBlob(containerName, blob);
+        BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getCopiedObjectCount()).isEqualTo(1);
+        status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getCopiedObjectCount()).isEqualTo(0);
+        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        Blob retrievedBlob = blobStore.getBlob(containerName, blob.getMetadata().getName());
+        assertThat(retrievedBlob.getMetadata().getUserMetadata()).containsKey(CopyPolicy.COPIED_METADATA_KEY);
+    }
+
+    @Test
+    public void testCopyAfterMove() throws Exception {
+        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
+        Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
+        blobStore.putBlob(containerName, blob);
+        BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getMovedObjectCount()).isEqualTo(1);
+        bounceService.setDefaultPolicy(new CopyPolicy());
+        status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getCopiedObjectCount()).isEqualTo(0);
+    }
+
+    @Test
+    public void testMoveAfterCopy() throws Exception {
+        bounceService.setDefaultPolicy(new CopyPolicy());
+        Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
+        blobStore.putBlob(containerName, blob);
+        BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getCopiedObjectCount()).isEqualTo(1);
+
+        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
+        status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getMovedObjectCount()).isEqualTo(0);
     }
 
     private void toggleBounceNothing() {
