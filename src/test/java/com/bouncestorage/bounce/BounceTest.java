@@ -7,8 +7,6 @@ package com.bouncestorage.bounce;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.InputStream;
-
 import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.BlobStore;
@@ -100,7 +98,7 @@ public final class BounceTest {
         assertThat((Object) meta2).isEqualToComparingFieldByField(meta1);
 
         Blob blob2 = bounceBlobStore.getBlob(containerName, blobName);
-        assertEqualBlobs(blob, blob2);
+        UtilsTest.assertEqualBlobs(blob, blob2);
     }
 
     @Test
@@ -136,8 +134,8 @@ public final class BounceTest {
         nearBlob = nearBlobStore.getBlob(containerName, blobName);
         assertThat(BounceLink.isLink(nearBlob.getMetadata())).isFalse();
         Blob farBlob = farBlobStore.getBlob(containerName, blobName);
-        assertEqualBlobs(nearBlob, blob);
-        assertEqualBlobs(farBlob, blob);
+        UtilsTest.assertEqualBlobs(nearBlob, blob);
+        UtilsTest.assertEqualBlobs(farBlob, blob);
     }
 
     @Test
@@ -148,20 +146,7 @@ public final class BounceTest {
         assertThat(nearBlobStore.blobExists(containerName, blobName));
         bounceBlobStore.copyBlob(containerName, blobName);
         Blob farBlob = farBlobStore.getBlob(containerName, blobName);
-        assertEqualBlobs(farBlob, blob);
+        UtilsTest.assertEqualBlobs(farBlob, blob);
     }
 
-    private void assertEqualBlobs(Blob one, Blob two) throws Exception {
-        try (InputStream is = one.getPayload().openStream();
-             InputStream is2 = two.getPayload().openStream()) {
-            assertThat(is2).hasContentEqualTo(is);
-        }
-        // TODO: assert more metadata, including user metadata
-        ContentMetadata metadata = one.getMetadata().getContentMetadata();
-        ContentMetadata metadata2 = two.getMetadata().getContentMetadata();
-        assertThat(metadata2.getContentMD5AsHashCode()).isEqualTo(
-                metadata.getContentMD5AsHashCode());
-        assertThat(metadata2.getContentType()).isEqualTo(
-                metadata.getContentType());
-    }
 }

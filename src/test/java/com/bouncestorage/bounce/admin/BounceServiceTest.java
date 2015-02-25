@@ -76,13 +76,36 @@ public final class BounceServiceTest {
     public void testMoveEverythingPolicy() throws Exception {
         toggleMoveEverything();
 
-        blobStore.putBlob(containerName,
-                UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName()));
+        String blobName = UtilsTest.createRandomBlobName();
+        blobStore.putBlob(containerName, UtilsTest.makeBlob(blobStore, blobName));
+        Blob blob = blobStore.getBlob(containerName, blobName);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        UtilsTest.assertEqualBlobs(blob, blobStore.getBlob(containerName, blobName));
+    }
+
+    @Test
+    public void testMoveEverythingTwice() throws Exception {
+        toggleMoveEverything();
+
+        String blobName = UtilsTest.createRandomBlobName();
+        blobStore.putBlob(containerName, UtilsTest.makeBlob(blobStore, blobName));
+        Blob blob = blobStore.getBlob(containerName, blobName);
+        BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getTotalObjectCount()).isEqualTo(1);
+        assertThat(status.getMovedObjectCount()).isEqualTo(1);
+        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+
+        status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getTotalObjectCount()).isEqualTo(1);
+        assertThat(status.getMovedObjectCount()).isEqualTo(0);
+        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        UtilsTest.assertEqualBlobs(blob, blobStore.getBlob(containerName, blobName));
     }
 
     @Test

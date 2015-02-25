@@ -179,6 +179,10 @@ public final class BounceBlobStore implements BlobStore {
         return etag;
     }
 
+    public BlobMetadata blobMetadataNoFollow(String container, String s) {
+        return nearStore.blobMetadata(container, s);
+    }
+
     @Override
     public BlobMetadata blobMetadata(String s, String s1) {
         BlobMetadata meta = nearStore.blobMetadata(s, s1);

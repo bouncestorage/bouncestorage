@@ -113,7 +113,7 @@ public final class BounceService {
             StreamSupport.stream(Utils.crawlBlobStore(bounceStore, container).spliterator(), /*parallel=*/ false)
                     .peek(x -> status.totalObjectCount.getAndIncrement())
                     .filter(bouncePolicy)
-                    .map(meta -> bounceStore.blobMetadata(container, meta.getName()))
+                    .map(meta -> bounceStore.blobMetadataNoFollow(container, meta.getName()))
                     .filter(meta -> !BounceLink.isLink(meta))
                     .forEach(meta -> {
                         try {

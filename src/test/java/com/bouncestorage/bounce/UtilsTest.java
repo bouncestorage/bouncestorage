@@ -57,6 +57,20 @@ public final class UtilsTest {
                 .build(BlobStoreContext.class);
     }
 
+    public static void assertEqualBlobs(Blob one, Blob two) throws Exception {
+        try (InputStream is = one.getPayload().openStream();
+             InputStream is2 = two.getPayload().openStream()) {
+            assertThat(is2).hasContentEqualTo(is);
+        }
+        // TODO: assert more metadata, including user metadata
+        ContentMetadata metadata = one.getMetadata().getContentMetadata();
+        ContentMetadata metadata2 = two.getMetadata().getContentMetadata();
+        assertThat(metadata2.getContentMD5AsHashCode()).isEqualTo(
+                metadata.getContentMD5AsHashCode());
+        assertThat(metadata2.getContentType()).isEqualTo(
+                metadata.getContentType());
+    }
+
     @Before
     public void setUp() throws Exception {
         containerName = createRandomContainerName();
