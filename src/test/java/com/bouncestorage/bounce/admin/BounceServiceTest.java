@@ -7,6 +7,7 @@ package com.bouncestorage.bounce.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.InputStream;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Date;
@@ -152,8 +153,7 @@ public final class BounceServiceTest {
         status.future().get();
         assertThat(status.getCopiedObjectCount()).isEqualTo(1);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
-        Blob retrievedBlob = blobStore.getBlob(containerName, blob.getMetadata().getName());
-        assertThat(retrievedBlob.getMetadata().getUserMetadata()).containsKey(CopyPolicy.COPIED_METADATA_KEY);
+        checkCopiedBlob(blob.getMetadata().getName());
     }
 
     @Test
@@ -168,8 +168,7 @@ public final class BounceServiceTest {
         status.future().get();
         assertThat(status.getCopiedObjectCount()).isEqualTo(0);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
-        Blob retrievedBlob = blobStore.getBlob(containerName, blob.getMetadata().getName());
-        assertThat(retrievedBlob.getMetadata().getUserMetadata()).containsKey(CopyPolicy.COPIED_METADATA_KEY);
+        checkCopiedBlob(blob.getMetadata().getName());
     }
 
     @Test
@@ -199,6 +198,18 @@ public final class BounceServiceTest {
         status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getMovedObjectCount()).isEqualTo(0);
+        Blob nearBlob = blobStore.getFromNearStore(containerName, blob.getMetadata().getName());
+        assertThat(blobStore.isLink(containerName, nearBlob.getMetadata().getName())).isTrue();
+    }
+
+    private void checkCopiedBlob(String blobName) throws Exception {
+        Blob nearBlob = blobStore.getFromNearStore(containerName, blobName);
+        assertThat(nearBlob.getMetadata().getUserMetadata()).containsKey(CopyPolicy.COPIED_METADATA_KEY);
+        Blob farBlob = blobStore.getFromFarStore(containerName, blobName);
+        try (InputStream nearPayload = nearBlob.getPayload().openStream();
+             InputStream farPayload = farBlob.getPayload().openStream()) {
+            assertThat(nearPayload).hasContentEqualTo(farPayload);
+        }
     }
 
     private void toggleBounceNothing() {
