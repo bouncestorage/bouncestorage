@@ -31,7 +31,7 @@ public final class BounceTest {
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        bounceContext = UtilsTest.createTransientBounceBlobStore();
+        bounceContext = UtilsTest.createTestBounceBlobStore();
         bounceBlobStore = (BounceBlobStore) bounceContext.getBlobStore();
         nearBlobStore = bounceBlobStore.getNearStore();
         farBlobStore = bounceBlobStore.getFarStore();

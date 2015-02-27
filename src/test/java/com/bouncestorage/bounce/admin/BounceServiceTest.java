@@ -40,7 +40,7 @@ public final class BounceServiceTest {
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        bounceContext = UtilsTest.createTransientBounceBlobStore();
+        bounceContext = UtilsTest.createTestBounceBlobStore();
         blobStore = (BounceBlobStore) bounceContext.getBlobStore();
         blobStore.createContainerInLocation(null, containerName);
 
