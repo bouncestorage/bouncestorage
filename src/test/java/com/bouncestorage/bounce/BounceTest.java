@@ -7,6 +7,7 @@ package com.bouncestorage.bounce;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.BlobStore;
@@ -149,4 +150,16 @@ public final class BounceTest {
         UtilsTest.assertEqualBlobs(farBlob, blob);
     }
 
+    @Test
+    public void testUpdateMetadataTest() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        Blob blob = UtilsTest.makeBlob(bounceBlobStore, blobName);
+        blob.getMetadata().setUserMetadata(ImmutableMap.of("foo", "1"));
+        bounceBlobStore.putBlob(containerName, blob);
+        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata()).containsKey("foo");
+        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata()).doesNotContainKey("bar");
+        bounceBlobStore.updateBlobMetadata(containerName, blobName, ImmutableMap.of("bar", "2"));
+        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata()).containsKey("foo");
+        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata()).containsKey("bar");
+    }
 }

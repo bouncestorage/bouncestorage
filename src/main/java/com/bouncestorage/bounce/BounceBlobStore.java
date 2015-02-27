@@ -9,12 +9,14 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
 import javax.annotation.Resource;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 
 import org.jclouds.blobstore.BlobStore;
@@ -261,12 +263,24 @@ public final class BounceBlobStore implements BlobStore {
         if (blobFrom == null) {
             return;
         }
-        BounceLink link = new BounceLink(Optional.of(blobFrom.getMetadata()));
-        nearStore.putBlob(containerName, link.toBlob(nearStore));
+        createBounceLink(blobFrom.getMetadata());
+    }
+
+    public void createBounceLink(BlobMetadata blobMetadata) throws IOException {
+        BounceLink link = new BounceLink(Optional.of(blobMetadata));
+        nearStore.putBlob(blobMetadata.getContainer(), link.toBlob(nearStore));
     }
 
     public Blob copyBlob(String containerName, String blobName) throws IOException {
         return Utils.copyBlob(nearStore, farStore, containerName, containerName, blobName);
+    }
+
+    public void updateBlobMetadata(String containerName, String blobName, Map<String, String> userMetadata) {
+        Blob blob = getBlob(containerName, blobName);
+        Map<String, String> metadata = blob.getMetadata().getUserMetadata();
+        metadata.putAll(userMetadata);
+        blob.getMetadata().setUserMetadata(metadata);
+        nearStore.putBlob(containerName, blob);
     }
 
     public void takeOver(String containerName) throws IOException {
@@ -298,5 +312,14 @@ public final class BounceBlobStore implements BlobStore {
         return true;
     }
 
+    @VisibleForTesting
+    public Blob getFromFarStore(String containerName, String blobName) {
+        return farStore.getBlob(containerName, blobName);
+    }
+
+    @VisibleForTesting
+    public Blob getFromNearStore(String containerName, String blobName) {
+        return nearStore.getBlob(containerName, blobName);
+    }
 
 }
