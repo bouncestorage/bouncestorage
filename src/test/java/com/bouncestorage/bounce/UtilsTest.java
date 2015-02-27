@@ -14,6 +14,7 @@ import java.util.Random;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
 import com.google.common.net.MediaType;
@@ -38,6 +39,19 @@ public final class UtilsTest {
     private BlobStore nearBlobStore;
     private BlobStore farBlobStore;
     private String containerName;
+
+    public static BlobStoreContext createTestBounceBlobStore() {
+        Properties properties = new Properties();
+        Properties systemProperties = System.getProperties();
+        loadWithPrefix(properties, systemProperties, BounceBlobStore.STORE_PROPERTY_1);
+        loadWithPrefix(properties, systemProperties, BounceBlobStore.STORE_PROPERTY_2);
+        ImmutableSet.of(BounceBlobStore.STORE_PROPERTY_1, BounceBlobStore.STORE_PROPERTY_2)
+                .stream()
+                .filter(key -> !properties.containsKey(key + "." + Constants.PROPERTY_PROVIDER))
+                .forEach(key -> Utils.insertAllWithPrefix(properties, key + ".", ImmutableMap.of(
+                        Constants.PROPERTY_PROVIDER, "transient")));
+        return ContextBuilder.newBuilder("bounce").overrides(properties).build(BlobStoreContext.class);
+    }
 
     public static BlobStoreContext createTransientBounceBlobStore() {
         Properties properties = new Properties();
@@ -210,5 +224,13 @@ public final class UtilsTest {
 
     public static Blob makeBlob(BlobStore blobStore, String blobName) throws IOException {
         return makeBlob(blobStore, blobName, ByteSource.empty());
+    }
+
+    private static void loadWithPrefix(Properties out, Properties in, String prefix) {
+        in.stringPropertyNames()
+                .stream()
+                .filter(key -> key.startsWith(prefix))
+                .forEach(key -> out.put(key, in.getProperty(key))
+                );
     }
 }
