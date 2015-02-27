@@ -128,10 +128,12 @@ public final class BounceApplication extends Application<BounceConfiguration> {
             return;
         }
         try {
+            Properties contextProperties = new Properties();
+            contextProperties.putAll(System.getProperties());
+            contextProperties.putAll(configView);
             BlobStoreContext context = ContextBuilder
                     .newBuilder("bounce")
-                    .overrides(System.getProperties())
-                    .overrides(configView)
+                    .overrides(contextProperties)
                     .build(BlobStoreContext.class);
             useBlobStore((BounceBlobStore) context.getBlobStore());
             blobStoreListeners.forEach(cb -> cb.accept(context));
