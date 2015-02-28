@@ -14,15 +14,25 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.StreamSupport;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
-import org.jclouds.blobstore.domain.*;
+import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobAccess;
+import org.jclouds.blobstore.domain.BlobBuilder;
+import org.jclouds.blobstore.domain.BlobMetadata;
+import org.jclouds.blobstore.domain.ContainerAccess;
+import org.jclouds.blobstore.domain.PageSet;
+import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.domain.internal.PageSetImpl;
 import org.jclouds.blobstore.options.CreateContainerOptions;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
@@ -35,6 +45,8 @@ public final class BounceBlobStore implements BlobStore {
 
     public static final String STORE_PROPERTY_1 = "bounce.store.properties.1";
     public static final String STORE_PROPERTY_2 = "bounce.store.properties.2";
+
+    public static final String LOG_MARKER_SUFFIX = "%01log";
 
     @Resource
     private Logger logger = Logger.NULL;
@@ -114,12 +126,24 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public PageSet<? extends StorageMetadata> list(String s) {
-        return nearStore.list(s);
+        return nearStore.list(s, ListContainerOptions.NONE);
     }
 
     @Override
     public PageSet<? extends StorageMetadata> list(String s, ListContainerOptions listContainerOptions) {
-        return nearStore.list(s, listContainerOptions);
+        PageSet<? extends StorageMetadata> farPage = farStore.list(s, listContainerOptions.clone());
+        PageSet<? extends StorageMetadata> nearPage = nearStore.list(s, listContainerOptions);
+        // every live object in far store should also be in near store, but not necessarily the
+        // other way around. locally removed objects may show up in far store but not near store
+        TreeMap<String, StorageMetadata> contents = new TreeMap<>();
+        StreamSupport.stream(nearPage.spliterator(), false)
+                .filter(meta -> !meta.getName().endsWith(LOG_MARKER_SUFFIX))
+                .forEach(meta -> contents.put(meta.getName(), meta));
+        StreamSupport.stream(farPage.spliterator(), false)
+                .filter(meta -> contents.containsKey(meta.getName()))
+                .forEach(meta -> contents.put(meta.getName(), meta));
+
+        return new PageSetImpl<>(contents.values(), nearPage.getNextMarker());
     }
 
     @Override
@@ -175,8 +199,14 @@ public final class BounceBlobStore implements BlobStore {
         return putBlob(containerName, blob, PutOptions.NONE);
     }
 
+    private void putMarkerBlob(String containerName, String key) {
+        nearStore.putBlob(containerName,
+                blobBuilder(key + LOG_MARKER_SUFFIX).payload(ByteSource.empty()).build());
+    }
+
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions putOptions) {
+        putMarkerBlob(containerName, blob.getMetadata().getName());
         String etag = nearStore.putBlob(containerName, blob, putOptions);
         farStore.removeBlob(containerName, blob.getMetadata().getName());
         return etag;
