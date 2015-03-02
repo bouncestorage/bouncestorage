@@ -19,7 +19,6 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.commons.configuration.MapConfiguration;
 import org.jclouds.Constants;
 import org.jclouds.blobstore.BlobStore;
-import org.jclouds.blobstore.BlobStoreContext;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -29,8 +28,6 @@ import org.junit.rules.ExpectedException;
 public final class ConfigTest {
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
-    private BlobStoreContext bounceContext;
-    private BounceBlobStore bounceBlobStore;
     private String containerName;
     private BounceApplication app;
     private MapConfiguration configuration;
@@ -50,11 +47,12 @@ public final class ConfigTest {
 
     @After
     public void tearDown() throws Exception {
-        if (bounceBlobStore != null) {
-            bounceBlobStore.deleteContainer(containerName);
+        BounceBlobStore blobStore = app.getBlobStore();
+        if (blobStore != null) {
+            blobStore.deleteContainer(containerName);
         }
-        if (bounceContext != null) {
-            bounceContext.close();
+        if (blobStore != null && blobStore.getContext() != null) {
+            blobStore.getContext().close();
         }
 
         app.stop();
