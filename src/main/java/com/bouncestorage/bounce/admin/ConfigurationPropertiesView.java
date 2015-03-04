@@ -5,7 +5,7 @@
 
 package com.bouncestorage.bounce.admin;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
 
 import java.util.*;
 
@@ -22,7 +22,7 @@ public final class ConfigurationPropertiesView extends Properties {
     private final Configuration config;
 
     ConfigurationPropertiesView(Configuration config) {
-        this.config = checkNotNull(config);
+        this.config = requireNonNull(config);
     }
 
     @Override

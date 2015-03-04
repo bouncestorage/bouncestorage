@@ -5,7 +5,8 @@
 
 package com.bouncestorage.bounce.admin;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
+
 import static com.google.common.base.Throwables.propagate;
 
 import java.net.URI;
@@ -58,7 +59,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     private S3Proxy s3Proxy;
 
     public BounceApplication(AbstractConfiguration config) {
-        this.config = checkNotNull(config);
+        this.config = requireNonNull(config);
         this.bounceService = new BounceService(this);
         this.configView = new ConfigurationPropertiesView(config);
 
@@ -164,7 +165,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     }
 
     public String getS3ProxyState() {
-        checkNotNull(s3Proxy);
+        requireNonNull(s3Proxy);
         return s3Proxy.getState();
     }
 

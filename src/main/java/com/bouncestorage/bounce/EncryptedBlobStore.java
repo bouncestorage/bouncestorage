@@ -5,7 +5,8 @@
 
 package com.bouncestorage.bounce;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
+
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.ByteArrayInputStream;
@@ -28,8 +29,7 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
-
-import com.google.inject.Inject;
+import javax.inject.Inject;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -66,7 +66,7 @@ public final class EncryptedBlobStore implements BlobStore {
 
     @Inject
     EncryptedBlobStore(BlobStoreContext context, ProviderMetadata providerMetadata) {
-        this.context = checkNotNull(context);
+        this.context = requireNonNull(context);
         Properties properties = providerMetadata.getDefaultProperties();
         this.password = properties.getProperty(KEY).toCharArray();
         this.salt = properties.getProperty(SALT).getBytes(StandardCharsets.UTF_8);
@@ -74,7 +74,7 @@ public final class EncryptedBlobStore implements BlobStore {
     }
 
     private void initStore(Properties prop) {
-        this.delegate = Utils.storeFromProperties(checkNotNull(prop));
+        this.delegate = Utils.storeFromProperties(requireNonNull(prop));
         try {
             SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
             // https://github.com/WhisperSystems/TextSecure/issues/184 suggests that

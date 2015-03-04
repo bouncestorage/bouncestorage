@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.hash.HashCode;
 import com.google.inject.Module;
@@ -72,9 +71,9 @@ public final class Utils {
 
         CrawlBlobStoreIterable(BlobStore blobStore, String containerName,
                 ListContainerOptions options) {
-            this.blobStore = Preconditions.checkNotNull(blobStore);
-            this.containerName = Preconditions.checkNotNull(containerName);
-            this.options = Preconditions.checkNotNull(options);
+            this.blobStore = Objects.requireNonNull(blobStore);
+            this.containerName = Objects.requireNonNull(containerName);
+            this.options = Objects.requireNonNull(options);
         }
 
         @Override
@@ -94,9 +93,9 @@ public final class Utils {
 
         CrawlBlobStoreIterator(BlobStore blobStore, String containerName,
                 ListContainerOptions options) {
-            this.blobStore = Preconditions.checkNotNull(blobStore);
-            this.containerName = Preconditions.checkNotNull(containerName);
-            this.options = Preconditions.checkNotNull(options).recursive();
+            this.blobStore = Objects.requireNonNull(blobStore);
+            this.containerName = Objects.requireNonNull(containerName);
+            this.options = Objects.requireNonNull(options).recursive();
             advance();
         }
 

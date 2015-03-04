@@ -5,7 +5,8 @@
 
 package com.bouncestorage.bounce;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
+
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
@@ -15,9 +16,9 @@ import java.util.Properties;
 import java.util.Set;
 
 import javax.annotation.Resource;
+import javax.inject.Inject;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.inject.Inject;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -44,7 +45,7 @@ public final class BounceBlobStore implements BlobStore {
 
     @Inject
     BounceBlobStore(BlobStoreContext context, ProviderMetadata providerMetadata) {
-        this.context = checkNotNull(context);
+        this.context = requireNonNull(context);
         Properties properties = providerMetadata.getDefaultProperties();
 
         initStores(Utils.extractProperties(properties, STORE_PROPERTY_1 + "."),
@@ -52,8 +53,8 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     private void initStores(Properties prop1, Properties prop2) {
-        this.nearStore = Utils.storeFromProperties(checkNotNull(prop1));
-        this.farStore = Utils.storeFromProperties(checkNotNull(prop2));
+        this.nearStore = Utils.storeFromProperties(requireNonNull(prop1));
+        this.farStore = Utils.storeFromProperties(requireNonNull(prop2));
     }
 
     BlobStore getNearStore() {

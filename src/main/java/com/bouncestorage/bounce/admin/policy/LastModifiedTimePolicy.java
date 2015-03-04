@@ -5,7 +5,7 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -24,8 +24,8 @@ public final class LastModifiedTimePolicy extends MovePolicy {
     private Duration timeAgo;
 
     public void init(BounceService inService, Configuration config) {
-        this.service = checkNotNull(inService);
-        this.timeAgo = checkNotNull(Duration.parse(config.getString(DURATION)));
+        this.service = requireNonNull(inService);
+        this.timeAgo = requireNonNull(Duration.parse(config.getString(DURATION)));
     }
 
     @Override

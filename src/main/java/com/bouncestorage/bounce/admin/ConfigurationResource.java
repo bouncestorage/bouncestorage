@@ -5,7 +5,7 @@
 
 package com.bouncestorage.bounce.admin;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
 
 import java.util.Properties;
 
@@ -22,7 +22,7 @@ public final class ConfigurationResource {
     private final BounceApplication app;
 
     public ConfigurationResource(BounceApplication app) {
-        this.app = checkNotNull(app);
+        this.app = requireNonNull(app);
     }
 
     @POST

@@ -5,7 +5,7 @@
 
 package com.bouncestorage.bounce.admin;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,7 +26,7 @@ public final class ServiceResource {
     private final BounceApplication app;
 
     public ServiceResource(BounceApplication app) {
-        this.app = checkNotNull(app);
+        this.app = requireNonNull(app);
     }
 
     @GET

@@ -5,7 +5,7 @@
 
 package com.bouncestorage.bounce.admin;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
 
 import java.time.Clock;
 import java.util.*;
@@ -37,7 +37,7 @@ public final class BounceService {
     private Clock clock = Clock.systemUTC();
 
     public BounceService(BounceApplication app) {
-        this.app = checkNotNull(app);
+        this.app = requireNonNull(app);
     }
 
     synchronized BounceTaskStatus bounce(String container) {
@@ -83,7 +83,7 @@ public final class BounceService {
             throw new IllegalStateException("Cannot change policies while bouncing objects");
         }
 
-        bouncePolicy = checkNotNull(policy);
+        bouncePolicy = requireNonNull(policy);
     }
 
     public synchronized void setDefaultPolicy(Optional<BouncePolicy> policy) {
@@ -103,8 +103,8 @@ public final class BounceService {
         private BounceTaskStatus status;
 
         BounceTask(String container, BounceTaskStatus status) {
-            this.container = checkNotNull(container);
-            this.status = checkNotNull(status);
+            this.container = requireNonNull(container);
+            this.status = requireNonNull(status);
         }
 
         @Override
