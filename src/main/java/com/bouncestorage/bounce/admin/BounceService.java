@@ -196,7 +196,11 @@ public final class BounceService {
         }
 
         public Date getEndTime() {
-            return (Date) endTime.clone();
+            if (endTime != null) {
+                return (Date) endTime.clone();
+            } else {
+                return null;
+            }
         }
     }
 }
