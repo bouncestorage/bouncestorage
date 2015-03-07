@@ -38,6 +38,12 @@ public final class BounceService {
 
     public BounceService(BounceApplication app) {
         this.app = requireNonNull(app);
+        if (app.getConfiguration().containsKey(BOUNCE_POLICY_PREFIX)) {
+            Optional<BouncePolicy> policy = getBouncePolicyFromName(app.getConfiguration().getString(
+                    BOUNCE_POLICY_PREFIX));
+            policy.ifPresent(p -> p.init(this, app.getConfiguration().subset(BOUNCE_POLICY_PREFIX)));
+            setDefaultPolicy(policy);
+        }
     }
 
     synchronized BounceTaskStatus bounce(String container) {
