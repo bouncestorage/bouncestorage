@@ -80,10 +80,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
                 S3Proxy.Builder builder = S3Proxy.builder()
                         .blobStore(context.getBlobStore())
                         .endpoint(new URI(config.getString(
-                                S3ProxyConstants.PROPERTY_ENDPOINT)))
-                        .forceMultiPartUpload(
-                                "true".equalsIgnoreCase((String) configView.get(
-                                        S3ProxyConstants.PROPERTY_FORCE_MULTI_PART_UPLOAD)));
+                                S3ProxyConstants.PROPERTY_ENDPOINT)));
 
                 String identity = (String) configView.get(
                         S3ProxyConstants.PROPERTY_IDENTITY);
