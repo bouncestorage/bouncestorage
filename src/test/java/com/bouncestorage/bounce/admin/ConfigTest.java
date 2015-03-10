@@ -78,9 +78,7 @@ public final class ConfigTest {
         Properties properties = config.getConfig();
         String[] blobStores = {BounceBlobStore.STORE_PROPERTY_1 + "." + Constants.PROPERTY_PROVIDER,
                 BounceBlobStore.STORE_PROPERTY_2 + "." + Constants.PROPERTY_PROVIDER };
-        for (String bs : blobStores) {
-            assertThat(properties).doesNotContainKey(bs);
-        }
+        assertThat(properties).doesNotContainKeys(blobStores);
         setTransientBackend();
         assertThat(properties).containsKeys(blobStores);
     }
