@@ -144,7 +144,7 @@ public final class BounceTest {
         String blobName = "blob";
         Blob blob = UtilsTest.makeBlob(nearBlobStore, blobName);
         nearBlobStore.putBlob(containerName, blob);
-        assertThat(nearBlobStore.blobExists(containerName, blobName));
+        assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
         bounceBlobStore.copyBlob(containerName, blobName);
         Blob farBlob = farBlobStore.getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(farBlob, blob);
@@ -156,10 +156,10 @@ public final class BounceTest {
         Blob blob = UtilsTest.makeBlob(bounceBlobStore, blobName);
         blob.getMetadata().setUserMetadata(ImmutableMap.of("foo", "1"));
         bounceBlobStore.putBlob(containerName, blob);
-        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata()).containsKey("foo");
-        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata()).doesNotContainKey("bar");
+        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata())
+                .containsKey("foo")
+                .doesNotContainKey("bar");
         bounceBlobStore.updateBlobMetadata(containerName, blobName, ImmutableMap.of("bar", "2"));
-        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata()).containsKey("foo");
-        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata()).containsKey("bar");
+        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata()).containsKeys("foo", "bar");
     }
 }
