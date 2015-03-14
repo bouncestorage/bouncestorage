@@ -9,7 +9,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.hash.HashCode;
@@ -138,7 +142,7 @@ public final class Utils {
 
     // TODO: eventually this should support parallel copies, cancellation, and
     // multi-part uploads
-    static Blob copyBlob(BlobStore from, BlobStore to,
+    public static Blob copyBlob(BlobStore from, BlobStore to,
             String containerNameFrom, String containerNameTo, String blobName)
             throws IOException {
         Blob blobFrom = from.getBlob(containerNameFrom, blobName);
