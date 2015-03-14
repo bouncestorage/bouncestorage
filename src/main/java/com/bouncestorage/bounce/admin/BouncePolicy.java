@@ -14,8 +14,10 @@ import com.bouncestorage.bounce.BounceStorageMetadata;
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
+import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,4 +56,7 @@ public abstract class BouncePolicy implements Predicate<StorageMetadata> {
     public abstract Blob getBlob(String container, String blobName, GetOptions options);
 
     public abstract String putBlob(String container, Blob blob, PutOptions options);
+
+    public abstract PageSet<? extends StorageMetadata> list(String containerName, ListContainerOptions
+                listContainerOptions);
 }

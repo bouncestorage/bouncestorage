@@ -26,7 +26,7 @@ public final class BounceStorageMetadata extends ForwardingObject implements Sto
     private final ImmutableSet<Region> regions;
     private boolean hasMarkerBlob;
 
-    BounceStorageMetadata(StorageMetadata metadata, Set<Region> regions) {
+    public BounceStorageMetadata(StorageMetadata metadata, Set<Region> regions) {
         this.delegate = requireNonNull(metadata);
         this.regions = ImmutableSet.copyOf(requireNonNull(regions));
     }
