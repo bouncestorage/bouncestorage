@@ -142,7 +142,7 @@ public final class Utils {
 
     // TODO: eventually this should support parallel copies, cancellation, and
     // multi-part uploads
-    static Blob copyBlob(BlobStore from, BlobStore to,
+    public static Blob copyBlob(BlobStore from, BlobStore to,
             String containerNameFrom, String containerNameTo, String blobName)
             throws IOException {
         Blob blobFrom = from.getBlob(containerNameFrom, blobName);

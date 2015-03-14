@@ -8,11 +8,16 @@ package com.bouncestorage.bounce.admin.policy;
 import java.io.IOException;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
-import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.Utils;
 import com.google.common.collect.ImmutableSet;
 
-public abstract class MovePolicy implements BouncePolicy {
+import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
+import org.jclouds.blobstore.options.GetOptions;
+
+public abstract class MovePolicy extends MarkerPolicy {
     public static BounceResult moveBounce(BounceBlobStore bounceBlobStore, String container, BounceStorageMetadata meta)
             throws IOException {
         ImmutableSet<BounceBlobStore.Region> regions = meta.getRegions();
@@ -32,5 +37,19 @@ public abstract class MovePolicy implements BouncePolicy {
     public final BounceResult bounce(BounceBlobStore bounceBlobStore, String container, BounceStorageMetadata meta)
             throws IOException {
         return moveBounce(bounceBlobStore, container, meta);
+    }
+
+    @Override
+    public final Blob getBlob(String container, String blobName, GetOptions options) {
+        BlobMetadata meta = getSource().blobMetadata(container, blobName);
+        if (BounceLink.isLink(meta)) {
+            Blob blob = getDestination().getBlob(container, blobName, options);
+            try {
+                Utils.copyBlob(getDestination(), getSource(), container, container, blobName);
+            } catch (IOException e) {
+                return blob;
+            }
+        }
+        return getSource().getBlob(container, blobName, options);
     }
 }
