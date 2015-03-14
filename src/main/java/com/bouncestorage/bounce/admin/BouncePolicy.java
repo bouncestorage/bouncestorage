@@ -7,6 +7,7 @@ package com.bouncestorage.bounce.admin;
 
 import java.io.IOException;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
@@ -14,8 +15,11 @@ import com.bouncestorage.bounce.BounceStorageMetadata;
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.domain.internal.PageSetImpl;
 import org.jclouds.blobstore.options.GetOptions;
+import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.logging.Logger;
 
@@ -47,4 +51,10 @@ public interface BouncePolicy extends Predicate<StorageMetadata> {
     Logger getLogger();
 
     BounceResult reconcile(String container, BounceStorageMetadata metadata);
+
+    default PageSet<? extends StorageMetadata> list(String containerName, ListContainerOptions listContainerOptions) {
+        PageSet<? extends StorageMetadata> listResults = getSource().list(containerName, listContainerOptions);
+        return new PageSetImpl<>(listResults.stream().map(m -> new BounceStorageMetadata(m, BounceBlobStore.NEAR_ONLY))
+                .collect(Collectors.toList()), listResults.getNextMarker());
+    }
 }

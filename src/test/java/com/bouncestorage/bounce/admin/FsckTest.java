@@ -28,7 +28,6 @@ import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
-import org.jclouds.blobstore.options.PutOptions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -141,7 +140,7 @@ public final class FsckTest {
             blobs.put(name, etag);
         }
 
-        BouncePolicy policy = new BouncePolicy() {
+        BouncePolicy policy = new MarkerPolicy() {
             private BlobStore nearStore;
             private BlobStore farStore;
             private org.jclouds.logging.Logger logger = org.jclouds.logging.Logger.NULL;
@@ -175,11 +174,6 @@ public final class FsckTest {
 
             @Override
             public Blob getBlob(String container, String blobName, GetOptions options) {
-                return null;
-            }
-
-            @Override
-            public String putBlob(String container, Blob blob, PutOptions options) {
                 return null;
             }
 

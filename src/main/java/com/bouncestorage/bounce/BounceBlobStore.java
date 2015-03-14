@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.TreeMap;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
@@ -25,8 +24,6 @@ import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
 import com.bouncestorage.bounce.admin.policy.MarkerPolicy;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterators;
-import com.google.common.collect.PeekingIterator;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -37,7 +34,6 @@ import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.ContainerAccess;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
-import org.jclouds.blobstore.domain.internal.PageSetImpl;
 import org.jclouds.blobstore.options.CreateContainerOptions;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
@@ -149,101 +145,13 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     @Override
-    public PageSet<? extends StorageMetadata> list(String s) {
-        return list(s, new ListContainerOptions().maxResults(1000));
+    public PageSet<? extends StorageMetadata> list(String containerName) {
+        return list(containerName, new ListContainerOptions().maxResults(1000));
     }
 
     @Override
-    public PageSet<? extends StorageMetadata> list(String s, ListContainerOptions listContainerOptions) {
-        PeekingIterator<StorageMetadata> nearPage = Iterators.peekingIterator(
-                Utils.crawlBlobStore(policy.getSource(), s, listContainerOptions).iterator());
-        PeekingIterator<StorageMetadata> farPage = Iterators.peekingIterator(
-                Utils.crawlBlobStore(policy.getDestination(), s, listContainerOptions).iterator());
-        TreeMap<String, BounceStorageMetadata> contents = new TreeMap<>();
-        int maxResults = listContainerOptions.getMaxResults() == null ?
-                1000 : listContainerOptions.getMaxResults();
-
-        while (nearPage.hasNext() && contents.size() < maxResults) {
-            StorageMetadata nearMeta = nearPage.next();
-            String name = nearMeta.getName();
-
-            logger.info("found near blob: %s", name);
-            if (MarkerPolicy.isMarkerBlob(name)) {
-                BounceStorageMetadata meta = contents.get(MarkerPolicy.markerBlobGetName(name));
-                if (meta != null) {
-                    meta.hasMarkerBlob(true);
-                }
-                logger.info("skipping marker blob: %s", name);
-                continue;
-            }
-
-            int compare = -1;
-            StorageMetadata farMeta = null;
-            while (farPage.hasNext()) {
-                farMeta = farPage.peek();
-                compare = name.compareTo(farMeta.getName());
-                if (compare <= 0) {
-                    break;
-                } else {
-                    farPage.next();
-                    logger.info("skipping far blob: %s", farMeta.getName());
-                }
-            }
-
-            if (compare == 0) {
-                farPage.next();
-                logger.info("found far blob with the same name: %s", name);
-                boolean nextIsMarker = false;
-                if (nearPage.hasNext()) {
-                    StorageMetadata next = nearPage.peek();
-                    logger.info("next blob: %s", next.getName());
-                    if (next.getName().equals(name + MarkerPolicy.LOG_MARKER_SUFFIX)) {
-                        nextIsMarker = true;
-                    }
-                }
-
-                BounceStorageMetadata meta;
-
-                if (nextIsMarker) {
-                    if (isLink(s, name)) {
-                        meta = new BounceStorageMetadata(farMeta, FAR_ONLY);
-                    } else if (nearMeta.getETag().equals(farMeta.getETag())) {
-                        meta = new BounceStorageMetadata(nearMeta, EVERYWHERE);
-                    } else {
-                        meta = new BounceStorageMetadata(nearMeta, NEAR_ONLY);
-                    }
-
-                    meta.hasMarkerBlob(true);
-                    contents.put(name, meta);
-                } else {
-                    if (nearMeta.getETag().equals(farMeta.getETag())) {
-                        meta = new BounceStorageMetadata(nearMeta, EVERYWHERE);
-                    } else {
-                        meta = new BounceStorageMetadata(farMeta, FAR_ONLY);
-                    }
-                }
-
-                contents.put(name, meta);
-            } else {
-                contents.put(name, new BounceStorageMetadata(nearMeta, NEAR_ONLY));
-            }
-        }
-
-        if (nearPage.hasNext()) {
-            StorageMetadata nearMeta = nearPage.next();
-            String name = nearMeta.getName();
-
-            logger.info("found near blob: %s", name);
-            if (MarkerPolicy.isMarkerBlob(name)) {
-                BounceStorageMetadata meta = contents.get(MarkerPolicy.markerBlobGetName(name));
-                if (meta != null) {
-                    meta.hasMarkerBlob(true);
-                }
-            }
-        }
-
-        return new PageSetImpl<>(contents.values(),
-                nearPage.hasNext() ? nearPage.next().getName() : null);
+    public PageSet<? extends StorageMetadata> list(String containerName, ListContainerOptions listContainerOptions) {
+        return policy.list(containerName, listContainerOptions);
     }
 
     private FsckTask.Result maybeRemoveStaleFarBlob(String container, String key) {
