@@ -17,6 +17,8 @@ import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.PutOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class BouncePolicy implements Predicate<StorageMetadata> {
     public enum BounceResult {
@@ -24,6 +26,8 @@ public abstract class BouncePolicy implements Predicate<StorageMetadata> {
         COPY,
         MOVE,
     }
+
+    protected Logger logger = LoggerFactory.getLogger(getClass());
 
     private BlobStore sourceBlobStore;
     private BlobStore destinationBlobStore;
