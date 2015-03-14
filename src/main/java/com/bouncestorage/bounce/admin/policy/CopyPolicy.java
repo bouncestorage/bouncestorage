@@ -14,10 +14,12 @@ import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
+import org.jclouds.logging.Logger;
 
 public final class CopyPolicy extends MarkerPolicy {
     private BlobStore source;
     private BlobStore destination;
+    private Logger logger = Logger.NULL;
 
     public void setBlobStores(BlobStore sourceStore, BlobStore destinationStore) {
         this.source = sourceStore;
@@ -42,6 +44,11 @@ public final class CopyPolicy extends MarkerPolicy {
     @Override
     public Blob getBlob(String container, String blobName, GetOptions options) {
         return source.getBlob(container, blobName, options);
+    }
+
+    @Override
+    public Logger getLogger() {
+        return logger;
     }
 
     public static BounceResult copyBounce(BounceBlobStore blobStore, String container, BounceStorageMetadata meta) throws IOException {

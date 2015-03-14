@@ -144,6 +144,7 @@ public final class FsckTest {
         BouncePolicy policy = new BouncePolicy() {
             private BlobStore nearStore;
             private BlobStore farStore;
+            private org.jclouds.logging.Logger logger = org.jclouds.logging.Logger.NULL;
 
             @Override
             public BounceResult bounce(BounceBlobStore bounceBlobStore, String container, BounceStorageMetadata meta)
@@ -190,6 +191,11 @@ public final class FsckTest {
             @Override
             public BlobStore getDestination() {
                 return farStore;
+            }
+
+            @Override
+            public org.jclouds.logging.Logger getLogger() {
+                return logger;
             }
         };
 

@@ -11,11 +11,13 @@ import com.google.auto.service.AutoService;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.logging.Logger;
 
 @AutoService(BouncePolicy.class)
 public final class MoveEverythingPolicy extends MovePolicy {
     private BlobStore near;
     private BlobStore far;
+    private Logger logger = Logger.NULL;
 
     public void setBlobStores(BlobStore nearStore, BlobStore farStore) {
         this.near = nearStore;
@@ -28,6 +30,11 @@ public final class MoveEverythingPolicy extends MovePolicy {
 
     public BlobStore getDestination() {
         return far;
+    }
+
+    @Override
+    public Logger getLogger() {
+        return logger;
     }
 
     @Override

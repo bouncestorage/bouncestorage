@@ -18,6 +18,7 @@ import com.google.auto.service.AutoService;
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.logging.Logger;
 
 @AutoService(BouncePolicy.class)
 public final class LastModifiedTimePolicy extends MovePolicy {
@@ -26,18 +27,27 @@ public final class LastModifiedTimePolicy extends MovePolicy {
     private Duration timeAgo;
     private BlobStore original;
     private BlobStore archive;
+    private Logger logger = Logger.NULL;
 
+    @Override
     public void setBlobStores(BlobStore originalStore, BlobStore archiveStore) {
         this.original = originalStore;
         this.archive = archiveStore;
     }
 
+    @Override
     public BlobStore getSource() {
         return original;
     }
 
+    @Override
     public BlobStore getDestination() {
         return archive;
+    }
+
+    @Override
+    public Logger getLogger() {
+        return logger;
     }
 
     public void init(BounceService inService, Configuration config) {

@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import org.jclouds.logging.Logger;
+
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 
@@ -17,6 +19,7 @@ import org.jclouds.blobstore.options.PutOptions;
 public final class BounceNothingPolicy implements BouncePolicy {
     private BlobStore source;
     private BlobStore destination;
+    private Logger logger = Logger.NULL;
 
     public void setBlobStores(BlobStore sourceStore, BlobStore destinationStore) {
         this.source = sourceStore;
@@ -51,5 +54,10 @@ public final class BounceNothingPolicy implements BouncePolicy {
     @Override
     public BlobStore getDestination() {
         return destination;
+    }
+
+    @Override
+    public Logger getLogger() {
+        return logger;
     }
 }

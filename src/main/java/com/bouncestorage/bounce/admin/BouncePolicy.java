@@ -17,6 +17,7 @@ import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.PutOptions;
+import org.jclouds.logging.Logger;
 
 public interface BouncePolicy extends Predicate<StorageMetadata> {
     enum BounceResult {
@@ -42,6 +43,8 @@ public interface BouncePolicy extends Predicate<StorageMetadata> {
     default String putBlob(String container, Blob blob, PutOptions options) {
         return getSource().putBlob(container, blob, options);
     }
+
+    Logger getLogger();
 
     BounceResult reconcile(String container, BounceStorageMetadata metadata);
 }
