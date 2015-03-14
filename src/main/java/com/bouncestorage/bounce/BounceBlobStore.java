@@ -163,13 +163,13 @@ public final class BounceBlobStore implements BlobStore {
             StorageMetadata nearMeta = nearPage.next();
             String name = nearMeta.getName();
 
-            logger.info("found near blob: %s", name);
+            logger.debug("found near blob: %s", name);
             if (isMarkerBlob(name)) {
                 BounceStorageMetadata meta = contents.get(markerBlobGetName(name));
                 if (meta != null) {
                     meta.hasMarkerBlob(true);
                 }
-                logger.info("skipping marker blob: %s", name);
+                logger.debug("skipping marker blob: %s", name);
                 continue;
             }
 
@@ -182,17 +182,17 @@ public final class BounceBlobStore implements BlobStore {
                     break;
                 } else {
                     farPage.next();
-                    logger.info("skipping far blob: %s", farMeta.getName());
+                    logger.debug("skipping far blob: %s", farMeta.getName());
                 }
             }
 
             if (compare == 0) {
                 farPage.next();
-                logger.info("found far blob with the same name: %s", name);
+                logger.debug("found far blob with the same name: %s", name);
                 boolean nextIsMarker = false;
                 if (nearPage.hasNext()) {
                     StorageMetadata next = nearPage.peek();
-                    logger.info("next blob: %s", next.getName());
+                    logger.debug("next blob: %s", next.getName());
                     if (next.getName().equals(name + LOG_MARKER_SUFFIX)) {
                         nextIsMarker = true;
                     }
@@ -229,7 +229,7 @@ public final class BounceBlobStore implements BlobStore {
             StorageMetadata nearMeta = nearPage.next();
             String name = nearMeta.getName();
 
-            logger.info("found near blob: %s", name);
+            logger.debug("found near blob: %s", name);
             if (isMarkerBlob(name)) {
                 BounceStorageMetadata meta = contents.get(markerBlobGetName(name));
                 if (meta != null) {
@@ -259,7 +259,7 @@ public final class BounceBlobStore implements BlobStore {
     public FsckTask.Result reconcileObject(String container, BounceStorageMetadata user, StorageMetadata far) {
         String s = user != null ? user.getName() : far.getName();
         if (user != null) {
-            logger.info("reconciling %s regions=%s %s %s", s, user.getRegions(), user, far);
+            logger.debug("reconciling %s regions=%s %s %s", s, user.getRegions(), user, far);
             if (user.getRegions() == NEAR_ONLY && far != null) {
                 return maybeRemoveStaleFarBlob(container, s);
             }
@@ -418,14 +418,14 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     public void createBounceLink(BlobMetadata blobMetadata) throws IOException {
-        logger.info("link %s", blobMetadata.getName());
+        logger.debug("link %s", blobMetadata.getName());
         BounceLink link = new BounceLink(Optional.of(blobMetadata));
         nearStore.putBlob(blobMetadata.getContainer(), link.toBlob(nearStore));
         nearStore.removeBlob(blobMetadata.getContainer(), blobMetadata.getName() + LOG_MARKER_SUFFIX);
     }
 
     public Blob copyBlob(String containerName, String blobName) throws IOException {
-        logger.info("copying blob %s", blobName);
+        logger.debug("copying blob %s", blobName);
         return Utils.copyBlob(nearStore, farStore, containerName, containerName, blobName);
     }
 
