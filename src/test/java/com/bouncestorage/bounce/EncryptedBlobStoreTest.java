@@ -19,7 +19,6 @@ import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.io.ContentMetadata;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;

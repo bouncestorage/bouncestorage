@@ -9,15 +9,20 @@ import java.io.IOException;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
-import com.bouncestorage.bounce.admin.BouncePolicy;
 
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.GetOptions;
 
-public final class CopyPolicy implements BouncePolicy {
+public final class CopyPolicy extends MarkerPolicy {
     @Override
     public boolean test(StorageMetadata metadata) {
         return true;
+    }
+
+    @Override
+    public Blob getBlob(String container, String blobName, GetOptions options) {
+        return getSource().getBlob(container, blobName, options);
     }
 
     public static BounceResult copyBounce(BounceBlobStore blobStore, String container, BounceStorageMetadata meta) throws IOException {
@@ -29,7 +34,7 @@ public final class CopyPolicy implements BouncePolicy {
         if (b == null) {
             return BounceResult.NO_OP;
         } else {
-            blobStore.removeBlob(container, meta.getName() + BounceBlobStore.LOG_MARKER_SUFFIX);
+            blobStore.removeBlob(container, meta.getName() + MarkerPolicy.LOG_MARKER_SUFFIX);
         }
         return BounceResult.COPY;
     }

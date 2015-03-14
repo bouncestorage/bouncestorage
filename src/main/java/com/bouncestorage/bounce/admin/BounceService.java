@@ -41,7 +41,6 @@ public final class BounceService {
     private ExecutorService executor =
             new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>());
     private final BounceApplication app;
-    private BouncePolicy bouncePolicy = new BounceNothingPolicy();
 
     private Clock clock = Clock.systemUTC();
 
@@ -109,7 +108,7 @@ public final class BounceService {
             throw new IllegalStateException("Cannot change policies while bouncing objects");
         }
 
-        bouncePolicy = requireNonNull(policy);
+        app.getBlobStore().setPolicy(policy);
     }
 
     public synchronized void setDefaultPolicy(Optional<BouncePolicy> policy) {
@@ -136,14 +135,15 @@ public final class BounceService {
         @Override
         public void run() {
             BounceBlobStore bounceStore = app.getBlobStore();
+            BouncePolicy policy = bounceStore.getPolicy();
             StreamSupport.stream(Utils.crawlBlobStore(bounceStore, container).spliterator(), /*parallel=*/ false)
                     .peek(x -> status.totalObjectCount.getAndIncrement())
                     .map(meta -> (BounceStorageMetadata) meta)
                     .filter(meta -> meta.getRegions() != BounceBlobStore.FAR_ONLY)
-                    .filter(bouncePolicy)
+                    .filter(policy)
                     .forEach(meta -> {
                         try {
-                            BounceResult res = bouncePolicy.bounce(bounceStore, container, meta);
+                            BounceResult res = policy.bounce(bounceStore, container, meta);
                             switch (res) {
                                 case MOVE:
                                     status.movedObjectCount.getAndIncrement();

@@ -20,12 +20,14 @@ import java.util.TreeMap;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.FsckTask;
+import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
+import com.bouncestorage.bounce.admin.policy.MarkerPolicy;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
-import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -50,8 +52,6 @@ public final class BounceBlobStore implements BlobStore {
     public static final String STORE_PROPERTY_1 = "bounce.store.properties.1";
     public static final String STORE_PROPERTY_2 = "bounce.store.properties.2";
 
-    public static final String LOG_MARKER_SUFFIX = "\u0001log";
-
     public enum Region {
         NEAR,
         FAR,
@@ -67,6 +67,7 @@ public final class BounceBlobStore implements BlobStore {
     private BlobStoreContext context;
     private BlobStore nearStore;
     private BlobStore farStore;
+    private BouncePolicy policy;
 
     @Inject
     BounceBlobStore(BlobStoreContext context, ProviderMetadata providerMetadata) {
@@ -80,6 +81,8 @@ public final class BounceBlobStore implements BlobStore {
     private void initStores(Properties prop1, Properties prop2) {
         this.nearStore = Utils.storeFromProperties(requireNonNull(prop1));
         this.farStore = Utils.storeFromProperties(requireNonNull(prop2));
+        policy = new BounceNothingPolicy();
+        policy.setBlobStores(nearStore, farStore);
     }
 
     BlobStore getNearStore() {
@@ -88,6 +91,15 @@ public final class BounceBlobStore implements BlobStore {
 
     BlobStore getFarStore() {
         return farStore;
+    }
+
+    public void setPolicy(BouncePolicy newPolicy) {
+        newPolicy.setBlobStores(nearStore, farStore);
+        policy = newPolicy;
+    }
+
+    public BouncePolicy getPolicy() {
+        return policy;
     }
 
     @Override
@@ -142,20 +154,12 @@ public final class BounceBlobStore implements BlobStore {
         return list(s, new ListContainerOptions().maxResults(1000));
     }
 
-    private static boolean isMarkerBlob(String name) {
-        return name.endsWith(LOG_MARKER_SUFFIX);
-    }
-
-    private static String markerBlobGetName(String marker) {
-        return marker.substring(0, marker.length() - LOG_MARKER_SUFFIX.length());
-    }
-
     @Override
     public PageSet<? extends StorageMetadata> list(String s, ListContainerOptions listContainerOptions) {
         PeekingIterator<StorageMetadata> nearPage = Iterators.peekingIterator(
-                Utils.crawlBlobStore(nearStore, s, listContainerOptions).iterator());
+                Utils.crawlBlobStore(policy.getSource(), s, listContainerOptions).iterator());
         PeekingIterator<StorageMetadata> farPage = Iterators.peekingIterator(
-                Utils.crawlBlobStore(farStore, s, listContainerOptions).iterator());
+                Utils.crawlBlobStore(policy.getDestination(), s, listContainerOptions).iterator());
         TreeMap<String, BounceStorageMetadata> contents = new TreeMap<>();
         int maxResults = listContainerOptions.getMaxResults() == null ?
                 1000 : listContainerOptions.getMaxResults();
@@ -165,8 +169,8 @@ public final class BounceBlobStore implements BlobStore {
             String name = nearMeta.getName();
 
             logger.debug("found near blob: %s", name);
-            if (isMarkerBlob(name)) {
-                BounceStorageMetadata meta = contents.get(markerBlobGetName(name));
+            if (MarkerPolicy.isMarkerBlob(name)) {
+                BounceStorageMetadata meta = contents.get(MarkerPolicy.markerBlobGetName(name));
                 if (meta != null) {
                     meta.hasMarkerBlob(true);
                 }
@@ -194,7 +198,7 @@ public final class BounceBlobStore implements BlobStore {
                 if (nearPage.hasNext()) {
                     StorageMetadata next = nearPage.peek();
                     logger.debug("next blob: %s", next.getName());
-                    if (next.getName().equals(name + LOG_MARKER_SUFFIX)) {
+                    if (next.getName().equals(name + MarkerPolicy.LOG_MARKER_SUFFIX)) {
                         nextIsMarker = true;
                     }
                 }
@@ -231,8 +235,8 @@ public final class BounceBlobStore implements BlobStore {
             String name = nearMeta.getName();
 
             logger.debug("found near blob: %s", name);
-            if (isMarkerBlob(name)) {
-                BounceStorageMetadata meta = contents.get(markerBlobGetName(name));
+            if (MarkerPolicy.isMarkerBlob(name)) {
+                BounceStorageMetadata meta = contents.get(MarkerPolicy.markerBlobGetName(name));
                 if (meta != null) {
                     meta.hasMarkerBlob(true);
                 }
@@ -244,12 +248,12 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     private FsckTask.Result maybeRemoveStaleFarBlob(String container, String key) {
-        BlobMetadata near = nearStore.blobMetadata(container, key);
-        BlobMetadata far = farStore.blobMetadata(container, key);
+        BlobMetadata near = policy.getSource().blobMetadata(container, key);
+        BlobMetadata far = policy.getDestination().blobMetadata(container, key);
 
         if ((near == null || !BounceLink.isLink(near)) &&
                 (far != null && (near == null || !Utils.eTagsEqual(near.getETag(), far.getETag())))) {
-            farStore.removeBlob(container, key);
+            policy.getDestination().removeBlob(container, key);
             return FsckTask.Result.REMOVED;
         }
 
@@ -324,15 +328,9 @@ public final class BounceBlobStore implements BlobStore {
         return putBlob(containerName, blob, PutOptions.NONE);
     }
 
-    private void putMarkerBlob(String containerName, String key) {
-        nearStore.putBlob(containerName,
-                blobBuilder(key + LOG_MARKER_SUFFIX).payload(ByteSource.empty()).build());
-    }
-
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions putOptions) {
-        putMarkerBlob(containerName, blob.getMetadata().getName());
-        return nearStore.putBlob(containerName, blob, putOptions);
+        return policy.putBlob(containerName, blob, putOptions);
     }
 
     public BlobMetadata blobMetadataNoFollow(String container, String s) {
@@ -341,10 +339,10 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public BlobMetadata blobMetadata(String s, String s1) {
-        BlobMetadata meta = nearStore.blobMetadata(s, s1);
+        BlobMetadata meta = policy.getSource().blobMetadata(s, s1);
         if (meta != null && BounceLink.isLink(meta)) {
             try {
-                return BounceLink.fromBlob(nearStore.getBlob(s, s1)).getBlobMetadata();
+                return BounceLink.fromBlob(policy.getSource().getBlob(s, s1)).getBlobMetadata();
             } catch (IOException e) {
                 logger.error(e, "An error occurred while loading the metadata for blob %s in container %s",
                         s, s1);
@@ -362,16 +360,7 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public Blob getBlob(String containerName, String blobName, GetOptions getOptions) {
-        BlobMetadata meta = nearStore.blobMetadata(containerName, blobName);
-        if (BounceLink.isLink(meta)) {
-            // Unbounce the object
-            Blob blob = farStore.getBlob(containerName, blobName, getOptions);
-            if (blob == null) {
-                return blob;
-            }
-            nearStore.putBlob(containerName, blob);
-        }
-        return nearStore.getBlob(containerName, blobName, getOptions);
+        return policy.getBlob(containerName, blobName, getOptions);
     }
 
     @Override
@@ -422,7 +411,7 @@ public final class BounceBlobStore implements BlobStore {
         logger.debug("link %s", blobMetadata.getName());
         BounceLink link = new BounceLink(Optional.of(blobMetadata));
         nearStore.putBlob(blobMetadata.getContainer(), link.toBlob(nearStore));
-        nearStore.removeBlob(blobMetadata.getContainer(), blobMetadata.getName() + LOG_MARKER_SUFFIX);
+        nearStore.removeBlob(blobMetadata.getContainer(), blobMetadata.getName() + MarkerPolicy.LOG_MARKER_SUFFIX);
     }
 
     public Blob copyBlob(String containerName, String blobName) throws IOException {

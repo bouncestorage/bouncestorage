@@ -18,12 +18,17 @@ import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.policy.CopyPolicy;
+import com.bouncestorage.bounce.admin.policy.MarkerPolicy;
+import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.bouncestorage.bounce.admin.policy.MovePolicy;
 
 import org.apache.commons.configuration.MapConfiguration;
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.GetOptions;
+import org.jclouds.blobstore.options.PutOptions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -102,6 +107,7 @@ public final class FsckTest {
     @Test
     public void testStaleObjects() throws Exception {
         String blobName = UtilsTest.createRandomBlobName();
+        blobStore.setPolicy(new MoveEverythingPolicy());
         blobStore.putBlob(containerName, UtilsTest.makeBlobRandomSize(blobStore, blobName));
         blobStore.copyBlobAndCreateBounceLink(containerName, blobName);
         blobStore.putBlob(containerName, UtilsTest.makeBlobRandomSize(blobStore, blobName));
@@ -135,7 +141,10 @@ public final class FsckTest {
             blobs.put(name, Utils.trimETag(etag));
         }
 
-        bounceService.setDefaultPolicy(new BouncePolicy() {
+        BouncePolicy policy = new BouncePolicy() {
+            private BlobStore nearStore;
+            private BlobStore farStore;
+
             @Override
             public BounceResult bounce(BounceBlobStore bounceBlobStore, String container, BounceStorageMetadata meta)
                     throws
@@ -151,7 +160,19 @@ public final class FsckTest {
             public boolean test(StorageMetadata metadata) {
                 return r.nextBoolean();
             }
-        });
+
+            @Override
+            public Blob getBlob(String container, String blobName, GetOptions options) {
+                return null;
+            }
+
+            @Override
+            public String putBlob(String container, Blob blob, PutOptions options) {
+                return null;
+            }
+        };
+
+        bounceService.setDefaultPolicy(policy);
 
         int numBounces = r.nextInt(10);
         for (int i = 0; i < numBounces; i++) {
@@ -177,7 +198,7 @@ public final class FsckTest {
             if (bounceMeta.getRegions().contains(BounceBlobStore.Region.FAR)) {
                 assertThat(Utils.trimETag(b.getMetadata().getETag())).isEqualTo(expectEtag);
                 assertThat(blobStore.getFromNearStore(containerName,
-                        name + BounceBlobStore.LOG_MARKER_SUFFIX)).isNull();
+                        name + MarkerPolicy.LOG_MARKER_SUFFIX)).isNull();
             } else {
                 assertThat(b).isNull();
             }
