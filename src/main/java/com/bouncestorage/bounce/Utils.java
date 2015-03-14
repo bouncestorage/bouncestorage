@@ -9,7 +9,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.hash.HashCode;

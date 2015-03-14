@@ -7,7 +7,12 @@ package com.bouncestorage.bounce;
 
 import static com.google.common.base.Throwables.propagate;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.URI;
 import java.util.Date;
 import java.util.Map;
