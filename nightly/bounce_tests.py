@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import boto
 import boto.ses
 import json
@@ -114,14 +116,21 @@ def get_all_blobstore_credentials(creds):
     key = get_object(creds, CONFIG_KEY)
     return json.loads(key.get_contents_as_string())
 
+def get_all_blobstore_from_argv():
+    return json.load(open(sys.argv[1]))
+
 def get_java_properties(provider_details):
     return ' '.join(map(lambda pair: "-D%s.%s=%s" % (BLOBSTORE_PROPERTY_PREFIX,
                     pair[0], pair[1]), provider_details.items()))
 
-def run_test(provider_details):
+def run_test(provider_details, test="all"):
     print "Testing %s" % provider_details['provider']
     java_properties = get_java_properties(provider_details)
-    command = "cd ~/%s && mvn %s test" % (BOUNCE_SRC_DIR, java_properties)
+    command = "/usr/bin/mvn %s" % (java_properties)
+    if test != "all":
+        command += " -Dtest=" + test
+    command += " test"
+    print(command)
     execute(command)
 
 def notify_failure(creds, error):
@@ -138,24 +147,35 @@ def notify_success(creds):
     send_email(creds, "Nightly passed", message)
 
 def main():
-    creds = get_s3_creds()
-    log = open(OUTPUT_LOG, 'w')
-    sys.stdout = log
+    ec2 = len(sys.argv) == 0
+    test = "all"
+
+    if ec2:
+        creds = get_s3_creds()
+        log = open(OUTPUT_LOG, 'w')
+        sys.stdout = log
 
     exception = None
     try:
-        setup_github_key(creds)
-        setup_code()
+        if ec2:
+            setup_github_key(creds)
+            setup_code()
 
-        all_creds = get_all_blobstore_credentials(creds)
+            all_creds = get_all_blobstore_credentials(creds)
+            os.chdir(BOUNCE_SRC_DIR)
+        else:
+            all_creds = get_all_blobstore_from_argv()
+            if len(sys.argv) > 2:
+                test = sys.argv[2]
 
         for provider in all_creds:
-            run_test(provider)
+            run_test(provider, test)
     except TestException as e:
         exception = e
 
-    log.close()
-    notify_failure(creds, exception) if exception else notify_success(creds)
+    if ec2:
+        log.close()
+        notify_failure(creds, exception) if exception else notify_success(creds)
 
 if __name__ == '__main__':
     main()

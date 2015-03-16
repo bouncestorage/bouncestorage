@@ -203,7 +203,7 @@ public final class BounceBlobStore implements BlobStore {
                 if (nextIsMarker) {
                     if (isLink(s, name)) {
                         meta = new BounceStorageMetadata(farMeta, FAR_ONLY);
-                    } else if (nearMeta.getETag().equals(farMeta.getETag())) {
+                    } else if (Utils.eTagsEqual(nearMeta.getETag(), farMeta.getETag())) {
                         meta = new BounceStorageMetadata(nearMeta, EVERYWHERE);
                     } else {
                         meta = new BounceStorageMetadata(nearMeta, NEAR_ONLY);
@@ -212,7 +212,7 @@ public final class BounceBlobStore implements BlobStore {
                     meta.hasMarkerBlob(true);
                     contents.put(name, meta);
                 } else {
-                    if (nearMeta.getETag().equals(farMeta.getETag())) {
+                    if (Utils.eTagsEqual(nearMeta.getETag(), farMeta.getETag())) {
                         meta = new BounceStorageMetadata(nearMeta, EVERYWHERE);
                     } else {
                         meta = new BounceStorageMetadata(farMeta, FAR_ONLY);
@@ -247,7 +247,7 @@ public final class BounceBlobStore implements BlobStore {
         BlobMetadata far = farStore.blobMetadata(container, key);
 
         if ((near == null || !BounceLink.isLink(near)) &&
-                (far != null && (near == null || !near.getETag().equals(far.getETag())))) {
+                (far != null && (near == null || !Utils.eTagsEqual(near.getETag(), far.getETag())))) {
             farStore.removeBlob(container, key);
             return FsckTask.Result.REMOVED;
         }

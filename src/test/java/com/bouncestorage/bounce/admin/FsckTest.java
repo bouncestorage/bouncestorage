@@ -132,7 +132,7 @@ public final class FsckTest {
             String name = UtilsTest.createRandomBlobName();
             Blob b = UtilsTest.makeBlobRandomSize(blobStore, name);
             String etag = blobStore.putBlob(containerName, b);
-            blobs.put(name, etag);
+            blobs.put(name, Utils.trimETag(etag));
         }
 
         bounceService.setDefaultPolicy(new BouncePolicy() {
@@ -165,7 +165,7 @@ public final class FsckTest {
             count++;
             String name = meta.getName();
             String expectEtag = blobs.get(name);
-            assertThat(meta.getETag()).as("%s etag", name).isEqualTo(expectEtag);
+            assertThat(Utils.trimETag(meta.getETag())).as("%s etag", name).isEqualTo(expectEtag);
             BounceStorageMetadata bounceMeta = (BounceStorageMetadata) meta;
             Blob b = blobStore.getFromNearStore(containerName, name);
             if (bounceMeta.getRegions().contains(BounceBlobStore.Region.NEAR)) {
@@ -175,7 +175,7 @@ public final class FsckTest {
             }
             b = blobStore.getFromFarStore(containerName, name);
             if (bounceMeta.getRegions().contains(BounceBlobStore.Region.FAR)) {
-                assertThat(b.getMetadata().getETag()).isEqualTo(expectEtag);
+                assertThat(Utils.trimETag(b.getMetadata().getETag())).isEqualTo(expectEtag);
                 assertThat(blobStore.getFromNearStore(containerName,
                         name + BounceBlobStore.LOG_MARKER_SUFFIX)).isNull();
             } else {
