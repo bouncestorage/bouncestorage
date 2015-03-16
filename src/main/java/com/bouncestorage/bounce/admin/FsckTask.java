@@ -67,7 +67,7 @@ public final class FsckTask implements Runnable {
             int compare = far.getName().compareTo(user.getName());
             if (compare == 0) {
                 // they are the same key
-                if (!user.getETag().equals(far.getETag())) {
+                if (!Utils.eTagsEqual(user.getETag(), far.getETag())) {
                     logger.warn("{} != {}", Objects.toString(user), Objects.toString(far));
                     logger.warn("{} != {}", user.getETag(), far.getETag());
                     reconcileObject(user, far);

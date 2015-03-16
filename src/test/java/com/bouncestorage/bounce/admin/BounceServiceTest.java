@@ -199,6 +199,7 @@ public final class BounceServiceTest {
         status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getMovedObjectCount()).isEqualTo(0);
+        assertThat(status.getTotalObjectCount()).isEqualTo(1);
         Blob nearBlob = blobStore.getFromNearStore(containerName, blob.getMetadata().getName());
         assertThat(blobStore.isLink(containerName, nearBlob.getMetadata().getName())).isTrue();
     }

@@ -226,7 +226,7 @@ public final class Utils {
             return false;
         }
         return Objects.equals(meta1.getCreationDate(), meta2.getCreationDate())
-                && Objects.equals(meta1.getETag(), meta2.getETag())
+                && eTagsEqual(meta1.getETag(), meta2.getETag())
                 && Objects.equals(meta1.getLastModified(), meta2.getLastModified())
                 && Objects.equals(meta1.getName(), meta2.getName())
                 && Objects.equals(meta1.getSize(), meta2.getSize())
@@ -241,10 +241,26 @@ public final class Utils {
         if (meta1 == null || meta2 == null) {
             return false;
         }
-        return Objects.equals(meta1.getETag(), meta2.getETag())
+        return eTagsEqual(meta1.getETag(), meta2.getETag())
                 && Objects.equals(meta1.getName(), meta2.getName())
                 && Objects.equals(meta1.getSize(), meta2.getSize())
                 && Objects.equals(meta1.getType(), meta2.getType())
                 ;
+    }
+
+    public static String trimETag(String eTag) {
+        int begin = 0;
+        int end = eTag.length();
+        if (eTag.startsWith("\"")) {
+            begin = 1;
+        }
+        if (eTag.endsWith("\"")) {
+            end = eTag.length() - 1;
+        }
+        return eTag.substring(begin, end);
+    }
+
+    public static boolean eTagsEqual(String eTag1, String eTag2) {
+        return trimETag(eTag1).equals(trimETag(eTag2));
     }
 }
