@@ -5,7 +5,6 @@
 
 package com.bouncestorage.bounce.admin;
 
-import java.io.IOException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -23,18 +22,15 @@ import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.logging.Logger;
 
-public interface BouncePolicy extends Predicate<StorageMetadata> {
+public interface BouncePolicy {
     enum BounceResult {
         NO_OP,
         COPY,
         MOVE,
+        REMOVE,
+        LINK,
     }
     default void init(BounceService service, Configuration config) {
-    }
-
-    default BounceResult bounce(BounceBlobStore blobStore, String container, BounceStorageMetadata meta) throws
-            IOException {
-        return BounceResult.NO_OP;
     }
 
     void setBlobStores(BlobStore source, BlobStore destination);
@@ -50,7 +46,8 @@ public interface BouncePolicy extends Predicate<StorageMetadata> {
 
     Logger getLogger();
 
-    BounceResult reconcile(String container, BounceStorageMetadata metadata);
+    BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
+            destinationObject);
 
     default PageSet<? extends StorageMetadata> list(String containerName, ListContainerOptions listContainerOptions) {
         PageSet<? extends StorageMetadata> listResults = getSource().list(containerName, listContainerOptions);

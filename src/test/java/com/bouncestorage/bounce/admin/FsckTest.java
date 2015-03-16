@@ -145,7 +145,6 @@ public final class FsckTest {
             private BlobStore farStore;
             private org.jclouds.logging.Logger logger = org.jclouds.logging.Logger.NULL;
 
-            @Override
             public BounceResult bounce(BounceBlobStore bounceBlobStore, String container, BounceStorageMetadata meta)
                     throws
                     IOException {
@@ -162,7 +161,8 @@ public final class FsckTest {
             }
 
             @Override
-            public BounceResult reconcile(String container, BounceStorageMetadata metadata) {
+            public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
+                    destinationObject) {
                 return BounceResult.NO_OP;
             }
 

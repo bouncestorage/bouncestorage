@@ -5,8 +5,6 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
-import org.jclouds.logging.Logger;
-
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 
@@ -15,6 +13,7 @@ import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.PutOptions;
+import org.jclouds.logging.Logger;
 
 public final class BounceNothingPolicy implements BouncePolicy {
     private BlobStore source;
@@ -24,11 +23,6 @@ public final class BounceNothingPolicy implements BouncePolicy {
     public void setBlobStores(BlobStore sourceStore, BlobStore destinationStore) {
         this.source = sourceStore;
         this.destination = destinationStore;
-    }
-
-    @Override
-    public boolean test(StorageMetadata metadata) {
-        return false;
     }
 
     @Override
@@ -42,7 +36,7 @@ public final class BounceNothingPolicy implements BouncePolicy {
     }
 
     @Override
-    public BounceResult reconcile(String container, BounceStorageMetadata metadata) {
+    public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata destinationObject) {
         return BounceResult.NO_OP;
     }
 

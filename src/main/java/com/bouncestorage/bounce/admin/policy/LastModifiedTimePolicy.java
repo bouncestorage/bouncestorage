@@ -10,6 +10,7 @@ import static java.util.Objects.requireNonNull;
 import java.time.Duration;
 import java.time.Instant;
 
+import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
@@ -17,6 +18,7 @@ import com.google.auto.service.AutoService;
 
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.BlobStore;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.logging.Logger;
 
@@ -56,13 +58,42 @@ public final class LastModifiedTimePolicy extends MovePolicy {
     }
 
     @Override
-    public boolean test(StorageMetadata metadata) {
+    public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
+            destinationObject) {
+        if (sourceObject == null) {
+            return Utils.maybeRemoveObject(getDestination(), container, destinationObject);
+        }
+
+        BlobMetadata sourceMeta = getSource().blobMetadata(container, sourceObject.getName());
+        if (BounceLink.isLink(sourceMeta)) {
+            return BounceResult.NO_OP;
+        }
+
+        boolean expired = isObjectExpired(sourceObject);
+        if (destinationObject == null && !expired) {
+            return BounceResult.NO_OP;
+        }
+
+        boolean objectCopied = false;
+        if (destinationObject != null) {
+            BlobMetadata destinationMeta = getDestination().blobMetadata(container, destinationObject.getName());
+            objectCopied = sourceMeta.getETag().equalsIgnoreCase(destinationMeta.getETag());
+        }
+
+        if (expired) {
+            if (objectCopied) {
+                return Utils.createBounceLink(this, sourceMeta);
+            } else {
+                return Utils.copyBlobAndCreateBounceLink(this, container, sourceMeta.getName());
+            }
+        }
+
+        return Utils.maybeRemoveObject(getDestination(), container, destinationObject);
+    }
+
+    private boolean isObjectExpired(StorageMetadata metadata) {
         Instant now = service.getClock().instant();
         Instant then = metadata.getLastModified().toInstant();
         return now.minus(timeAgo).isAfter(then);
-    }
-
-    public BounceResult reconcile(String container, BounceStorageMetadata metadata) {
-        return BounceResult.NO_OP;
     }
 }

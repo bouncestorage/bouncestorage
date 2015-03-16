@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.ExecutorService;
@@ -28,8 +29,11 @@ import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy.BounceResult;
 import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.PeekingIterator;
 
 import org.apache.commons.configuration.event.ConfigurationListener;
+import org.jclouds.blobstore.domain.StorageMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,35 +138,72 @@ public final class BounceService {
 
         @Override
         public void run() {
-            BounceBlobStore bounceStore = app.getBlobStore();
-            BouncePolicy policy = bounceStore.getPolicy();
-            StreamSupport.stream(Utils.crawlBlobStore(bounceStore, container).spliterator(), /*parallel=*/ false)
-                    .peek(x -> status.totalObjectCount.getAndIncrement())
-                    .map(meta -> (BounceStorageMetadata) meta)
-                    .filter(meta -> meta.getRegions() != BounceBlobStore.FAR_ONLY)
-                    .filter(policy)
-                    .forEach(meta -> {
-                        try {
-                            BounceResult res = policy.bounce(bounceStore, container, meta);
-                            switch (res) {
-                                case MOVE:
-                                    status.movedObjectCount.getAndIncrement();
-                                    break;
-                                case COPY:
-                                    status.copiedObjectCount.getAndIncrement();
-                                    break;
-                                case NO_OP:
-                                    break;
-                                default:
-                                    throw new NullPointerException("res is null");
-                            }
-                        } catch (Throwable e) {
-                            logger.error(String.format("could not bounce %s", meta.getName()), e);
-                            status.errorObjectCount.getAndIncrement();
-                        }
-                    });
+            BounceBlobStore store = app.getBlobStore();
+            BouncePolicy policy = store.getPolicy();
+            PeekingIterator<StorageMetadata> destinationIterator = Iterators.peekingIterator(
+                    Utils.crawlBlobStore(policy.getDestination(), container).iterator());
+            PeekingIterator<StorageMetadata> sourceIterator = Iterators.peekingIterator(
+                    Utils.crawlBlobStore(store, container).iterator());
+
+            while (destinationIterator.hasNext() && sourceIterator.hasNext()) {
+                StorageMetadata destinationObject = destinationIterator.peek();
+                BounceStorageMetadata sourceObject = (BounceStorageMetadata) sourceIterator.peek();
+                int compare = destinationObject.getName().compareTo(sourceObject.getName());
+                if (compare == 0) {
+                    // they are the same key
+                    logger.warn("%s != %s", Objects.toString(sourceObject), Objects.toString(destinationObject));
+                    logger.warn("%s != %s", sourceObject.getETag(), destinationObject.getETag());
+                    reconcileObject(sourceObject, destinationObject);
+                    destinationIterator.next();
+                    sourceIterator.next();
+                } else if (compare < 0) {
+                    // near store missing this object
+                    reconcileObject(null, destinationObject);
+                    destinationIterator.next();
+                } else {
+                    // destination store missing this object
+                    reconcileObject(sourceObject, null);
+                    sourceIterator.next();
+                }
+            }
+
+            sourceIterator.forEachRemaining(meta -> reconcileObject(new BounceStorageMetadata(meta, BounceBlobStore
+                    .NEAR_ONLY), null));
+            destinationIterator.forEachRemaining(meta -> reconcileObject(null, meta));
 
             status.endTime = new Date();
+        }
+
+        private void reconcileObject(BounceStorageMetadata source, StorageMetadata destination) {
+            try {
+                adjustCount(app.getBlobStore().getPolicy().reconcileObject(container, source, destination));
+            } catch (Throwable e) {
+                logger.error("Failed to reconcile object %s, %s in %s: %s", source, destination, container,
+                        e.getMessage());
+                status.errorObjectCount.getAndIncrement();
+            }
+            status.totalObjectCount.getAndIncrement();
+        }
+
+        private void adjustCount(BounceResult result) {
+            switch (result) {
+                case MOVE:
+                    status.movedObjectCount.getAndIncrement();
+                    break;
+                case COPY:
+                    status.copiedObjectCount.getAndIncrement();
+                    break;
+                case LINK:
+                    status.linkedObjectCount.getAndIncrement();
+                    break;
+                case REMOVE:
+                    status.removedObjectCount.getAndIncrement();
+                    break;
+                case NO_OP:
+                    break;
+                default:
+                    throw new NullPointerException("Unknown result");
+            }
         }
     }
 
@@ -177,6 +218,8 @@ public final class BounceService {
         final AtomicLong removedObjectCount = new AtomicLong();
         @JsonProperty
         final AtomicLong errorObjectCount = new AtomicLong();
+        @JsonProperty
+        final AtomicLong linkedObjectCount = new AtomicLong();
         @JsonProperty
         final Date startTime;
         @JsonProperty
@@ -211,6 +254,10 @@ public final class BounceService {
 
         public long getErrorObjectCount() {
             return errorObjectCount.get();
+        }
+
+        public long getLinkedObjectCount() {
+            return linkedObjectCount.get();
         }
 
         public Date getStartTime() {

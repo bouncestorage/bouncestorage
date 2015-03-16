@@ -5,11 +5,13 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.google.auto.service.AutoService;
 
 import org.jclouds.blobstore.BlobStore;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.logging.Logger;
 
@@ -43,12 +45,27 @@ public final class MoveEverythingPolicy extends MovePolicy {
     }
 
     @Override
-    public boolean test(StorageMetadata metadata) {
-        return true;
-    }
+    public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
+            destinationObject) {
+        if (sourceObject == null) {
+            return Utils.maybeRemoveObject(getDestination(), container,
+                    destinationObject);
+        }
 
-    @Override
-    public BounceResult reconcile(String container, BounceStorageMetadata metadata) {
-        return null;
+        BlobMetadata sourceMeta = getSource().blobMetadata(container, sourceObject.getName());
+        if (BounceLink.isLink(sourceMeta)) {
+            return BounceResult.NO_OP;
+        }
+
+        if (destinationObject ==  null) {
+            return Utils.copyBlobAndCreateBounceLink(this, container, sourceMeta.getName());
+        }
+
+        BlobMetadata destinationMeta = getDestination().blobMetadata(container, destinationObject.getName());
+        if (destinationMeta.getETag().equalsIgnoreCase(sourceMeta.getETag())) {
+            return Utils.createBounceLink(this, sourceMeta);
+        }
+
+        return Utils.copyBlobAndCreateBounceLink(this, container, sourceMeta.getName());
     }
 }

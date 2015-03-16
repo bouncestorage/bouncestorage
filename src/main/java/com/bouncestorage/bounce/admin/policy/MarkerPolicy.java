@@ -137,4 +137,13 @@ public abstract class MarkerPolicy implements BouncePolicy {
         getSource().putBlob(containerName,
                 getSource().blobBuilder(key + MarkerPolicy.LOG_MARKER_SUFFIX).payload(ByteSource.empty()).build());
     }
+
+    protected final BounceResult maybeRemoveDestinationObject(String container, StorageMetadata object) {
+        if (object == null) {
+            return BounceResult.NO_OP;
+        }
+
+        getDestination().removeBlob(container, object.getName());
+        return BounceResult.REMOVE;
+    }
 }
