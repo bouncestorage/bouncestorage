@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import static java.util.Objects.requireNonNull;
+
 import java.util.TreeMap;
 
 import com.bouncestorage.bounce.BounceBlobStore;
@@ -17,6 +19,7 @@ import com.google.common.collect.PeekingIterator;
 import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.internal.PageSetImpl;
@@ -54,13 +57,13 @@ public abstract class MarkerPolicy extends BouncePolicy {
             StorageMetadata nearMeta = nearPage.next();
             String name = nearMeta.getName();
 
-            logger.debug("found near blob: %s", name);
+            logger.debug("found near blob: {}", name);
             if (MarkerPolicy.isMarkerBlob(name)) {
                 BounceStorageMetadata meta = contents.get(MarkerPolicy.markerBlobGetName(name));
                 if (meta != null) {
                     meta.hasMarkerBlob(true);
                 }
-                logger.debug("skipping marker blob: %s", name);
+                logger.debug("skipping marker blob: {}", name);
                 continue;
             }
 
@@ -73,17 +76,17 @@ public abstract class MarkerPolicy extends BouncePolicy {
                     break;
                 } else {
                     farPage.next();
-                    logger.debug("skipping far blob: %s", farMeta.getName());
+                    logger.debug("skipping far blob: {}", farMeta.getName());
                 }
             }
 
             if (compare == 0) {
                 farPage.next();
-                logger.debug("found far blob with the same name: %s", name);
+                logger.debug("found far blob with the same name: {}", name);
                 boolean nextIsMarker = false;
                 if (nearPage.hasNext()) {
                     StorageMetadata next = nearPage.peek();
-                    logger.debug("next blob: %s", next.getName());
+                    logger.debug("next blob: {}", next.getName());
                     if (next.getName().equals(name + MarkerPolicy.LOG_MARKER_SUFFIX)) {
                         nextIsMarker = true;
                     }
@@ -120,7 +123,7 @@ public abstract class MarkerPolicy extends BouncePolicy {
             StorageMetadata nearMeta = nearPage.next();
             String name = nearMeta.getName();
 
-            logger.debug("found near blob: %s", name);
+            logger.debug("found near blob: {}", name);
             if (MarkerPolicy.isMarkerBlob(name)) {
                 BounceStorageMetadata meta = contents.get(MarkerPolicy.markerBlobGetName(name));
                 if (meta != null) {
@@ -136,5 +139,24 @@ public abstract class MarkerPolicy extends BouncePolicy {
     private void putMarkerBlob(String containerName, String key) {
         getSource().putBlob(containerName,
                 getSource().blobBuilder(key + MarkerPolicy.LOG_MARKER_SUFFIX).payload(ByteSource.empty()).build());
+    }
+
+    protected final BounceResult maybeRemoveDestinationObject(String container, StorageMetadata object) {
+        requireNonNull(object);
+
+        BlobMetadata sourceMeta = getSource().blobMetadata(container, object.getName());
+        BlobMetadata destinationMeta = getDestination().blobMetadata(container, object.getName());
+        if (sourceMeta == null && destinationMeta != null) {
+            getDestination().removeBlob(container, object.getName());
+            return BounceResult.REMOVE;
+        }
+
+        if (sourceMeta != null && destinationMeta != null && !sourceMeta.getETag().equalsIgnoreCase(destinationMeta
+                .getETag())) {
+            getDestination().removeBlob(container, destinationMeta.getName());
+            return BounceResult.REMOVE;
+        }
+
+        return BounceResult.NO_OP;
     }
 }

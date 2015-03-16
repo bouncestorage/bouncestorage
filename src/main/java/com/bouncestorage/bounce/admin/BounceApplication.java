@@ -16,6 +16,7 @@ import java.util.Properties;
 import java.util.function.Consumer;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.inject.CreationException;
@@ -219,7 +220,8 @@ public final class BounceApplication extends Application<BounceConfiguration> {
         }
     }
 
-    void useRandomPorts() {
+    @VisibleForTesting
+    public void useRandomPorts() {
         useRandomPorts = true;
     }
 

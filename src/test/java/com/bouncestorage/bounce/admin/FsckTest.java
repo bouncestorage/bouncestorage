@@ -144,7 +144,6 @@ public final class FsckTest {
             private BlobStore nearStore;
             private BlobStore farStore;
 
-            @Override
             public BounceResult bounce(BounceBlobStore bounceBlobStore, String container, BounceStorageMetadata meta)
                     throws
                     IOException {
@@ -156,8 +155,9 @@ public final class FsckTest {
             }
 
             @Override
-            public boolean test(StorageMetadata metadata) {
-                return r.nextBoolean();
+            public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
+                    destinationObject) {
+                return BounceResult.NO_OP;
             }
 
             @Override

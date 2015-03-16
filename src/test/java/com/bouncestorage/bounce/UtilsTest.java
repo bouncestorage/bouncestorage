@@ -9,9 +9,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.Properties;
 import java.util.Random;
 
+import com.bouncestorage.bounce.admin.BounceService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -236,5 +239,9 @@ public final class UtilsTest {
 
     public static Blob makeBlobRandomSize(BlobStore blobStore, String blobName) throws IOException {
         return makeBlob(blobStore, blobName, ByteSource.wrap(new byte[new Random().nextInt(1000)]));
+    }
+
+    public static void advanceServiceClock(BounceService bounceService, Duration duration) {
+        bounceService.setClock(Clock.offset(bounceService.getClock(), duration));
     }
 }

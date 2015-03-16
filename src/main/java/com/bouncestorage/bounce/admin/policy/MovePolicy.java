@@ -10,7 +10,6 @@ import java.io.IOException;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
-import com.bouncestorage.bounce.Utils;
 import com.google.common.collect.ImmutableSet;
 
 import org.jclouds.blobstore.domain.Blob;
@@ -34,14 +33,11 @@ public abstract class MovePolicy extends MarkerPolicy {
     }
 
     @Override
-    public final BounceResult bounce(BounceBlobStore bounceBlobStore, String container, BounceStorageMetadata meta)
-            throws IOException {
-        return moveBounce(bounceBlobStore, container, meta);
-    }
-
-    @Override
     public final Blob getBlob(String container, String blobName, GetOptions options) {
         BlobMetadata meta = getSource().blobMetadata(container, blobName);
+        if (meta == null) {
+            return null;
+        }
         if (BounceLink.isLink(meta)) {
             Blob blob = getDestination().getBlob(container, blobName, options);
             try {

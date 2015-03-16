@@ -37,4 +37,10 @@ public abstract class NoBouncePolicy extends BouncePolicy {
         return new PageSetImpl<>(listResults.stream().map(m -> new BounceStorageMetadata(m, BounceBlobStore.NEAR_ONLY))
                 .collect(Collectors.toList()), listResults.getNextMarker());
     }
+
+    @Override
+    public final BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
+            destinationObject) {
+        return BounceResult.NO_OP;
+    }
 }
