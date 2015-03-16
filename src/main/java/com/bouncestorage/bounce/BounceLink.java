@@ -42,7 +42,7 @@ public final class BounceLink implements Serializable {
     );
     private MutableBlobMetadata metadata;
 
-    BounceLink(Optional<BlobMetadata> metadata) {
+    public BounceLink(Optional<BlobMetadata> metadata) {
         if (metadata.isPresent()) {
             this.metadata = new MutableBlobMetadataImpl(metadata.get());
         } else {
@@ -71,7 +71,7 @@ public final class BounceLink implements Serializable {
         }
     }
 
-    Blob toBlob(BlobStore store) {
+    public Blob toBlob(BlobStore store) {
         return store.blobBuilder(metadata.getName())
                 .payload(toBlobPayload())
                 .userMetadata(BounceLink.BOUNCE_ATTR)
