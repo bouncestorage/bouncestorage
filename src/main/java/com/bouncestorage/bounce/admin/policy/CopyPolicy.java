@@ -9,16 +9,14 @@ import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.google.auto.service.AutoService;
 
-import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
-import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
+import org.jclouds.blobstore.options.PutOptions;
 
 @AutoService(BouncePolicy.class)
 public final class CopyPolicy extends MarkerPolicy {
@@ -52,37 +50,17 @@ public final class CopyPolicy extends MarkerPolicy {
         if (sourceObject == null) {
             logger.debug("Removing {}: {}", destinationObject.getName(), destinationObject);
             return maybeRemoveDestinationObject(container, destinationObject);
-        } else if (sourceObject.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
-            return BounceResult.NO_OP;
-        } else if (sourceObject.getRegions().equals(BounceBlobStore.EVERYWHERE)) {
-            return BounceResult.NO_OP;
         }
 
-        // At this point, it must be NEAR_ONLY
-        return maybeCopyObject(container, sourceObject);
-    }
-
-    private BounceResult copyObject(BounceStorageMetadata object, String container, BlobStore sourceStore,
-                                    BlobStore destinationStore) {
+        // maybeCopyObject handles the cases of EVERYWHERE, FAR_ONLY, and NEAR_ONLY
         try {
-            Blob blob = Utils.copyBlob(sourceStore, destinationStore, container, container, object.getName());
-            if (blob == null) {
-                return BounceResult.NO_OP;
-            }
-            getSource().removeBlob(container, object.getName() + MarkerPolicy.LOG_MARKER_SUFFIX);
-            return BounceResult.COPY;
+            return maybeCopyObject(container, sourceObject, destinationObject);
         } catch (IOException e) {
             throw propagate(e);
         }
     }
 
-    private BounceResult maybeCopyObject(String container, BounceStorageMetadata sourceObject) {
-        BlobMetadata destinationMeta = getDestination().blobMetadata(container, sourceObject.getName());
-        BlobMetadata sourceMeta = getSource().blobMetadata(container, sourceObject.getName());
-        if ((destinationMeta != null) && destinationMeta.getETag().equalsIgnoreCase(sourceMeta.getETag())) {
-            return BounceResult.NO_OP;
-        }
-
-        return copyObject(sourceObject, container, getSource(), getDestination());
+    @Override
+    public void onPut(String container, Blob blob, PutOptions options) {
     }
 }

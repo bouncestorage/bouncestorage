@@ -28,6 +28,7 @@ import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
+import org.jclouds.blobstore.options.PutOptions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -163,6 +164,11 @@ public final class FsckTest {
             @Override
             public Blob getBlob(String container, String blobName, GetOptions options) {
                 return null;
+            }
+
+            @Override
+            public void onPut(String container, Blob blob, PutOptions options) {
+
             }
         };
 

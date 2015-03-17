@@ -5,13 +5,17 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
-import com.bouncestorage.bounce.BounceBlobStore;
+import static com.google.common.base.Throwables.propagate;
+
+import java.io.IOException;
+
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.google.auto.service.AutoService;
 
-import org.jclouds.blobstore.domain.BlobMetadata;
+import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.PutOptions;
 
 @AutoService(BouncePolicy.class)
 public final class MoveEverythingPolicy extends MovePolicy {
@@ -29,17 +33,16 @@ public final class MoveEverythingPolicy extends MovePolicy {
 
         if (sourceObject == null) {
             return maybeRemoveDestinationObject(container, destinationObject);
-        } else if (sourceObject.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
-            return BounceResult.NO_OP;
         }
 
-        // There two cases lefts: NEAR_ONLY and EVERYWHERE. Check which one it is before we just create a link
-        BlobMetadata sourceMeta = getSource().blobMetadata(container, sourceObject.getName());
-        BlobMetadata destinationMeta = getDestination().blobMetadata(container, sourceObject.getName());
-        if ((destinationMeta != null) && sourceMeta.getETag().equalsIgnoreCase(destinationMeta.getETag())) {
-            return Utils.createBounceLink(this, sourceMeta);
-        } else {
-            return Utils.copyBlobAndCreateBounceLink(this, container, sourceMeta.getName());
+        try {
+            return maybeMoveObject(container, sourceObject, destinationObject);
+        } catch (IOException e) {
+            throw propagate(e);
         }
+    }
+
+    @Override
+    public void onPut(String container, Blob blob, PutOptions options) {
     }
 }

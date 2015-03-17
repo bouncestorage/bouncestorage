@@ -19,8 +19,10 @@ import com.google.auto.service.AutoService;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.commons.configuration.Configuration;
+import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.PutOptions;
 
 @AutoService(BouncePolicy.class)
 public final class LastModifiedTimePolicy extends MovePolicy {
@@ -75,5 +77,10 @@ public final class LastModifiedTimePolicy extends MovePolicy {
         Instant now = service.getClock().instant();
         Instant then = metadata.getLastModified().toInstant();
         return now.minus(timeAgo).isAfter(then);
+    }
+
+    @Override
+    public void onPut(String container, Blob blob, PutOptions options) {
+        return;
     }
 }
