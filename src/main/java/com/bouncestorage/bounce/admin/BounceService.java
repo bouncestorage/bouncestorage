@@ -69,16 +69,6 @@ public final class BounceService {
         return status;
     }
 
-    synchronized BounceTaskStatus fsck(String container) {
-        BounceTaskStatus status = bounceStatus.get(container);
-        if (status == null || status.done()) {
-            status = new BounceTaskStatus();
-            status.future = executor.submit(new FsckTask(app.getBlobStore(), container, status));
-            bounceStatus.put(container, status);
-        }
-        return status;
-    }
-
     synchronized BounceTaskStatus status(String container) {
         return bounceStatus.get(container);
     }

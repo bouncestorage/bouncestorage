@@ -20,21 +20,6 @@ import org.jclouds.blobstore.options.PutOptions;
 
 @AutoService(BouncePolicy.class)
 public final class CopyPolicy extends MarkerPolicy {
-    public static BounceResult copyBounce(BounceBlobStore blobStore, String container, BounceStorageMetadata meta)
-            throws IOException {
-        if (meta.getRegions().contains(BounceBlobStore.Region.FAR) || !meta.hasMarkerBlob()) {
-            return BounceResult.NO_OP;
-        }
-
-        Blob b = blobStore.copyBlob(container, meta.getName());
-        if (b == null) {
-            return BounceResult.NO_OP;
-        } else {
-            blobStore.removeBlob(container, meta.getName() + MarkerPolicy.LOG_MARKER_SUFFIX);
-        }
-        return BounceResult.COPY;
-    }
-
     @Override
     public Blob getBlob(String container, String blobName, GetOptions options) {
         return getSource().getBlob(container, blobName, options);

@@ -20,7 +20,6 @@ import javax.annotation.Resource;
 import javax.inject.Inject;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.FsckTask;
 import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
 import com.bouncestorage.bounce.admin.policy.MarkerPolicy;
 import com.google.common.annotations.VisibleForTesting;
@@ -153,35 +152,6 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public PageSet<? extends StorageMetadata> list(String containerName, ListContainerOptions listContainerOptions) {
         return policy.list(containerName, listContainerOptions);
-    }
-
-    private FsckTask.Result maybeRemoveStaleFarBlob(String container, String key) {
-        BlobMetadata near = policy.getSource().blobMetadata(container, key);
-        BlobMetadata far = policy.getDestination().blobMetadata(container, key);
-
-        if ((near == null || !BounceLink.isLink(near)) &&
-                (far != null && (near == null || !Utils.eTagsEqual(near.getETag(), far.getETag())))) {
-            policy.getDestination().removeBlob(container, key);
-            return FsckTask.Result.REMOVED;
-        }
-
-        return FsckTask.Result.NO_OP;
-    }
-
-    // TODO: this assumes during reconciliation the blob store is not modified
-    public FsckTask.Result reconcileObject(String container, BounceStorageMetadata user, StorageMetadata far) {
-        String s = user != null ? user.getName() : far.getName();
-        if (user != null) {
-            logger.debug("reconciling %s regions=%s %s %s", s, user.getRegions(), user, far);
-            if (user.getRegions() == NEAR_ONLY && far != null) {
-                return maybeRemoveStaleFarBlob(container, s);
-            }
-        } else {
-            // we have a blob that's only in far store but nothing (not even link) in near store
-            return maybeRemoveStaleFarBlob(container, s);
-        }
-
-        return FsckTask.Result.NO_OP;
     }
 
     @Override
