@@ -34,10 +34,18 @@ public final class BounceBlobsResource {
     @Timed
     public BounceService.BounceTaskStatus bounceBlobs(
             @QueryParam("name") String name,
-            @QueryParam("wait") Optional<Boolean> wait)
+            @QueryParam("wait") Optional<Boolean> wait,
+            @QueryParam("abort") Optional<Boolean> abortParam)
             throws ExecutionException, InterruptedException {
         BounceService service = app.getBounceService();
-        BounceService.BounceTaskStatus status = service.bounce(name);
+        boolean abort = abortParam.or(false);
+        BounceService.BounceTaskStatus status = abort ? service.status(name) : service.bounce(name);
+        if (status == null) {
+            return null;
+        }
+        if (abort) {
+            status.abort();
+        }
         if (wait.or(false)) {
             status.future().get();
         }
