@@ -10,6 +10,7 @@ import static java.util.Objects.requireNonNull;
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
@@ -431,9 +432,9 @@ public final class BounceBlobStore implements BlobStore {
 
     public void updateBlobMetadata(String containerName, String blobName, Map<String, String> userMetadata) {
         Blob blob = getBlob(containerName, blobName);
-        Map<String, String> metadata = blob.getMetadata().getUserMetadata();
-        metadata.putAll(userMetadata);
-        blob.getMetadata().setUserMetadata(metadata);
+        Map<String, String> allMetadata = new HashMap<>(blob.getMetadata().getUserMetadata());
+        allMetadata.putAll(userMetadata);
+        blob.getMetadata().setUserMetadata(allMetadata);
         nearStore.putBlob(containerName, blob);
     }
 
