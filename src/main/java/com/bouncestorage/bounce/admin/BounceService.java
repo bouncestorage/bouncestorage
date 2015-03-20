@@ -135,29 +135,34 @@ public final class BounceService {
             PeekingIterator<StorageMetadata> sourceIterator = Iterators.peekingIterator(
                     Utils.crawlBlobStore(store, container).iterator());
 
-            while (destinationIterator.hasNext() && sourceIterator.hasNext()) {
-                StorageMetadata destinationObject = destinationIterator.peek();
-                BounceStorageMetadata sourceObject = (BounceStorageMetadata) sourceIterator.peek();
+            StorageMetadata destinationObject = Utils.getNextOrNull(destinationIterator);
+            BounceStorageMetadata sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
+            while (destinationObject != null || sourceObject != null) {
+                if (destinationObject == null) {
+                    reconcileObject(sourceObject, null);
+                    sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
+                    continue;
+                } else if (sourceObject == null) {
+                    reconcileObject(null, destinationObject);
+                    destinationObject = Utils.getNextOrNull(destinationIterator);
+                    continue;
+                }
                 int compare = destinationObject.getName().compareTo(sourceObject.getName());
                 if (compare == 0) {
                     // they are the same key
                     reconcileObject(sourceObject, destinationObject);
-                    destinationIterator.next();
-                    sourceIterator.next();
+                    destinationObject = Utils.getNextOrNull(destinationIterator);
+                    sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
                 } else if (compare < 0) {
                     // near store missing this object
                     reconcileObject(null, destinationObject);
-                    destinationIterator.next();
+                    destinationObject = Utils.getNextOrNull(destinationIterator);
                 } else {
                     // destination store missing this object
                     reconcileObject(sourceObject, null);
-                    sourceIterator.next();
+                    sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
                 }
             }
-
-            sourceIterator.forEachRemaining(meta -> reconcileObject(new BounceStorageMetadata(meta, BounceBlobStore
-                    .NEAR_ONLY), null));
-            destinationIterator.forEachRemaining(meta -> reconcileObject(null, meta));
 
             status.endTime = new Date();
         }
