@@ -124,6 +124,9 @@ public final class BounceService {
         this.clock = clock;
     }
 
+    static class AbortedException extends RuntimeException {
+    }
+
     class BounceTask implements Runnable {
         private String container;
         private BounceTaskStatus status;
@@ -136,32 +139,38 @@ public final class BounceService {
         @Override
         public void run() {
             BounceBlobStore bounceStore = app.getBlobStore();
-            StreamSupport.stream(Utils.crawlBlobStore(bounceStore, container).spliterator(), /*parallel=*/ false)
-                    .peek(x -> status.totalObjectCount.getAndIncrement())
-                    .map(meta -> (BounceStorageMetadata) meta)
-                    .filter(meta -> meta.getRegions() != BounceBlobStore.FAR_ONLY)
-                    .filter(bouncePolicy)
-                    .forEach(meta -> {
-                        try {
-                            BounceResult res = bouncePolicy.bounce(bounceStore, container, meta);
-                            switch (res) {
-                                case MOVE:
-                                    status.movedObjectCount.getAndIncrement();
-                                    break;
-                                case COPY:
-                                    status.copiedObjectCount.getAndIncrement();
-                                    break;
-                                case NO_OP:
-                                    break;
-                                default:
-                                    throw new NullPointerException("res is null");
+            try {
+                StreamSupport.stream(Utils.crawlBlobStore(bounceStore, container).spliterator(), /*parallel=*/ false)
+                        .peek(x -> status.totalObjectCount.getAndIncrement())
+                        .map(meta -> (BounceStorageMetadata) meta)
+                        .filter(meta -> meta.getRegions() != BounceBlobStore.FAR_ONLY)
+                        .filter(bouncePolicy)
+                        .forEach(meta -> {
+                            if (status.aborted) {
+                                throw new AbortedException();
                             }
-                        } catch (Throwable e) {
-                            logger.error(String.format("could not bounce %s", meta.getName()), e);
-                            status.errorObjectCount.getAndIncrement();
-                        }
-                    });
-
+                            try {
+                                BounceResult res = bouncePolicy.bounce(bounceStore, container, meta);
+                                switch (res) {
+                                    case MOVE:
+                                        status.movedObjectCount.getAndIncrement();
+                                        break;
+                                    case COPY:
+                                        status.copiedObjectCount.getAndIncrement();
+                                        break;
+                                    case NO_OP:
+                                        break;
+                                    default:
+                                        throw new NullPointerException("res is null");
+                                }
+                            } catch (Throwable e) {
+                                logger.error(String.format("could not bounce %s", meta.getName()), e);
+                                status.errorObjectCount.getAndIncrement();
+                            }
+                        });
+            } catch (AbortedException e) {
+                status.aborted = true;
+            }
             status.endTime = new Date();
         }
     }
@@ -181,6 +190,8 @@ public final class BounceService {
         final Date startTime;
         @JsonProperty
         volatile Date endTime;
+        @JsonProperty
+        volatile boolean aborted;
 
         private Future<?> future;
 
@@ -223,6 +234,10 @@ public final class BounceService {
             } else {
                 return null;
             }
+        }
+
+        public void abort() {
+            aborted = true;
         }
     }
 }

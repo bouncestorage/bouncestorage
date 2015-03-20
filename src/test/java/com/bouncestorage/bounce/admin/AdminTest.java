@@ -99,7 +99,7 @@ public final class AdminTest {
                 new ContainerStats(ImmutableList.of(blobName), 0));
 
         BounceBlobsResource bounceBlobsResource = new BounceBlobsResource(app);
-        bounceBlobsResource.bounceBlobs(containerName, Optional.of(Boolean.TRUE));
+        bounceBlobsResource.bounceBlobs(containerName, Optional.of(Boolean.TRUE), Optional.absent());
 
         stats = containerResource.getContainerStats(containerName);
         assertThat(stats).isEqualToComparingFieldByField(
@@ -113,5 +113,23 @@ public final class AdminTest {
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
         assertThat(status.future().isDone()).isTrue();
+    }
+
+    @Test
+    public void testBounceAbort() throws Exception {
+        String blobName = "blob";
+        ByteSource byteSource = ByteSource.wrap(new byte[0]);
+        Blob blob = bounceBlobStore.blobBuilder(blobName)
+                .payload(byteSource)
+                .contentLength(byteSource.size())
+                .build();
+        bounceBlobStore.putBlob(containerName, blob);
+
+        BounceBlobsResource bounceBlobsResource = new BounceBlobsResource(app);
+        BounceService.BounceTaskStatus status = bounceBlobsResource.bounceBlobs(containerName, Optional.absent(), Optional.absent());
+        assertThat(status.aborted).isFalse();
+
+        status = bounceBlobsResource.bounceBlobs(containerName, Optional.absent(), Optional.of(true));
+        assertThat(status.aborted).isTrue();
     }
 }
