@@ -459,7 +459,7 @@ public final class BounceBlobStore implements BlobStore {
         PageSet<? extends StorageMetadata> res = farStore.list(containerName);
         for (StorageMetadata sm : res) {
             BlobMetadata meta = blobMetadata(containerName, sm.getName());
-            if (!Utils.equals(sm, meta)) {
+            if (!Utils.equalsOtherThanTime(sm, meta)) {
                 return false;
             }
         }

@@ -92,12 +92,13 @@ def setup_code():
     git_clone(DOCKER_SWIFT_REPO, DOCKER_SWIFT_DIR)
     execute("cd ~/%s && sudo docker build -t pbinkley/docker-swift ." % DOCKER_SWIFT_DIR)
 
-def start_docker_swift():
-    cwd = os.getcwd()
-    execute("cd %s && sudo rm -Rf *" % SWIFT_DATA_DIR)
-    os.chdir(cwd)
-    execute("sudo mkdir -p %s" % SWIFT_DATA_DIR)
-    container = execute("sudo docker run -d -P -v /path/to/data:/swift/nodes -t pbinkley/docker-swift")
+def start_docker_swift(datadir):
+    if os.path.exists(datadir):
+        cwd = os.getcwd()
+        execute("cd %s && sudo rm -Rf *" % datadir)
+        os.chdir(cwd)
+    execute("sudo mkdir -p %s" % datadir)
+    container = execute("sudo docker run -d -P -v %s:/swift/nodes -t pbinkley/docker-swift" % datadir)
     port = execute("sudo docker inspect --format '{{ (index (index .NetworkSettings.Ports \"8080/tcp\") 0).HostPort }}' %s" % container)
     return (container, port)
 
@@ -181,7 +182,8 @@ def main():
         sys.stdout = log
         creds = get_s3_creds()
 
-    container = None
+    saio_near_container = None
+    saio_far_container = None
     exception = None
     try:
         if ec2:
@@ -195,9 +197,16 @@ def main():
             if len(sys.argv) > 2:
                 test = sys.argv[2]
 
-        container, swift_port = start_docker_swift()
+        saio_near_container, swift_near_port = start_docker_swift(SWIFT_DATA_DIR + "-near")
+        saio_far_container, swift_far_port = start_docker_swift(SWIFT_DATA_DIR + "-far")
+        all_creds += [ { "provider" : "openstack-swift",
+                         "identity" : "test:tester",
+                         "credential" : "testing",
+                         "keystone.credential-type" : "tempAuthCredentials",
+                         "endpoint" : "http://127.0.0.1:%s/auth/v1.0/" % swift_far_port } ]
+
         for provider in all_creds:
-            run_test(provider, swift_port, test)
+            run_test(provider, swift_near_port, test)
     except TestException as e:
         exception = e
         if not ec2:
@@ -205,9 +214,12 @@ def main():
     except:
         pass
 
-    if container is not None:
-        execute("sudo docker kill %s" % container)
-        execute("sudo docker rm %s" % container)
+    if saio_near_container is not None:
+        execute("sudo docker kill %s" % saio_near_container)
+        execute("sudo docker rm %s" % saio_near_container)
+    if saio_far_container is not None:
+        execute("sudo docker kill %s" % saio_far_container)
+        execute("sudo docker rm %s" % saio_far_container)
 
     if ec2:
         log.close()
