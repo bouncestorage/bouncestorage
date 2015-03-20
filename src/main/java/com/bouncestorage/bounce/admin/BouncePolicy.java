@@ -6,6 +6,7 @@
 package com.bouncestorage.bounce.admin;
 
 import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.google.common.collect.ImmutableSet;
 
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.BlobStore;
@@ -57,4 +58,6 @@ public abstract class BouncePolicy {
 
     public abstract PageSet<? extends StorageMetadata> list(String containerName, ListContainerOptions
                 listContainerOptions);
+
+    public abstract ImmutableSet<BlobStore> getCheckedStores();
 }

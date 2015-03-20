@@ -10,7 +10,9 @@ import java.util.stream.Collectors;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.google.common.collect.ImmutableSet;
 
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
@@ -42,5 +44,10 @@ public abstract class NoBouncePolicy extends BouncePolicy {
     public final BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject) {
         return BounceResult.NO_OP;
+    }
+
+    @Override
+    public final ImmutableSet<BlobStore> getCheckedStores() {
+        return ImmutableSet.of(getSource());
     }
 }

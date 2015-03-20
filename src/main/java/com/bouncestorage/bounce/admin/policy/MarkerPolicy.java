@@ -15,10 +15,12 @@ import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
 import com.google.common.io.ByteSource;
 
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.PageSet;
@@ -139,6 +141,11 @@ public abstract class MarkerPolicy extends BouncePolicy {
 
         return new PageSetImpl<>(contents.values(),
                 nearPage.hasNext() ? nearPage.next().getName() : null);
+    }
+
+    @Override
+    public final ImmutableSet<BlobStore> getCheckedStores() {
+        return ImmutableSet.of(getSource());
     }
 
     private void putMarkerBlob(String containerName, String key) {
