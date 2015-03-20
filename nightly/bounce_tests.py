@@ -33,10 +33,15 @@ META_URL = "http://169.254.169.254/latest/meta-data/iam/"\
 BOUNCE_REPO = "git@github.com:bouncestorage/bouncestorage.git"
 BOUNCE_SRC_DIR = "bouncestorage"
 
+DOCKER_SWIFT_REPO = "https://github.com/kahing/docker-swift"
+DOCKER_SWIFT_DIR = "docker-swift"
+SWIFT_DATA_DIR = "/tmp/docker-swift"
+
 ACCESS_KEY_FIELD = 'AccessKeyId'
 SECRET_FIELD = 'SecretAccessKey'
 
-BLOBSTORE_PROPERTY_PREFIX = 'bounce.store.properties.2.jclouds'
+BLOBSTORE_1_PROPERTY_PREFIX = 'bounce.store.properties.1.jclouds'
+BLOBSTORE_2_PROPERTY_PREFIX = 'bounce.store.properties.2.jclouds'
 
 SSH_KEY_NAME = "/home/admin/.ssh/id_rsa"
 
@@ -63,10 +68,18 @@ class Creds(object):
 
 def execute(command):
     try:
-        out = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True)
+        out = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True).rstrip()
         print out
+        return out
     except subprocess.CalledProcessError as e:
         raise TestException(e.output)
+
+def git_clone(repo, directory):
+    if os.path.exists(directory):
+        execute("cd ~/%s && git pull" % directory)
+    else:
+        execute("echo \"StrictHostKeyChecking\tno\" | tee -a ~/.ssh/config")
+        execute("cd ~ && git clone %s %s" % (repo, directory))
 
 def setup_code():
     with open(APT_SOURCES) as f:
@@ -74,12 +87,19 @@ def setup_code():
             execute("echo \"%s\"| sudo tee -a %s" % (UNSTABLE_REPO, APT_SOURCES))
 
     execute("sudo apt-get update")
-    execute("sudo apt-get install -y openjdk-8-jdk git maven fortune cowsay")
-    if os.path.exists(BOUNCE_SRC_DIR):
-        execute("cd ~/%s && git pull" % BOUNCE_SRC_DIR)
-    else:
-        execute("echo \"StrictHostKeyChecking\tno\" | tee -a ~/.ssh/config")
-        execute("cd ~ && git clone %s %s" % (BOUNCE_REPO, BOUNCE_SRC_DIR))
+    execute("sudo apt-get install -y openjdk-8-jdk git maven fortune cowsay docker.io")
+    git_clone(BOUNCE_REPO, BOUNCE_SRC_DIR)
+    git_clone(DOCKER_SWIFT_REPO, DOCKER_SWIFT_DIR)
+    execute("cd ~/%s && sudo docker build -t pbinkley/docker-swift ." % DOCKER_SWIFT_DIR)
+
+def start_docker_swift():
+    cwd = os.getcwd()
+    execute("cd %s && sudo rm -Rf *" % SWIFT_DATA_DIR)
+    os.chdir(cwd)
+    execute("sudo mkdir -p %s" % SWIFT_DATA_DIR)
+    container = execute("sudo docker run -d -P -v /path/to/data:/swift/nodes -t pbinkley/docker-swift")
+    port = execute("sudo docker inspect --format '{{ (index (index .NetworkSettings.Ports \"8080/tcp\") 0).HostPort }}' %s" % container)
+    return (container, port)
 
 def get_file_dir():
     return os.path.dirname(os.path.realpath(__file__))
@@ -119,13 +139,18 @@ def get_all_blobstore_credentials(creds):
 def get_all_blobstore_from_argv():
     return json.load(open(sys.argv[1]))
 
-def get_java_properties(provider_details):
-    return ' '.join(map(lambda pair: "-D%s.%s=%s" % (BLOBSTORE_PROPERTY_PREFIX,
-                    pair[0], pair[1]), provider_details.items()))
+def get_java_properties(provider_details, swift_port):
+    return ' '.join(map(lambda pair: "-D%s.%s=%s" % (BLOBSTORE_2_PROPERTY_PREFIX,
+                                                     pair[0], pair[1]), provider_details.items()) +
+                    map(lambda key: "-D%s%s" % (BLOBSTORE_1_PROPERTY_PREFIX, key), get_swift_properties(swift_port)))
 
-def run_test(provider_details, test="all"):
+def get_swift_properties(swift_port):
+    return [ ".provider=openstack-swift", ".endpoint=http://127.0.0.1:%s/auth/v1.0/" % swift_port,
+             ".identity=test:tester", ".credential=testing", ".keystone.credential-type=tempAuthCredentials" ]
+
+def run_test(provider_details, swift_port, test="all"):
     print "Testing %s" % provider_details['provider']
-    java_properties = get_java_properties(provider_details)
+    java_properties = get_java_properties(provider_details, swift_port)
     command = "/usr/bin/mvn %s" % (java_properties)
     if test != "all":
         command += " -Dtest=" + test
@@ -150,11 +175,13 @@ def main():
     ec2 = len(sys.argv) == 1
     test = "all"
 
+
     if ec2:
-        creds = get_s3_creds()
         log = open(OUTPUT_LOG, 'w')
         sys.stdout = log
+        creds = get_s3_creds()
 
+    container = None
     exception = None
     try:
         if ec2:
@@ -168,10 +195,19 @@ def main():
             if len(sys.argv) > 2:
                 test = sys.argv[2]
 
+        container, swift_port = start_docker_swift()
         for provider in all_creds:
-            run_test(provider, test)
+            run_test(provider, swift_port, test)
     except TestException as e:
         exception = e
+        if not ec2:
+            print e
+    except:
+        pass
+
+    if container is not None:
+        execute("sudo docker kill %s" % container)
+        execute("sudo docker rm %s" % container)
 
     if ec2:
         log.close()
