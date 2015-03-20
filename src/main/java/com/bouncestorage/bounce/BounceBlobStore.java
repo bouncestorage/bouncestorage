@@ -50,7 +50,7 @@ public final class BounceBlobStore implements BlobStore {
     public static final String STORE_PROPERTY_1 = "bounce.store.properties.1";
     public static final String STORE_PROPERTY_2 = "bounce.store.properties.2";
 
-    public static final String LOG_MARKER_SUFFIX = "%01log";
+    public static final String LOG_MARKER_SUFFIX = "\u0001log";
 
     public enum Region {
         NEAR,
