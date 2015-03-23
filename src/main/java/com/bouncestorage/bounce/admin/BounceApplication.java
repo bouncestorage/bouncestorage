@@ -53,14 +53,13 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     private BounceBlobStore blobStore;
     private final List<Consumer<BlobStoreContext>> blobStoreListeners =
             new ArrayList<>();
-    private final BounceService bounceService;
+    private BounceService bounceService;
     private int port = -1;
     private boolean useRandomPorts;
     private S3Proxy s3Proxy;
 
     public BounceApplication(AbstractConfiguration config) {
         this.config = requireNonNull(config);
-        this.bounceService = new BounceService(this);
         this.configView = new ConfigurationPropertiesView(config);
 
         config.addConfigurationListener(evt -> {
@@ -111,7 +110,6 @@ public final class BounceApplication extends Application<BounceConfiguration> {
                 throw propagate(e);
             }
         });
-        config.addConfigurationListener(bounceService.getConfigurationListener());
     }
 
     private boolean isConfigValid() {
@@ -141,7 +139,11 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     }
 
     public void useBlobStore(BounceBlobStore bounceBlobStore) {
-        this.blobStore = bounceBlobStore;
+        blobStore = bounceBlobStore;
+        if (bounceService == null) {
+            bounceService = new BounceService(this);
+            config.addConfigurationListener(bounceService.getConfigurationListener());
+        }
     }
 
     public AbstractConfiguration getConfiguration() {
