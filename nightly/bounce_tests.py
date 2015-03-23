@@ -33,7 +33,7 @@ META_URL = "http://169.254.169.254/latest/meta-data/iam/"\
 BOUNCE_REPO = "git@github.com:bouncestorage/bouncestorage.git"
 BOUNCE_SRC_DIR = "bouncestorage"
 
-DOCKER_SWIFT_REPO = "https://github.com/kahing/docker-swift"
+DOCKER_SWIFT_REPO = "https://github.com/ualbertalib/docker-swift"
 DOCKER_SWIFT_DIR = "docker-swift"
 SWIFT_DATA_DIR = "/tmp/docker-swift"
 

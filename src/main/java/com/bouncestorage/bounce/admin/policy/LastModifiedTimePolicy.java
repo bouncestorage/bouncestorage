@@ -24,6 +24,7 @@ public final class LastModifiedTimePolicy extends MovePolicy {
     private Duration timeAgo;
 
     public void init(BounceService inService, Configuration config) {
+        config.getKeys().forEachRemaining(s -> logger.info("policy: {} = {}", s, config.getString(s)));
         this.service = requireNonNull(inService);
         this.timeAgo = requireNonNull(Duration.parse(config.getString(DURATION)));
     }
