@@ -2,8 +2,10 @@
 
 import boto
 import boto.ses
+import hashlib
 import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -32,6 +34,7 @@ META_URL = "http://169.254.169.254/latest/meta-data/iam/"\
 
 BOUNCE_REPO = "git@github.com:bouncestorage/bouncestorage.git"
 BOUNCE_SRC_DIR = "bouncestorage"
+BOUNCE_NIGHTLY_TEST_NAME = "nightly/bounce_tests.py"
 
 DOCKER_SWIFT_REPO = "https://github.com/ualbertalib/docker-swift"
 DOCKER_SWIFT_DIR = "docker-swift"
@@ -89,6 +92,8 @@ def setup_code():
     execute("sudo apt-get update")
     execute("sudo apt-get install -y openjdk-8-jdk git maven fortune cowsay docker.io")
     git_clone(BOUNCE_REPO, BOUNCE_SRC_DIR)
+
+def setup_swift():
     git_clone(DOCKER_SWIFT_REPO, DOCKER_SWIFT_DIR)
     execute("cd ~/%s && sudo docker build -t pbinkley/docker-swift ." % DOCKER_SWIFT_DIR)
 
@@ -172,10 +177,23 @@ def notify_success(creds):
         message += log_file.read()
     send_email(creds, "Nightly passed", message)
 
+def hash_file(filename):
+    with open(filename, 'rb') as f:
+        return hashlib.md5(f.read()).digest()
+
+def maybe_update(log):
+    updated_file = os.path.join(os.getcwd(), BOUNCE_SRC_DIR,
+        BOUNCE_NIGHTLY_TEST_NAME)
+    current_file = sys.argv[0]
+    if hash_file(current_file) != hash_file(updated_file):
+        print "Updating the test file"
+        shutil.copyfile(updated_file, current_file)
+        log.close()
+        os.execlp("env", "env", "python", current_file)
+
 def main():
     ec2 = len(sys.argv) == 1
     test = "all"
-
 
     if ec2:
         log = open(OUTPUT_LOG, 'w')
@@ -189,9 +207,11 @@ def main():
         if ec2:
             setup_github_key(creds)
             setup_code()
+            maybe_update(log)
 
             all_creds = get_all_blobstore_credentials(creds)
             os.chdir(BOUNCE_SRC_DIR)
+            setup_swift()
         else:
             all_creds = get_all_blobstore_from_argv()
             if len(sys.argv) > 2:
@@ -207,12 +227,10 @@ def main():
 
         for provider in all_creds:
             run_test(provider, swift_near_port, test)
-    except TestException as e:
-        exception = e
+    except:
+        exception = sys.exc_info()[0]
         if not ec2:
             print e
-    except:
-        pass
 
     if saio_near_container is not None:
         execute("sudo docker kill %s" % saio_near_container)
