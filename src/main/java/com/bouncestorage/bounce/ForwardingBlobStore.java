@@ -5,7 +5,7 @@
 
 package com.bouncestorage.bounce;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
 
 import java.util.Set;
 
@@ -31,7 +31,7 @@ public abstract class ForwardingBlobStore extends ForwardingObject
     private final BlobStore blobStore;
 
     public ForwardingBlobStore(BlobStore blobStore) {
-        this.blobStore = checkNotNull(blobStore);
+        this.blobStore = requireNonNull(blobStore);
     }
 
     protected BlobStore delegate() {
