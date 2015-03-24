@@ -286,12 +286,13 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
 
     @Override
     public void initialize(Bootstrap<BounceDropWizardConfiguration> bootstrap) {
-        bootstrap.addBundle(new AssetsBundle());
+        bootstrap.addBundle(new AssetsBundle("/assets", "/", "index.html"));
         bootstrap.setConfigurationSourceProvider(new UrlConfigurationSourceProvider());
     }
 
     @Override
     public void run(BounceDropWizardConfiguration configuration, Environment environment) {
+        environment.jersey().setUrlPattern("/api/*");
         environment.jersey().register(new ServiceResource(this));
         environment.jersey().register(new ContainerResource(this));
         environment.jersey().register(new BounceBlobsResource(this));
