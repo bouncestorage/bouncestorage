@@ -28,8 +28,12 @@ import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy.BounceResult;
 import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.PeekingIterator;
 
 import org.apache.commons.configuration.event.ConfigurationListener;
+import org.jclouds.blobstore.domain.StorageMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,23 +58,12 @@ public final class BounceService {
         }
     }
 
-    synchronized BounceTaskStatus bounce(String container) {
+    @VisibleForTesting
+    public synchronized BounceTaskStatus bounce(String container) {
         BounceTaskStatus status = bounceStatus.get(container);
         if (status == null || status.done()) {
             status = new BounceTaskStatus();
-            Future<?> future = executor.submit(new BounceTask(container, status));
-            status.future = future;
-            bounceStatus.put(container, status);
-        }
-        return status;
-    }
-
-    synchronized BounceTaskStatus fsck(String container) {
-        BounceTaskStatus status = bounceStatus.get(container);
-        if (status == null || status.done()) {
-            status = new BounceTaskStatus();
-            Future<?> future = executor.submit(new FsckTask(app.getBlobStore(), container, status));
-            status.future = future;
+            status.future = executor.submit(new BounceTask(container, status));
             bounceStatus.put(container, status);
         }
         return status;
@@ -119,7 +112,8 @@ public final class BounceService {
         return clock;
     }
 
-    void setClock(Clock clock) {
+    @VisibleForTesting
+    public void setClock(Clock clock) {
         this.clock = clock;
     }
 
@@ -137,41 +131,75 @@ public final class BounceService {
 
         @Override
         public void run() {
-            BounceBlobStore bounceStore = app.getBlobStore();
-            BouncePolicy policy = bounceStore.getPolicy();
-            try {
-                StreamSupport.stream(Utils.crawlBlobStore(bounceStore, container).spliterator(), /*parallel=*/ false)
-                        .peek(x -> status.totalObjectCount.getAndIncrement())
-                        .map(meta -> (BounceStorageMetadata) meta)
-                        .filter(meta -> meta.getRegions() != BounceBlobStore.FAR_ONLY)
-                        .filter(policy)
-                        .forEach(meta -> {
-                            if (status.aborted) {
-                                throw new AbortedException();
-                            }
-                            try {
-                                BounceResult res = policy.bounce(bounceStore, container, meta);
-                                switch (res) {
-                                    case MOVE:
-                                        status.movedObjectCount.getAndIncrement();
-                                        break;
-                                    case COPY:
-                                        status.copiedObjectCount.getAndIncrement();
-                                        break;
-                                    case NO_OP:
-                                        break;
-                                    default:
-                                        throw new NullPointerException("res is null");
-                                }
-                            } catch (Throwable e) {
-                                logger.error(String.format("could not bounce %s", meta.getName()), e);
-                                status.errorObjectCount.getAndIncrement();
-                            }
-                        });
-            } catch (AbortedException e) {
-                status.aborted = true;
+            BounceBlobStore store = app.getBlobStore();
+            BouncePolicy policy = store.getPolicy();
+            PeekingIterator<StorageMetadata> destinationIterator = Iterators.peekingIterator(
+                    Utils.crawlBlobStore(policy.getDestination(), container).iterator());
+            PeekingIterator<StorageMetadata> sourceIterator = Iterators.peekingIterator(
+                    Utils.crawlBlobStore(store, container).iterator());
+
+            StorageMetadata destinationObject = Utils.getNextOrNull(destinationIterator);
+            BounceStorageMetadata sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
+            while (destinationObject != null || sourceObject != null) {
+                if (destinationObject == null) {
+                    reconcileObject(sourceObject, null);
+                    sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
+                    continue;
+                } else if (sourceObject == null) {
+                    reconcileObject(null, destinationObject);
+                    destinationObject = Utils.getNextOrNull(destinationIterator);
+                    continue;
+                }
+                int compare = destinationObject.getName().compareTo(sourceObject.getName());
+                if (compare == 0) {
+                    // they are the same key
+                    reconcileObject(sourceObject, destinationObject);
+                    destinationObject = Utils.getNextOrNull(destinationIterator);
+                    sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
+                } else if (compare < 0) {
+                    // near store missing this object
+                    reconcileObject(null, destinationObject);
+                    destinationObject = Utils.getNextOrNull(destinationIterator);
+                } else {
+                    // destination store missing this object
+                    reconcileObject(sourceObject, null);
+                    sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
+                }
             }
+
             status.endTime = new Date();
+        }
+
+        private void reconcileObject(BounceStorageMetadata source, StorageMetadata destination) {
+            try {
+                adjustCount(app.getBlobStore().getPolicy().reconcileObject(container, source, destination));
+            } catch (Throwable e) {
+                logger.error("Failed to reconcile object {}, {} in {}: {}", source, destination, container,
+                        e.getMessage());
+                status.errorObjectCount.getAndIncrement();
+            }
+            status.totalObjectCount.getAndIncrement();
+        }
+
+        private void adjustCount(BounceResult result) {
+            switch (result) {
+                case MOVE:
+                    status.movedObjectCount.getAndIncrement();
+                    break;
+                case COPY:
+                    status.copiedObjectCount.getAndIncrement();
+                    break;
+                case LINK:
+                    status.linkedObjectCount.getAndIncrement();
+                    break;
+                case REMOVE:
+                    status.removedObjectCount.getAndIncrement();
+                    break;
+                case NO_OP:
+                    break;
+                default:
+                    throw new IllegalStateException("Unknown state: " + result);
+            }
         }
     }
 
@@ -186,6 +214,8 @@ public final class BounceService {
         final AtomicLong removedObjectCount = new AtomicLong();
         @JsonProperty
         final AtomicLong errorObjectCount = new AtomicLong();
+        @JsonProperty
+        final AtomicLong linkedObjectCount = new AtomicLong();
         @JsonProperty
         final Date startTime;
         @JsonProperty
@@ -222,6 +252,14 @@ public final class BounceService {
 
         public long getErrorObjectCount() {
             return errorObjectCount.get();
+        }
+
+        public long getLinkedObjectCount() {
+            return linkedObjectCount.get();
+        }
+
+        public long getRemovedObjectCount() {
+            return removedObjectCount.get();
         }
 
         public Date getStartTime() {

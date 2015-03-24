@@ -5,43 +5,47 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import static com.google.common.base.Throwables.propagate;
+
 import java.io.IOException;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.google.auto.service.AutoService;
 
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
+import org.jclouds.blobstore.options.PutOptions;
 
+@AutoService(BouncePolicy.class)
 public final class CopyPolicy extends MarkerPolicy {
-    @Override
-    public boolean test(StorageMetadata metadata) {
-        return true;
-    }
-
     @Override
     public Blob getBlob(String container, String blobName, GetOptions options) {
         return getSource().getBlob(container, blobName, options);
     }
 
-    public static BounceResult copyBounce(BounceBlobStore blobStore, String container, BounceStorageMetadata meta) throws IOException {
-        if (meta.getRegions().contains(BounceBlobStore.Region.FAR) || !meta.hasMarkerBlob()) {
-            return BounceResult.NO_OP;
+    @Override
+    public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
+            destinationObject) {
+        if ((sourceObject == null) && (destinationObject == null)) {
+            throw new AssertionError("At least one of source or destination objects must be non-null");
         }
 
-        Blob b = blobStore.copyBlob(container, meta.getName());
-        if (b == null) {
-            return BounceResult.NO_OP;
-        } else {
-            blobStore.removeBlob(container, meta.getName() + MarkerPolicy.LOG_MARKER_SUFFIX);
+        if (sourceObject == null) {
+            logger.debug("Removing {}: {}", destinationObject.getName(), destinationObject);
+            return maybeRemoveDestinationObject(container, destinationObject);
         }
-        return BounceResult.COPY;
+
+        // maybeCopyObject handles the cases of EVERYWHERE, FAR_ONLY, and NEAR_ONLY
+        try {
+            return maybeCopyObject(container, sourceObject, destinationObject);
+        } catch (IOException e) {
+            throw propagate(e);
+        }
     }
 
     @Override
-    public BounceResult bounce(BounceBlobStore blobStore, String container, BounceStorageMetadata meta) throws
-            IOException {
-        return copyBounce(blobStore, container, meta);
+    public void onPut(String container, Blob blob, PutOptions options) {
     }
 }

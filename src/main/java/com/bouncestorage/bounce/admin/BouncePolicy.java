@@ -5,11 +5,8 @@
 
 package com.bouncestorage.bounce.admin;
 
-import java.io.IOException;
-import java.util.function.Predicate;
-
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.google.common.collect.ImmutableSet;
 
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.BlobStore;
@@ -22,11 +19,13 @@ import org.jclouds.blobstore.options.PutOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class BouncePolicy implements Predicate<StorageMetadata> {
+public abstract class BouncePolicy {
     public enum BounceResult {
         NO_OP,
         COPY,
         MOVE,
+        REMOVE,
+        LINK,
     }
 
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -36,9 +35,6 @@ public abstract class BouncePolicy implements Predicate<StorageMetadata> {
 
     public void init(BounceService service, Configuration config) {
     }
-
-    public abstract BounceResult bounce(BounceBlobStore blobStore, String container, BounceStorageMetadata meta) throws
-            IOException;
 
     public final void setBlobStores(BlobStore source, BlobStore destination) {
         sourceBlobStore = source;
@@ -57,6 +53,11 @@ public abstract class BouncePolicy implements Predicate<StorageMetadata> {
 
     public abstract String putBlob(String container, Blob blob, PutOptions options);
 
+    public abstract BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
+            destinationObject);
+
     public abstract PageSet<? extends StorageMetadata> list(String containerName, ListContainerOptions
                 listContainerOptions);
+
+    public abstract ImmutableSet<BlobStore> getCheckedStores();
 }

@@ -20,7 +20,6 @@ import javax.annotation.Resource;
 import javax.inject.Inject;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.FsckTask;
 import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
 import com.bouncestorage.bounce.admin.policy.MarkerPolicy;
 import com.google.common.annotations.VisibleForTesting;
@@ -155,35 +154,6 @@ public final class BounceBlobStore implements BlobStore {
         return policy.list(containerName, listContainerOptions);
     }
 
-    private FsckTask.Result maybeRemoveStaleFarBlob(String container, String key) {
-        BlobMetadata near = policy.getSource().blobMetadata(container, key);
-        BlobMetadata far = policy.getDestination().blobMetadata(container, key);
-
-        if ((near == null || !BounceLink.isLink(near)) &&
-                (far != null && (near == null || !Utils.eTagsEqual(near.getETag(), far.getETag())))) {
-            policy.getDestination().removeBlob(container, key);
-            return FsckTask.Result.REMOVED;
-        }
-
-        return FsckTask.Result.NO_OP;
-    }
-
-    // TODO: this assumes during reconciliation the blob store is not modified
-    public FsckTask.Result reconcileObject(String container, BounceStorageMetadata user, StorageMetadata far) {
-        String s = user != null ? user.getName() : far.getName();
-        if (user != null) {
-            logger.debug("reconciling %s regions=%s %s %s", s, user.getRegions(), user, far);
-            if (user.getRegions() == NEAR_ONLY && far != null) {
-                return maybeRemoveStaleFarBlob(container, s);
-            }
-        } else {
-            // we have a blob that's only in far store but nothing (not even link) in near store
-            return maybeRemoveStaleFarBlob(container, s);
-        }
-
-        return FsckTask.Result.NO_OP;
-    }
-
     @Override
     public void clearContainer(String s) {
         nearStore.clearContainer(s);
@@ -228,7 +198,12 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public boolean blobExists(String s, String s1) {
-        return nearStore.blobExists(s, s1);
+        for (BlobStore store : policy.getCheckedStores()) {
+            if (store.blobExists(s, s1)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -247,18 +222,23 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public BlobMetadata blobMetadata(String s, String s1) {
-        BlobMetadata meta = policy.getSource().blobMetadata(s, s1);
-        if (meta != null && BounceLink.isLink(meta)) {
-            try {
-                return BounceLink.fromBlob(policy.getSource().getBlob(s, s1)).getBlobMetadata();
-            } catch (IOException e) {
-                logger.error(e, "An error occurred while loading the metadata for blob %s in container %s",
-                        s, s1);
-                throw propagate(e);
+        for (BlobStore blobStore : policy.getCheckedStores()) {
+            BlobMetadata meta = blobStore.blobMetadata(s, s1);
+            if (meta == null) {
+                continue;
             }
-        } else {
+            if (BounceLink.isLink(meta)) {
+                try {
+                    return BounceLink.fromBlob(blobStore.getBlob(s, s1)).getBlobMetadata();
+                } catch (IOException e) {
+                    logger.error(e, "An error occurred while loading the metadata for blob %s in container %s",
+                            s, s1);
+                    throw propagate(e);
+                }
+            }
             return meta;
         }
+        return null;
     }
 
     @Override
@@ -273,17 +253,28 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public void removeBlob(String s, String s1) {
-        nearStore.removeBlob(s, s1);
+        for (BlobStore blobStore : policy.getCheckedStores()) {
+            blobStore.removeBlob(s, s1);
+        }
     }
 
     @Override
     public void removeBlobs(String s, Iterable<String> iterable) {
-        nearStore.removeBlobs(s, iterable);
+        for (BlobStore blobStore : policy.getCheckedStores()) {
+            blobStore.removeBlobs(s, iterable);
+        }
     }
 
     @Override
     public BlobAccess getBlobAccess(String container, String name) {
-        return nearStore.getBlobAccess(container, name);
+        for (BlobStore blobStore : policy.getCheckedStores()) {
+            BlobAccess  result = blobStore.getBlobAccess(container, name);
+            if (result != null) {
+                return result;
+            }
+        }
+
+        return null;
     }
 
     @Override
@@ -294,12 +285,20 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public long countBlobs(String s) {
-        return nearStore.countBlobs(s);
+        long result = 0;
+        for (BlobStore blobStore : policy.getCheckedStores()) {
+            result += blobStore.countBlobs(s);
+        }
+        return result;
     }
 
     @Override
     public long countBlobs(String s, ListContainerOptions listContainerOptions) {
-        return nearStore.countBlobs(s, listContainerOptions);
+        long result = 0;
+        for (BlobStore blobStore : policy.getCheckedStores()) {
+            result += blobStore.countBlobs(s);
+        }
+        return result;
     }
 
     public boolean isLink(String containerName, String blobName) {

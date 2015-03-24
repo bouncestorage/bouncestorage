@@ -16,6 +16,7 @@ import java.util.Objects;
 import java.util.Properties;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.PeekingIterator;
 import com.google.common.hash.HashCode;
 import com.google.inject.Module;
 
@@ -266,5 +267,9 @@ public final class Utils {
 
     public static boolean eTagsEqual(String eTag1, String eTag2) {
         return trimETag(eTag1).equals(trimETag(eTag2));
+    }
+
+    public static StorageMetadata getNextOrNull(PeekingIterator<StorageMetadata> iterator) {
+        return iterator.hasNext() ? iterator.next() : null;
     }
 }

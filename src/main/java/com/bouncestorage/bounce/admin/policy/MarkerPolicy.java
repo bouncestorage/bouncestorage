@@ -5,6 +5,9 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import static java.util.Objects.requireNonNull;
+
+import java.io.IOException;
 import java.util.TreeMap;
 
 import com.bouncestorage.bounce.BounceBlobStore;
@@ -12,11 +15,14 @@ import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
 import com.google.common.io.ByteSource;
 
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.internal.PageSetImpl;
@@ -37,8 +43,12 @@ public abstract class MarkerPolicy extends BouncePolicy {
     @Override
     public final String putBlob(String container, Blob blob, PutOptions options) {
         putMarkerBlob(container, blob.getMetadata().getName());
-        return getSource().putBlob(container, blob, options);
+        String result = getSource().putBlob(container, blob, options);
+        onPut(container, blob, options);
+        return result;
     }
+
+    public abstract void onPut(String container, Blob blob, PutOptions options);
 
     @Override
     public final PageSet<? extends StorageMetadata> list(String s, ListContainerOptions listContainerOptions) {
@@ -54,13 +64,13 @@ public abstract class MarkerPolicy extends BouncePolicy {
             StorageMetadata nearMeta = nearPage.next();
             String name = nearMeta.getName();
 
-            logger.debug("found near blob: %s", name);
+            logger.debug("found near blob: {}", name);
             if (MarkerPolicy.isMarkerBlob(name)) {
                 BounceStorageMetadata meta = contents.get(MarkerPolicy.markerBlobGetName(name));
                 if (meta != null) {
                     meta.hasMarkerBlob(true);
                 }
-                logger.debug("skipping marker blob: %s", name);
+                logger.debug("skipping marker blob: {}", name);
                 continue;
             }
 
@@ -73,17 +83,17 @@ public abstract class MarkerPolicy extends BouncePolicy {
                     break;
                 } else {
                     farPage.next();
-                    logger.debug("skipping far blob: %s", farMeta.getName());
+                    logger.debug("skipping far blob: {}", farMeta.getName());
                 }
             }
 
             if (compare == 0) {
                 farPage.next();
-                logger.debug("found far blob with the same name: %s", name);
+                logger.debug("found far blob with the same name: {}", name);
                 boolean nextIsMarker = false;
                 if (nearPage.hasNext()) {
                     StorageMetadata next = nearPage.peek();
-                    logger.debug("next blob: %s", next.getName());
+                    logger.debug("next blob: {}", next.getName());
                     if (next.getName().equals(name + MarkerPolicy.LOG_MARKER_SUFFIX)) {
                         nextIsMarker = true;
                     }
@@ -120,7 +130,7 @@ public abstract class MarkerPolicy extends BouncePolicy {
             StorageMetadata nearMeta = nearPage.next();
             String name = nearMeta.getName();
 
-            logger.debug("found near blob: %s", name);
+            logger.debug("found near blob: {}", name);
             if (MarkerPolicy.isMarkerBlob(name)) {
                 BounceStorageMetadata meta = contents.get(MarkerPolicy.markerBlobGetName(name));
                 if (meta != null) {
@@ -133,8 +143,69 @@ public abstract class MarkerPolicy extends BouncePolicy {
                 nearPage.hasNext() ? nearPage.next().getName() : null);
     }
 
+    @Override
+    public final ImmutableSet<BlobStore> getCheckedStores() {
+        return ImmutableSet.of(getSource());
+    }
+
     private void putMarkerBlob(String containerName, String key) {
         getSource().putBlob(containerName,
                 getSource().blobBuilder(key + MarkerPolicy.LOG_MARKER_SUFFIX).payload(ByteSource.empty()).build());
+    }
+
+    protected final BounceResult maybeRemoveDestinationObject(String container, StorageMetadata object) {
+        requireNonNull(object);
+
+        BlobMetadata sourceMeta = getSource().blobMetadata(container, object.getName());
+        BlobMetadata destinationMeta = getDestination().blobMetadata(container, object.getName());
+        if (sourceMeta == null && destinationMeta != null) {
+            getDestination().removeBlob(container, object.getName());
+            return BounceResult.REMOVE;
+        }
+
+        if (sourceMeta != null && destinationMeta != null && !sourceMeta.getETag().equalsIgnoreCase(destinationMeta
+                .getETag())) {
+            getDestination().removeBlob(container, destinationMeta.getName());
+            return BounceResult.REMOVE;
+        }
+
+        return BounceResult.NO_OP;
+    }
+
+    protected final BounceResult maybeCopyObject(String container, BounceStorageMetadata sourceObject,
+            StorageMetadata destinationObject) throws IOException {
+        if (sourceObject.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
+            return BouncePolicy.BounceResult.NO_OP;
+        }
+        if (sourceObject.getRegions().equals(BounceBlobStore.EVERYWHERE)) {
+            BlobMetadata destinationMeta = getDestination().blobMetadata(container, destinationObject.getName());
+            BlobMetadata sourceMeta = getSource().blobMetadata(container, sourceObject.getName());
+            if (destinationMeta.getETag().equalsIgnoreCase(sourceMeta.getETag())) {
+                return BouncePolicy.BounceResult.NO_OP;
+            }
+        }
+
+        // Either the object does not exist in the far store or the ETags are not equal, so we should copy
+        Utils.copyBlob(getSource(), getDestination(), container, container, sourceObject.getName());
+        return BouncePolicy.BounceResult.COPY;
+    }
+
+    protected final BounceResult maybeMoveObject(String container, BounceStorageMetadata sourceObject,
+            StorageMetadata destinationObject) throws IOException {
+        if (sourceObject.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
+            return BounceResult.NO_OP;
+        }
+        if (sourceObject.getRegions().equals(BounceBlobStore.EVERYWHERE)) {
+            BlobMetadata sourceMetadata = getSource().blobMetadata(container, sourceObject.getName());
+            BlobMetadata destinationMetadata = getDestination().blobMetadata(container, destinationObject.getName());
+            if (destinationMetadata.getETag().equalsIgnoreCase(sourceMetadata.getETag())) {
+                com.bouncestorage.bounce.admin.policy.Utils.createBounceLink(this, sourceMetadata);
+                return BounceResult.LINK;
+            }
+        }
+
+        com.bouncestorage.bounce.admin.policy.Utils.copyBlobAndCreateBounceLink(this, container, sourceObject
+                .getName());
+        return BounceResult.MOVE;
     }
 }

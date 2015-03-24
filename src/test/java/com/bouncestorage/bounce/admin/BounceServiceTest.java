@@ -8,7 +8,6 @@ package com.bouncestorage.bounce.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
-import java.time.Clock;
 import java.time.Duration;
 import java.util.Date;
 import java.util.HashMap;
@@ -117,11 +116,11 @@ public final class BounceServiceTest {
         BouncePolicy p = lastModifiedTimePolicy(Duration.ofHours(1));
         Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
         blob.getMetadata().setLastModified(Date.from(bounceService.getClock().instant()));
-        assertThat(p.test(blob.getMetadata())).isFalse();
+        assertThat(((LastModifiedTimePolicy) p).isObjectExpired(blob.getMetadata())).isFalse();
 
-        advanceServiceClock(Duration.ofHours(2));
+        UtilsTest.advanceServiceClock(bounceService, Duration.ofHours(2));
 
-        assertThat(p.test(blob.getMetadata())).isTrue();
+        assertThat(((LastModifiedTimePolicy) p).isObjectExpired(blob.getMetadata())).isTrue();
     }
 
     @Test
@@ -137,7 +136,7 @@ public final class BounceServiceTest {
         assertThat(status.getMovedObjectCount()).isEqualTo(0);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
 
-        advanceServiceClock(Duration.ofHours(2));
+        UtilsTest.advanceServiceClock(bounceService, Duration.ofHours(2));
         status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
@@ -229,9 +228,5 @@ public final class BounceServiceTest {
         ));
         p.init(bounceService, new MapConfiguration(properties));
         return p;
-    }
-
-    public void advanceServiceClock(Duration duration) {
-        bounceService.setClock(Clock.offset(bounceService.getClock(), duration));
     }
 }
