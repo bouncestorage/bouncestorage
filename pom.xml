@@ -47,6 +47,7 @@
                     <headerLocation>src/main/resources/copyright_header.txt</headerLocation>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
                     <violationSeverity>warning</violationSeverity>
+                    <excludes>**/org/gaul/s3proxy/**/*</excludes>
                 </configuration>
             </plugin>
             <plugin>
@@ -148,6 +149,9 @@
                 <configuration>
                     <javaVersion>${java.version}</javaVersion>
                     <exclusionsFile>src/main/resources/modernizer_exclusions.txt</exclusionsFile>
+                    <ignorePackages>
+                      <ignorePackage>org.gaul.s3proxy</ignorePackage>
+                    </ignorePackages>
                 </configuration>
             </plugin>
             <plugin>
@@ -248,18 +252,6 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
             <version>2.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.gaul</groupId>
-            <artifactId>s3proxy</artifactId>
-            <version>1.4.0-SNAPSHOT</version>
-            <exclusions>
-                <!-- conflicts with DropWizard's jetty dependency -->
-                <exclusion>
-                    <groupId>org.eclipse.jetty</groupId>
-                    <artifactId>jetty-servlet</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

@@ -1,0 +1,3 @@
+[submodule "ext/s3proxy"]
+	path = ext/s3proxy
+	url = git@github.com:bouncestorage/s3proxy.git
