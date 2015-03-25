@@ -6,20 +6,16 @@
 package com.bouncestorage.bounce.admin;
 
 import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.bouncestorage.bounce.IForwardingBlobStore;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.BlobStore;
-import org.jclouds.blobstore.domain.Blob;
-import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
-import org.jclouds.blobstore.options.GetOptions;
-import org.jclouds.blobstore.options.ListContainerOptions;
-import org.jclouds.blobstore.options.PutOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class BouncePolicy {
+public abstract class BouncePolicy implements IForwardingBlobStore {
     public enum BounceResult {
         NO_OP,
         COPY,
@@ -49,15 +45,13 @@ public abstract class BouncePolicy {
         return destinationBlobStore;
     }
 
-    public abstract Blob getBlob(String container, String blobName, GetOptions options);
-
-    public abstract String putBlob(String container, Blob blob, PutOptions options);
+    @Override
+    public BlobStore delegate() {
+        return getSource();
+    }
 
     public abstract BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject);
-
-    public abstract PageSet<? extends StorageMetadata> list(String containerName, ListContainerOptions
-                listContainerOptions);
 
     public abstract ImmutableSet<BlobStore> getCheckedStores();
 }
