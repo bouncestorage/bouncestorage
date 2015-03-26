@@ -62,7 +62,6 @@ public final class ConfigTest {
 
     @Test
     public void testWithoutConfig() throws Exception {
-        expectedException.expect(NullPointerException.class);
         new ServiceResource(app).getServiceStats();
     }
 

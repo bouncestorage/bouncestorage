@@ -7,6 +7,7 @@ package com.bouncestorage.bounce.admin;
 
 import static java.util.Objects.requireNonNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,6 +18,7 @@ import javax.ws.rs.core.MediaType;
 
 import com.codahale.metrics.annotation.Timed;
 
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 
@@ -32,6 +34,11 @@ public final class ServiceResource {
     @GET
     @Timed
     public ServiceStats getServiceStats() {
+        BlobStore store = app.getBlobStore();
+        if (store == null) {
+            return new ServiceStats(new ArrayList<>());
+        }
+
         PageSet<? extends StorageMetadata> pageSet = app.getBlobStore().list();
         List<String> containerNames = pageSet.stream()
                 .map(sm -> sm.getName())
