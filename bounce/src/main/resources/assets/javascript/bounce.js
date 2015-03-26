@@ -1,4 +1,5 @@
 var bounce = angular.module('bounce', [
+  'dashboardControllers',
   'ngResource',
   'ngRoute',
   'storesControllers',
@@ -19,6 +20,13 @@ bounce.config(['$routeProvider', function($routeProvider) {
     when('/create_store/:welcomeUrl?', {
       templateUrl: 'views/partials/create_store.html',
       controller: 'CreateStoreCtrl'
+    }).
+
+    when('/dashboard', {
+      templateUrl: 'views/partials/dashboard.html',
+      controller: 'DashboardCtrl'
+    }).
+    when('/edit_container/:containerId?', {
     }).
     when('/welcome', {
       templateUrl: 'views/partials/welcome.html',

@@ -1,0 +1,29 @@
+<ng-include src="'views/partials/navbar.html'"></ng-include>
+
+<div class="container main">
+  <h1 class="page-header">Virtual Containers</h1>
+
+  <div class="col-sm-6 table-responsive">
+    <button class="btn btn-primary" ng-click="actions.addContainer()">
+      <span class="glyphicon glyphicon-plus"></span> Add virtual container
+    </button>
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="container in containers">
+          <td ng-click="actions.configureContainer(container)">
+            <a href="" ng-click="actions.configureContainer(container)" class="icon">
+              <span class="glyphicon glyphicon-edit"></span></a>
+            {{container.name}}
+          </td>
+          <td>Not configured</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
