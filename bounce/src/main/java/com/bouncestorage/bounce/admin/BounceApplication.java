@@ -286,7 +286,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
 
     @Override
     public void initialize(Bootstrap<BounceDropWizardConfiguration> bootstrap) {
-        bootstrap.addBundle(new AssetsBundle("/assets", "/", "index.html"));
+        bootstrap.addBundle(new AssetsBundle("/assets", "/", "views/index.html"));
         bootstrap.setConfigurationSourceProvider(new UrlConfigurationSourceProvider());
     }
 

@@ -1,10 +1,9 @@
 var bounce = angular.module('bounce', [])
-    .config(['$locationProvider',
-function($locationProvider) {
-    $locationProvider.html5Mode(false).hashPrefix('!');
-}]);
+    
 
-bounce.controller('BounceTest',
+var bounceControllers = angular.module('bounceControllers', []);
+
+bounceControllers.controller('BounceCtrl',
                ['$scope', '$http', '$q', '$location', '$timeout',
 function ($scope, $http, $q, $location, $timeout)
 {
@@ -75,56 +74,4 @@ function ($scope, $http, $q, $location, $timeout)
         );
     };
     $scope.actions.status();
-}]);
-
-bounce.controller('BounceConfig',
-               ['$scope', '$http', '$q', '$location', '$timeout',
-function ($scope, $http, $q, $location, $timeout)
-{
-    $scope.options = {};
-    $scope.actions = {};
-    $scope.status = {};
-    $scope.errors = {};
-    $scope.providers = {};
-    $scope.policy = null;
-
-    $http.get("/api/config").then(
-        function(res) {
-            $scope.config = res.data;
-            $scope.errors.getConfig = null;
-
-            for (var k in res.data) {
-                var match = k.match("^bounce.service.bounce-policy$");
-                if (match) {
-                    $scope.policy = res.data[k];
-                    $('#policy-selector').val($scope.policy);
-                    continue;
-                }
-                match = k.match("^bounce.store.properties.(\\d+).jclouds.(.*)");
-                if (match) {
-                    if (!(match[1] in $scope.providers)) {
-                        $scope.providers[match[1]] = {};
-                    }
-                    $scope.providers[match[1]][match[2]] = res.data[k];
-                }
-            }
-        }
-    ).catch(
-        function(res) {
-            $scope.errors.getConfig = res.data.message;
-        }
-    );
-
-    $scope.actions.config = function() {
-        $http.post("/api/config", $scope.options.config).then(
-            function(res) {
-                $scope.status.config = res.data;
-                $scope.errors.config = null;
-            }
-        ).catch(
-            function(res) {
-                $scope.errors.config = res.data.message;
-            }
-        );
-    };
 }]);
