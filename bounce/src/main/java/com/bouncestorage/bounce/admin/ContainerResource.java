@@ -8,6 +8,7 @@ package com.bouncestorage.bounce.admin;
 import static java.util.Objects.requireNonNull;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -18,6 +19,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.codahale.metrics.annotation.Timed;
 
@@ -39,13 +41,16 @@ public final class ContainerResource {
         BounceBlobStore blobStore = app.getBlobStore();
         Iterable<StorageMetadata> metas = Utils.crawlBlobStore(blobStore,
                 containerName);
-        List<String> blobNames =
-                StreamSupport.stream(metas.spliterator(), /*parallel=*/ false)
+        AtomicLong bounceLinkCount = new AtomicLong();
+        List<String> blobNames = StreamSupport.stream(metas.spliterator(), /*parallel=*/ false)
+                .map(sm -> (BounceStorageMetadata) sm)
+                .peek(sm -> {
+                    if (sm.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
+                        bounceLinkCount.getAndIncrement();
+                    }
+                })
                 .map(sm -> sm.getName())
                 .collect(Collectors.toList());
-        long bounceLinkCount = blobNames.stream()
-                .filter(blobName -> blobStore.isLink(containerName, blobName))
-                .count();
-        return new ContainerStats(blobNames, bounceLinkCount);
+        return new ContainerStats(blobNames, bounceLinkCount.get());
     }
 }

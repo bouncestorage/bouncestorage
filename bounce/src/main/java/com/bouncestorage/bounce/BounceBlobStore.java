@@ -259,15 +259,6 @@ public final class BounceBlobStore implements BlobStore {
         return policy.countBlobs(container, listContainerOptions);
     }
 
-    public boolean isLink(String containerName, String blobName) {
-        return BounceLink.isLink(nearStore.blobMetadata(containerName, blobName));
-    }
-
-    public Blob copyBlob(String containerName, String blobName) throws IOException {
-        logger.debug("copying blob %s", blobName);
-        return Utils.copyBlob(nearStore, farStore, containerName, containerName, blobName);
-    }
-
     public void updateBlobMetadata(String containerName, String blobName, Map<String, String> userMetadata) {
         Blob blob = getBlob(containerName, blobName);
         Map<String, String> allMetadata = new HashMap<>(blob.getMetadata().getUserMetadata());

@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
 import com.bouncestorage.bounce.admin.policy.CopyPolicy;
@@ -200,7 +201,7 @@ public final class BounceServiceTest {
         assertThat(status.getMovedObjectCount()).isEqualTo(0);
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
         Blob nearBlob = blobStore.getFromNearStore(containerName, blob.getMetadata().getName());
-        assertThat(blobStore.isLink(containerName, nearBlob.getMetadata().getName())).isTrue();
+        assertThat(BounceLink.isLink(nearBlob.getMetadata())).isTrue();
     }
 
     private void checkCopiedBlob(String blobName) throws Exception {

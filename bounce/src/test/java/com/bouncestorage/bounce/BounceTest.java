@@ -154,7 +154,7 @@ public final class BounceTest {
         Blob blob = UtilsTest.makeBlob(nearBlobStore, blobName);
         nearBlobStore.putBlob(containerName, blob);
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
-        bounceBlobStore.copyBlob(containerName, blobName);
+        Utils.copyBlob(nearBlobStore, farBlobStore, containerName, containerName, blobName);
         Blob farBlob = farBlobStore.getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(farBlob, blob);
     }
