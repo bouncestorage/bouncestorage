@@ -68,7 +68,7 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     private void initStores(Properties prop1, Properties prop2) {
-        this.nearStore = Utils.storeFromProperties(requireNonNull(prop1));
+        this.nearStore = requireNonNull(Utils.storeFromProperties(requireNonNull(prop1)));
         this.farStore = Utils.storeFromProperties(requireNonNull(prop2));
         policy = new BounceNothingPolicy();
         policy.setBlobStores(nearStore, farStore);

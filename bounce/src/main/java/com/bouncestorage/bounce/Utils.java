@@ -66,6 +66,9 @@ public final class Utils {
 
     public static BlobStore storeFromProperties(Properties properties) {
         String provider = properties.getProperty(Constants.PROPERTY_PROVIDER);
+        if (provider == null) {
+            return null;
+        }
         ContextBuilder builder = ContextBuilder
                 .newBuilder(provider)
                 .modules(ImmutableList.<Module>of(new SLF4JLoggingModule()))
