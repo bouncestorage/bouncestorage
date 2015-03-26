@@ -251,20 +251,6 @@ public final class BounceBlobStore implements BlobStore {
         policy.updateBlobMetadata(containerName, blobName, userMetadata);
     }
 
-    public void takeOver(String containerName) throws IOException {
-        policy.takeOver(containerName);
-    }
-
-    /**
-     * Sanity check that near store and far store are in sync, if they aren't,
-     * we need to perform takeover.
-
-     * @return true if the near store and farstore are in sync
-     */
-    public boolean sanityCheck(String containerName) throws IOException {
-        return policy.sanityCheck(containerName);
-    }
-
     @VisibleForTesting
     public Blob getFromFarStore(String containerName, String blobName) {
         return policy.getDestination().getBlob(containerName, blobName);

@@ -7,6 +7,7 @@ package com.bouncestorage.bounce;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
@@ -109,19 +110,20 @@ public final class BounceTest {
 
     @Test
     public void testTakeOverFarStore() throws Exception {
-        bounceBlobStore.setPolicy(new MoveEverythingPolicy());
+        BouncePolicy policy = new MoveEverythingPolicy();
+        bounceBlobStore.setPolicy(policy);
 
         String blobName = "blob";
         Blob blob = UtilsTest.makeBlob(farBlobStore, blobName);
         farBlobStore.putBlob(containerName, blob);
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isFalse();
-        assertThat(bounceBlobStore.sanityCheck(containerName)).isFalse();
+        assertThat(policy.sanityCheck(containerName)).isFalse();
 
-        bounceBlobStore.takeOver(containerName);
+        policy.takeOver(containerName);
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
                 containerName, blobName))).isTrue();
-        assertThat(bounceBlobStore.sanityCheck(containerName)).isTrue();
+        assertThat(policy.sanityCheck(containerName)).isTrue();
     }
 
     @Test
