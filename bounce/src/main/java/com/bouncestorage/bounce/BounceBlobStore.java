@@ -260,11 +260,7 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     public void updateBlobMetadata(String containerName, String blobName, Map<String, String> userMetadata) {
-        Blob blob = getBlob(containerName, blobName);
-        Map<String, String> allMetadata = new HashMap<>(blob.getMetadata().getUserMetadata());
-        allMetadata.putAll(userMetadata);
-        blob.getMetadata().setUserMetadata(allMetadata);
-        nearStore.putBlob(containerName, blob);
+        policy.updateBlobMetadata(containerName, blobName, userMetadata);
     }
 
     public void takeOver(String containerName) throws IOException {

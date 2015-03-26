@@ -8,6 +8,8 @@ package com.bouncestorage.bounce.admin.policy;
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -142,6 +144,18 @@ public final class MigrationPolicy extends BouncePolicy {
         for (BlobStore blobStore : getCheckedStores()) {
             blobStore.removeBlob(s, s1);
         }
+    }
+
+    @Override
+    public void updateBlobMetadata(String containerName, String blobName, Map<String, String> userMetadata) {
+        Blob blob = getDestination().getBlob(containerName, blobName);
+        if (blob == null) {
+            blob = getSource().getBlob(containerName, blobName);
+        }
+        Map<String, String> allMetadata = new HashMap<>(blob.getMetadata().getUserMetadata());
+        allMetadata.putAll(userMetadata);
+        blob.getMetadata().setUserMetadata(allMetadata);
+        putBlob(containerName, blob);
     }
 
     @Override

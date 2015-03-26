@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import org.jclouds.blobstore.BlobStore;
@@ -181,5 +183,13 @@ public interface IForwardingBlobStore extends BlobStore {
     @Override
     default long countBlobs(String container, ListContainerOptions options) {
         return delegate().countBlobs(container, options);
+    }
+
+    default void updateBlobMetadata(String containerName, String blobName, Map<String, String> userMetadata) {
+        Blob blob = getBlob(containerName, blobName);
+        Map<String, String> allMetadata = new HashMap<>(blob.getMetadata().getUserMetadata());
+        allMetadata.putAll(userMetadata);
+        blob.getMetadata().setUserMetadata(allMetadata);
+        putBlob(containerName, blob);
     }
 }
