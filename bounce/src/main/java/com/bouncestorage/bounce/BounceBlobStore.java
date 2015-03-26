@@ -8,7 +8,6 @@ package com.bouncestorage.bounce;
 import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
@@ -19,7 +18,6 @@ import javax.inject.Inject;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
-import com.bouncestorage.bounce.admin.policy.MarkerPolicy;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 

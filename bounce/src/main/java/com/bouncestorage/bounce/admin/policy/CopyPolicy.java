@@ -16,7 +16,6 @@ import com.google.auto.service.AutoService;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
-import org.jclouds.blobstore.options.PutOptions;
 
 @AutoService(BouncePolicy.class)
 public final class CopyPolicy extends MarkerPolicy {

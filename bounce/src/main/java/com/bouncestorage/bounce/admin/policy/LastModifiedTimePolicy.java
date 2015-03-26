@@ -10,17 +10,18 @@ import static java.util.Objects.requireNonNull;
 import java.time.Duration;
 import java.time.Instant;
 
-import com.bouncestorage.bounce.*;
+import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.BounceLink;
+import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.google.auto.service.AutoService;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.commons.configuration.Configuration;
-import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
-import org.jclouds.blobstore.options.PutOptions;
 
 @AutoService(BouncePolicy.class)
 public final class LastModifiedTimePolicy extends MovePolicy {

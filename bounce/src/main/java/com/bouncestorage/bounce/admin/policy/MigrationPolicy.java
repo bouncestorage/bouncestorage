@@ -33,8 +33,8 @@ import org.jclouds.blobstore.options.PutOptions;
 
 public final class MigrationPolicy extends BouncePolicy {
     // The policy implements migration from "source" to "destination"
-    private final static Set<BounceBlobStore.Region> DESTINATION = BounceBlobStore.NEAR_ONLY;
-    private final static Set<BounceBlobStore.Region> SOURCE = BounceBlobStore.FAR_ONLY;
+    private static final Set<BounceBlobStore.Region> DESTINATION = BounceBlobStore.NEAR_ONLY;
+    private static final Set<BounceBlobStore.Region> SOURCE = BounceBlobStore.FAR_ONLY;
 
     @Override
     public Blob getBlob(String container, String blobName, GetOptions options) {
