@@ -65,7 +65,8 @@ public final class BounceTest {
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
                 containerName, blobName))).isFalse();
 
-        bounceBlobStore.copyBlobAndCreateBounceLink(containerName, blobName);
+        Utils.copyBlobAndCreateBounceLink(bounceBlobStore.getNearStore(), bounceBlobStore.getFarStore(),
+                containerName, blobName);
 
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
                 containerName, blobName))).isTrue();
@@ -74,7 +75,8 @@ public final class BounceTest {
     @Test
     public void testBounceNonexistentBlob() throws Exception {
         String blobName = UtilsTest.createRandomBlobName();
-        bounceBlobStore.copyBlobAndCreateBounceLink(containerName, blobName);
+        Utils.copyBlobAndCreateBounceLink(bounceBlobStore.getNearStore(), bounceBlobStore.getFarStore(),
+                containerName, blobName);
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isFalse();
         assertThat(farBlobStore.blobExists(containerName, blobName)).isFalse();
     }
@@ -96,7 +98,8 @@ public final class BounceTest {
         bounceBlobStore.putBlob(containerName, blob);
         BlobMetadata meta1 = bounceBlobStore.blobMetadata(containerName, blobName);
 
-        bounceBlobStore.copyBlobAndCreateBounceLink(containerName, blobName);
+        Utils.copyBlobAndCreateBounceLink(bounceBlobStore.getNearStore(), bounceBlobStore.getFarStore(),
+                containerName, blobName);
         BlobMetadata meta2 = bounceBlobStore.blobMetadata(containerName, blobName);
         assertThat((Object) meta2).isEqualToComparingFieldByField(meta1);
 
@@ -126,7 +129,8 @@ public final class BounceTest {
         String blobName = "blob";
         Blob blob = UtilsTest.makeBlob(farBlobStore, blobName);
         nearBlobStore.putBlob(containerName, blob);
-        bounceBlobStore.copyBlobAndCreateBounceLink(containerName, blobName);
+        Utils.copyBlobAndCreateBounceLink(bounceBlobStore.getNearStore(), bounceBlobStore.getFarStore(),
+                containerName, blobName);
         bounceBlobStore.setPolicy(new MoveEverythingPolicy());
 
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();

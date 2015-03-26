@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce;
 
+import static com.google.common.base.Throwables.propagate;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -13,8 +15,11 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 
+import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.admin.policy.MarkerPolicy;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.PeekingIterator;
 import com.google.common.hash.HashCode;
@@ -26,6 +31,7 @@ import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobBuilder.PayloadBlobBuilder;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.StorageType;
@@ -72,6 +78,27 @@ public final class Utils {
                 .overrides(properties);
         BlobStoreContext context = builder.build(BlobStoreContext.class);
         return context.getBlobStore();
+    }
+
+    public static BouncePolicy.BounceResult copyBlobAndCreateBounceLink(
+            BlobStore src, BlobStore dest, String containerName, String blobName) {
+        try {
+            Blob blobFrom = copyBlob(src, dest, containerName, containerName, blobName);
+            if (blobFrom != null) {
+                createBounceLink(src, blobFrom.getMetadata());
+            }
+        } catch (IOException e) {
+            propagate(e);
+        }
+        return BouncePolicy.BounceResult.MOVE;
+    }
+
+    public static BouncePolicy.BounceResult createBounceLink(BlobStore blobStore, BlobMetadata blobMetadata) {
+        BounceLink link = new BounceLink(Optional.of(blobMetadata));
+        blobStore.putBlob(blobMetadata.getContainer(), link.toBlob(blobStore));
+        blobStore.removeBlob(blobMetadata.getContainer(), blobMetadata.getName() +
+                MarkerPolicy.LOG_MARKER_SUFFIX);
+        return BouncePolicy.BounceResult.LINK;
     }
 
     private static class CrawlBlobStoreIterable

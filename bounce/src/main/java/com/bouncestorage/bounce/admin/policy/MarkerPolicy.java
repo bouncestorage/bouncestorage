@@ -192,13 +192,13 @@ public abstract class MarkerPolicy extends BouncePolicy {
             BlobMetadata sourceMetadata = getSource().blobMetadata(container, sourceObject.getName());
             BlobMetadata destinationMetadata = getDestination().blobMetadata(container, destinationObject.getName());
             if (destinationMetadata.getETag().equalsIgnoreCase(sourceMetadata.getETag())) {
-                com.bouncestorage.bounce.admin.policy.Utils.createBounceLink(this, sourceMetadata);
+                Utils.createBounceLink(this, sourceMetadata);
                 return BounceResult.LINK;
             }
         }
 
-        com.bouncestorage.bounce.admin.policy.Utils.copyBlobAndCreateBounceLink(this, container, sourceObject
-                .getName());
+        Utils.copyBlobAndCreateBounceLink(getSource(), getDestination(), container,
+                sourceObject.getName());
         return BounceResult.MOVE;
     }
 }

@@ -10,9 +10,7 @@ import static java.util.Objects.requireNonNull;
 import java.time.Duration;
 import java.time.Instant;
 
-import com.bouncestorage.bounce.BounceBlobStore;
-import com.bouncestorage.bounce.BounceLink;
-import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.bouncestorage.bounce.*;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.google.auto.service.AutoService;
@@ -63,12 +61,13 @@ public final class LastModifiedTimePolicy extends MovePolicy {
             BlobMetadata sourceMetadata = getSource().blobMetadata(container, sourceObject.getName());
             if (sourceObject.getRegions().equals(BounceBlobStore.EVERYWHERE)) {
                 if (!BounceLink.isLink(sourceMetadata)) {
-                    return Utils.createBounceLink(this, sourceMetadata);
+                    return com.bouncestorage.bounce.Utils.createBounceLink(this, sourceMetadata);
                 } else {
                     return BounceResult.NO_OP;
                 }
             } else {
-                return Utils.copyBlobAndCreateBounceLink(this, container, sourceMetadata.getName());
+                return Utils.copyBlobAndCreateBounceLink(getSource(), getDestination(), container,
+                        sourceMetadata.getName());
             }
         }
     }

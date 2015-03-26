@@ -8,9 +8,9 @@ package com.bouncestorage.bounce.admin.policy;
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
-import java.util.Optional;
 
 import com.bouncestorage.bounce.BounceLink;
+import com.bouncestorage.bounce.Utils;
 
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
