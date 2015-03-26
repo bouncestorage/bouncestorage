@@ -127,7 +127,7 @@ public interface IForwardingBlobStore extends BlobStore {
 
     @Override
     default String putBlob(String containerName, Blob blob) {
-        return delegate().putBlob(containerName, blob);
+        return putBlob(containerName, blob, PutOptions.NONE);
     }
 
     @Override

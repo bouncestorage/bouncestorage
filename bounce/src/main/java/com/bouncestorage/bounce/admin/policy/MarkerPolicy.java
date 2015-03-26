@@ -39,14 +39,11 @@ public abstract class MarkerPolicy extends BouncePolicy {
     }
 
     @Override
-    public final String putBlob(String container, Blob blob, PutOptions options) {
+    public String putBlob(String container, Blob blob, PutOptions options) {
         putMarkerBlob(container, blob.getMetadata().getName());
         String result = getSource().putBlob(container, blob, options);
-        onPut(container, blob, options);
         return result;
     }
-
-    public abstract void onPut(String container, Blob blob, PutOptions options);
 
     @Override
     public final PageSet<? extends StorageMetadata> list(String s, ListContainerOptions listContainerOptions) {

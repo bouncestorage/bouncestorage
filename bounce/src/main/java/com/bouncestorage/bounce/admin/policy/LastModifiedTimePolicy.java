@@ -78,9 +78,4 @@ public final class LastModifiedTimePolicy extends MovePolicy {
         Instant then = metadata.getLastModified().toInstant();
         return now.minus(timeAgo).isAfter(then);
     }
-
-    @Override
-    public void onPut(String container, Blob blob, PutOptions options) {
-        return;
-    }
 }

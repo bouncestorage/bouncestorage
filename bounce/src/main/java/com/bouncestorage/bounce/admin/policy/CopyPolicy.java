@@ -44,8 +44,4 @@ public final class CopyPolicy extends MarkerPolicy {
             throw propagate(e);
         }
     }
-
-    @Override
-    public void onPut(String container, Blob blob, PutOptions options) {
-    }
 }

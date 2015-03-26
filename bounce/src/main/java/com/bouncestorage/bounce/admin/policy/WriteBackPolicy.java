@@ -29,14 +29,15 @@ public final class WriteBackPolicy extends MovePolicy {
     private BounceService service;
     private Duration timeAgo;
 
+    @Override
+    public String putBlob(String containerName, Blob blob, PutOptions options) {
+        // TODO: implement write back
+        return super.putBlob(containerName, blob, options);
+    }
+
     public void init(BounceService inService, Configuration config) {
         this.service = requireNonNull(inService);
         this.timeAgo = requireNonNull(Duration.parse(config.getString(DURATION)));
-    }
-
-    @Override
-    public void onPut(String container, Blob blob, PutOptions options) {
-        // TODO: Implement the background copy to the destination store
     }
 
     @Override

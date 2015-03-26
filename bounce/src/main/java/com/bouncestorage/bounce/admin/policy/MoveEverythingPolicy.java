@@ -42,7 +42,4 @@ public final class MoveEverythingPolicy extends MovePolicy {
         }
     }
 
-    @Override
-    public void onPut(String container, Blob blob, PutOptions options) {
-    }
 }
