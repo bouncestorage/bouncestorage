@@ -50,7 +50,7 @@ public final class BounceLink implements Serializable {
         }
     }
 
-    BlobMetadata getBlobMetadata() {
+    public BlobMetadata getBlobMetadata() {
         return metadata;
     }
 
@@ -58,7 +58,7 @@ public final class BounceLink implements Serializable {
         return metadata.getUserMetadata().containsKey(BOUNCE_LINK);
     }
 
-    static BounceLink fromBlob(Blob b) throws IOException {
+    public static BounceLink fromBlob(Blob b) throws IOException {
         try (InputStream is = b.getPayload().openStream();
             ObjectInputStream ois = new ObjectInputStream(is)) {
             Object obj = ois.readObject();

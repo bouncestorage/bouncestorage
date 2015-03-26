@@ -8,13 +8,14 @@ package com.bouncestorage.bounce.admin.policy;
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.TreeMap;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
 
@@ -30,15 +31,18 @@ import org.jclouds.blobstore.options.PutOptions;
 
 public final class MigrationPolicy extends BouncePolicy {
     // The policy implements migration from "source" to "destination"
+    private final static Set<BounceBlobStore.Region> DESTINATION = BounceBlobStore.NEAR_ONLY;
+    private final static Set<BounceBlobStore.Region> SOURCE = BounceBlobStore.FAR_ONLY;
 
     @Override
     public Blob getBlob(String container, String blobName, GetOptions options) {
-        Blob blob = getDestination().getBlob(container, blobName, options);
-        if (blob == null) {
-            blob = getSource().getBlob(container, blobName, options);
+        for (BlobStore blobStore : getCheckedStores()) {
+            Blob blob = blobStore.getBlob(container, blobName, options);
+            if (blob != null) {
+                return blob;
+            }
         }
-
-        return blob;
+        return null;
     }
 
     @Override
@@ -53,10 +57,10 @@ public final class MigrationPolicy extends BouncePolicy {
             throw new AssertionError("At least one of source or destination objects must be non-null");
         }
 
-        if (sourceObject.getRegions().equals(BounceBlobStore.NEAR_ONLY)) {
+        if (sourceObject.getRegions().equals(DESTINATION)) {
             return BounceResult.NO_OP;
         }
-        if (sourceObject.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
+        if (sourceObject.getRegions().equals(SOURCE)) {
             return moveObject(container, sourceObject);
         }
 
@@ -97,23 +101,21 @@ public final class MigrationPolicy extends BouncePolicy {
                 String destinationName = destinationMeta.getName();
                 int compare = sourceName.compareTo(destinationName);
                 if (compare < 0) {
-                    contents.put(sourceName, new BounceStorageMetadata(sourceMeta, BounceBlobStore.FAR_ONLY));
+                    contents.put(sourceName, new BounceStorageMetadata(sourceMeta, SOURCE));
                     sourceMeta = com.bouncestorage.bounce.Utils.getNextOrNull(sourcePage);
                 } else if (compare == 0) {
                     contents.put(sourceName, new BounceStorageMetadata(sourceMeta, BounceBlobStore.EVERYWHERE));
                     sourceMeta = Utils.getNextOrNull(sourcePage);
                     destinationMeta = Utils.getNextOrNull(destinationPage);
                 } else {
-                    contents.put(destinationName, new BounceStorageMetadata(destinationMeta, BounceBlobStore
-                            .NEAR_ONLY));
+                    contents.put(destinationName, new BounceStorageMetadata(destinationMeta, DESTINATION));
                     destinationMeta = Utils.getNextOrNull(destinationPage);
                 }
             } else if (sourceMeta == null) {
-                contents.put(destinationMeta.getName(), new BounceStorageMetadata(destinationMeta, BounceBlobStore
-                        .NEAR_ONLY));
+                contents.put(destinationMeta.getName(), new BounceStorageMetadata(destinationMeta, DESTINATION));
                 destinationMeta = Utils.getNextOrNull(destinationPage);
             } else {
-                contents.put(sourceMeta.getName(), new BounceStorageMetadata(sourceMeta, BounceBlobStore.FAR_ONLY));
+                contents.put(sourceMeta.getName(), new BounceStorageMetadata(sourceMeta, SOURCE));
                 sourceMeta = Utils.getNextOrNull(sourcePage);
             }
         }
@@ -125,8 +127,32 @@ public final class MigrationPolicy extends BouncePolicy {
     }
 
     @Override
-    public ImmutableSet<BlobStore> getCheckedStores() {
-        return ImmutableSet.of(getSource(), getDestination());
+    public BlobMetadata blobMetadata(String s, String s1) {
+        for (BlobStore blobStore : getCheckedStores()) {
+            BlobMetadata meta = blobStore.blobMetadata(s, s1);
+            if (meta != null) {
+                return meta;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public void removeBlob(String s, String s1) {
+        for (BlobStore blobStore : getCheckedStores()) {
+            blobStore.removeBlob(s, s1);
+        }
+    }
+
+    @Override
+    public void removeBlobs(String s, Iterable<String> iterable) {
+        for (BlobStore blobStore : getCheckedStores()) {
+            blobStore.removeBlobs(s, iterable);
+        }
+    }
+
+    private ImmutableList<BlobStore> getCheckedStores() {
+        return ImmutableList.of(getSource(), getDestination());
     }
 
     private BounceResult moveObject(String container, StorageMetadata objectMetadata) {

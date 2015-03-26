@@ -5,7 +5,10 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import static com.google.common.base.Throwables.propagate;
+
 import java.io.IOException;
+import java.util.Optional;
 
 import com.bouncestorage.bounce.BounceLink;
 
@@ -29,5 +32,25 @@ public abstract class MovePolicy extends MarkerPolicy {
             }
         }
         return getSource().getBlob(container, blobName, options);
+    }
+
+    @Override
+    public BlobMetadata blobMetadata(String container, String blobName) {
+        BlobMetadata meta = getSource().blobMetadata(container, blobName);
+        if (meta != null) {
+            if (BounceLink.isLink(meta)) {
+                Blob linkBlob = getSource().getBlob(container, blobName);
+                if (linkBlob != null) {
+                    try {
+                        return BounceLink.fromBlob(linkBlob).getBlobMetadata();
+                    } catch (IOException e) {
+                        throw propagate(e);
+                    }
+                } else {
+                    return null;
+                }
+            }
+        }
+        return meta;
     }
 }

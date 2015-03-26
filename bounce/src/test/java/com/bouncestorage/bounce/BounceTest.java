@@ -106,6 +106,8 @@ public final class BounceTest {
 
     @Test
     public void testTakeOverFarStore() throws Exception {
+        bounceBlobStore.setPolicy(new MoveEverythingPolicy());
+
         String blobName = "blob";
         Blob blob = UtilsTest.makeBlob(farBlobStore, blobName);
         farBlobStore.putBlob(containerName, blob);

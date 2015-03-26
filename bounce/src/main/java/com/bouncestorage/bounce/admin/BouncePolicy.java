@@ -7,7 +7,6 @@ package com.bouncestorage.bounce.admin;
 
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.IForwardingBlobStore;
-import com.google.common.collect.ImmutableSet;
 
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.BlobStore;
@@ -52,6 +51,4 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
 
     public abstract BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject);
-
-    public abstract ImmutableSet<BlobStore> getCheckedStores();
 }
