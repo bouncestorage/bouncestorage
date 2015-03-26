@@ -252,14 +252,7 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     public void takeOver(String containerName) throws IOException {
-        // TODO: hook into move service to enable parallelism and cancellation
-        for (StorageMetadata sm : Utils.crawlBlobStore(farStore,
-                containerName)) {
-            BlobMetadata metadata = farStore.blobMetadata(containerName,
-                    sm.getName());
-            BounceLink link = new BounceLink(Optional.of(metadata));
-            nearStore.putBlob(containerName, link.toBlob(nearStore));
-        }
+        policy.takeOver(containerName);
     }
 
     /**
@@ -269,15 +262,7 @@ public final class BounceBlobStore implements BlobStore {
      * @return true if the near store and farstore are in sync
      */
     public boolean sanityCheck(String containerName) throws IOException {
-        PageSet<? extends StorageMetadata> res = farStore.list(containerName);
-        for (StorageMetadata sm : res) {
-            BlobMetadata meta = blobMetadata(containerName, sm.getName());
-            if (!Utils.equalsOtherThanTime(sm, meta)) {
-                return false;
-            }
-        }
-
-        return true;
+        return policy.sanityCheck(containerName);
     }
 
     @VisibleForTesting

@@ -5,11 +5,18 @@
 
 package com.bouncestorage.bounce.admin;
 
+import java.io.IOException;
+import java.util.Optional;
+
+import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.IForwardingBlobStore;
+import com.bouncestorage.bounce.Utils;
 
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.BlobStore;
+import org.jclouds.blobstore.domain.BlobMetadata;
+import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.CreateContainerOptions;
 import org.jclouds.domain.Location;
@@ -59,4 +66,33 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
 
     public abstract BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject);
+
+    public void takeOver(String containerName) throws IOException {
+        // TODO: hook into move service to enable parallelism and cancellation
+        for (StorageMetadata sm : Utils.crawlBlobStore(getDestination(),
+                containerName)) {
+            BlobMetadata metadata = getDestination().blobMetadata(containerName,
+                    sm.getName());
+            BounceLink link = new BounceLink(Optional.of(metadata));
+            getSource().putBlob(containerName, link.toBlob(getSource()));
+        }
+    }
+
+    /**
+     * Sanity check that near store and far store are in sync, if they aren't,
+     * we need to perform takeover.
+
+     * @return true if the near store and farstore are in sync
+     */
+    public boolean sanityCheck(String containerName) throws IOException {
+        PageSet<? extends StorageMetadata> res = getDestination().list(containerName);
+        for (StorageMetadata sm : res) {
+            BlobMetadata meta = blobMetadata(containerName, sm.getName());
+            if (!Utils.equalsOtherThanTime(sm, meta)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
