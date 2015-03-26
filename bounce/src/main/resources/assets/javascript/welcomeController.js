@@ -1,5 +1,10 @@
 var welcomeControllers = angular.module('welcomeControllers', []);
 
-welcomeControllers.controller('WelcomeCtrl', ['$scope', '$http', '$q', '$location', '$timeout',
-  function ($scope, $http, $q, $location, $timeout) {
-  }]);
+welcomeControllers.controller('WelcomeCtrl', ['$location', 'ObjectStore',
+  function ($location, ObjectStore) {
+    ObjectStore.query(function(results) {
+      if (results.length > 0) {
+        $location.path('/dashboard');
+      }
+    });
+}]);
