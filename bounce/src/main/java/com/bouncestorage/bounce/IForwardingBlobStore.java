@@ -55,7 +55,7 @@ public interface IForwardingBlobStore extends BlobStore {
     @Override
     default boolean createContainerInLocation(Location location,
             String container) {
-        return delegate().createContainerInLocation(location, container);
+        return createContainerInLocation(location, container, CreateContainerOptions.NONE);
     }
 
     @Override
@@ -89,7 +89,7 @@ public interface IForwardingBlobStore extends BlobStore {
 
     @Override
     default void clearContainer(String container) {
-        delegate().clearContainer(container);
+        clearContainer(container, ListContainerOptions.NONE);
     }
 
     @Override
@@ -145,7 +145,7 @@ public interface IForwardingBlobStore extends BlobStore {
 
     @Override
     default Blob getBlob(String containerName, String blobName) {
-        return delegate().getBlob(containerName, blobName);
+        return getBlob(containerName, blobName, GetOptions.NONE);
     }
 
     @Override
@@ -177,7 +177,7 @@ public interface IForwardingBlobStore extends BlobStore {
 
     @Override
     default long countBlobs(String container) {
-        return delegate().countBlobs(container);
+        return countBlobs(container, ListContainerOptions.NONE);
     }
 
     @Override

@@ -11,6 +11,8 @@ import com.bouncestorage.bounce.IForwardingBlobStore;
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.CreateContainerOptions;
+import org.jclouds.domain.Location;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +44,12 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
 
     public final BlobStore getDestination() {
         return destinationBlobStore;
+    }
+
+    @Override
+    public boolean createContainerInLocation(Location location, String container, CreateContainerOptions options) {
+        return getDestination().createContainerInLocation(location, container, options) |
+                getSource().createContainerInLocation(location, container, options);
     }
 
     @Override

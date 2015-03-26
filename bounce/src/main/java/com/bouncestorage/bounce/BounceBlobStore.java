@@ -105,17 +105,17 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public Set<? extends Location> listAssignableLocations() {
-        return farStore.listAssignableLocations();
+        return policy.listAssignableLocations();
     }
 
     @Override
     public PageSet<? extends StorageMetadata> list() {
-        return nearStore.list();
+        return policy.list();
     }
 
     @Override
     public boolean containerExists(String s) {
-        return nearStore.containerExists(s);
+        return policy.containerExists(s);
     }
 
     @Override
@@ -125,19 +125,17 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public boolean createContainerInLocation(Location location, String s, CreateContainerOptions createContainerOptions) {
-        return farStore.createContainerInLocation(location, s, createContainerOptions) |
-                nearStore.createContainerInLocation(location, s);
+        return policy.createContainerInLocation(location, s, createContainerOptions);
     }
 
     @Override
     public ContainerAccess getContainerAccess(String s) {
-        return nearStore.getContainerAccess(s);
+        return policy.getContainerAccess(s);
     }
 
     @Override
     public void setContainerAccess(String s, ContainerAccess containerAccess) {
-        nearStore.setContainerAccess(s, containerAccess);
-        farStore.setContainerAccess(s, containerAccess);
+        policy.setContainerAccess(s, containerAccess);
     }
 
     @Override
@@ -152,44 +150,37 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public void clearContainer(String s) {
-        nearStore.clearContainer(s);
-        farStore.clearContainer(s);
+        clearContainer(s, ListContainerOptions.NONE);
     }
 
     @Override
     public void clearContainer(String s, ListContainerOptions listContainerOptions) {
-        nearStore.clearContainer(s, listContainerOptions);
-        farStore.clearContainer(s, listContainerOptions);
+        policy.clearContainer(s, listContainerOptions);
     }
 
     @Override
     public void deleteContainer(String s) {
-        nearStore.deleteContainer(s);
-        farStore.deleteContainer(s);
+        policy.deleteContainer(s);
     }
 
     @Override
     public boolean deleteContainerIfEmpty(String s) {
-        boolean deleted = nearStore.deleteContainerIfEmpty(s);
-        if (deleted) {
-            farStore.deleteContainer(s);
-        }
-        return deleted;
+        return policy.deleteContainerIfEmpty(s);
     }
 
     @Override
     public boolean directoryExists(String s, String s1) {
-        return nearStore.directoryExists(s, s1);
+        return policy.directoryExists(s, s1);
     }
 
     @Override
     public void createDirectory(String s, String s1) {
-        nearStore.createDirectory(s, s1);
+        policy.createDirectory(s, s1);
     }
 
     @Override
     public void deleteDirectory(String s, String s1) {
-        nearStore.deleteDirectory(s, s1);
+        policy.deleteDirectory(s, s1);
     }
 
     @Override
@@ -208,7 +199,7 @@ public final class BounceBlobStore implements BlobStore {
     }
 
     public BlobMetadata blobMetadataNoFollow(String container, String s) {
-        return nearStore.blobMetadata(container, s);
+        return policy.getSource().blobMetadata(container, s);
     }
 
     @Override
@@ -243,8 +234,7 @@ public final class BounceBlobStore implements BlobStore {
 
     @Override
     public void setBlobAccess(String container, String name, BlobAccess access) {
-        nearStore.setBlobAccess(container, name, access);
-        farStore.setBlobAccess(container, name, access);
+        policy.setBlobAccess(container, name, access);
     }
 
     @Override
@@ -292,12 +282,11 @@ public final class BounceBlobStore implements BlobStore {
 
     @VisibleForTesting
     public Blob getFromFarStore(String containerName, String blobName) {
-        return farStore.getBlob(containerName, blobName);
+        return policy.getDestination().getBlob(containerName, blobName);
     }
 
     @VisibleForTesting
     public Blob getFromNearStore(String containerName, String blobName) {
-        return nearStore.getBlob(containerName, blobName);
+        return policy.getSource().getBlob(containerName, blobName);
     }
-
 }
