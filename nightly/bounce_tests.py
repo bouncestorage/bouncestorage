@@ -9,6 +9,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import traceback
 import urllib
 
 CONFIG_BUCKET = "bounce-test-config"
@@ -210,7 +211,7 @@ def main():
             maybe_update(log)
 
             all_creds = get_all_blobstore_credentials(creds)
-            os.chdir(BOUNCE_SRC_DIR)
+            os.chdir34(BOUNCE_SRC_DIR)
             setup_swift()
         else:
             all_creds = get_all_blobstore_from_argv()
@@ -225,12 +226,13 @@ def main():
                          "keystone.credential-type" : "tempAuthCredentials",
                          "endpoint" : "http://127.0.0.1:%s/auth/v1.0/" % swift_far_port } ]
 
+        os.chdir("bounce")
         for provider in all_creds:
             run_test(provider, swift_near_port, test)
     except:
         exception = sys.exc_info()[0]
         if not ec2:
-            print e
+            traceback.print_exc()
 
     if saio_near_container is not None:
         execute("sudo docker kill %s" % saio_near_container)
@@ -241,7 +243,7 @@ def main():
 
     if ec2:
         log.close()
-        notify_failure(creds, exception) if exception else notify_success(creds)
+        notify_failure(creds, traceback.format_exc()) if exception else notify_success(creds)
 
 if __name__ == '__main__':
     main()
