@@ -11,14 +11,23 @@ import static com.google.common.base.Throwables.propagate;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.StreamSupport;
+
+import javax.swing.text.html.Option;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.inject.CreationException;
 
@@ -30,11 +39,14 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 
 import org.apache.commons.configuration.AbstractConfiguration;
+import org.apache.commons.configuration.Configuration;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.ServerConnector;
 import org.gaul.s3proxy.S3Proxy;
 import org.gaul.s3proxy.S3ProxyConstants;
+import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +71,8 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     private int port = -1;
     private boolean useRandomPorts;
     private S3Proxy s3Proxy;
+    private Map<String, BlobStore> s3Providers = new HashMap<>();
+    private Map<String, BouncePolicy> virtualBuckets = new HashMap<>();
 
     public BounceApplication(AbstractConfiguration config) {
         this.config = requireNonNull(config);
@@ -107,6 +121,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
                 }
 
                 s3Proxy = builder.build();
+                s3Proxy.setBlobStoreLocator((i, c, b) -> locateBlobStore(i, c, b));
                 s3Proxy.start();
             } catch (Exception e) {
                 throw propagate(e);
@@ -116,6 +131,47 @@ public final class BounceApplication extends Application<BounceConfiguration> {
 
     Set<BouncePolicy> getPolicies() {
         return ImmutableSet.of(blobStore.getPolicy());
+    }
+
+    private Optional<String> getCredentialOfContainer(String container) {
+        return Optional.ofNullable(config.subset("bounce.virtual-bucket")
+                .subset(container)
+                .getString("credential"));
+    }
+
+    private Optional<String> getCredentialOfAccount(String identity) {
+        Configuration backendConfig = config.subset("bounce.backend");
+        Iterable<String> backends = () -> backendConfig.getKeys();
+        return StreamSupport.stream(backends.spliterator(), false)
+                .map(s -> backendConfig.subset(s))
+                .filter(c -> identity.equals(c.getString(Constants.PROPERTY_IDENTITY)))
+                .map(c -> c.getString(Constants.PROPERTY_CREDENTIAL))
+                .findFirst();
+    }
+
+    public void addProvider(String identity, BlobStore blobStore) {
+        s3Providers.put(identity, blobStore);
+    }
+
+    private Map.Entry<String, BlobStore> locateBlobStore(String identity,
+                                                        String container, String blob) {
+        if (container != null) {
+            BlobStore blobStore = virtualBuckets.get(container);
+            String credential;
+            if (blobStore != null) {
+                credential = getCredentialOfContainer(container)
+                        .orElseGet(() -> getCredentialOfAccount(identity).get());
+            } else {
+                blobStore = s3Providers.get(identity);
+                credential = getCredentialOfAccount(identity).get();
+            }
+
+            if (blobStore != null && credential != null) {
+                return Maps.immutableEntry(credential, blobStore);
+            }
+        }
+
+        return null;
     }
 
     private boolean isConfigValid() {
