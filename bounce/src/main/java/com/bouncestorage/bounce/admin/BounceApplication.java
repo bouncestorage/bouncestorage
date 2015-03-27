@@ -13,6 +13,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import com.bouncestorage.bounce.BounceBlobStore;
@@ -111,6 +112,10 @@ public final class BounceApplication extends Application<BounceConfiguration> {
                 throw propagate(e);
             }
         });
+    }
+
+    Set<BouncePolicy> getPolicies() {
+        return ImmutableSet.of(blobStore.getPolicy());
     }
 
     private boolean isConfigValid() {

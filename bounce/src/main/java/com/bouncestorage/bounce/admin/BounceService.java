@@ -22,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.StreamSupport;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy.BounceResult;
@@ -131,38 +130,37 @@ public final class BounceService {
 
         @Override
         public void run() {
-            BounceBlobStore store = app.getBlobStore();
-            BouncePolicy policy = store.getPolicy();
+            BouncePolicy policy = app.getPolicies().iterator().next();
             PeekingIterator<StorageMetadata> destinationIterator = Iterators.peekingIterator(
                     Utils.crawlBlobStore(policy.getDestination(), container).iterator());
             PeekingIterator<StorageMetadata> sourceIterator = Iterators.peekingIterator(
-                    Utils.crawlBlobStore(store, container).iterator());
+                    Utils.crawlBlobStore(policy, container).iterator());
 
             StorageMetadata destinationObject = Utils.getNextOrNull(destinationIterator);
             BounceStorageMetadata sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
             while (destinationObject != null || sourceObject != null) {
                 if (destinationObject == null) {
-                    reconcileObject(sourceObject, null);
+                    reconcileObject(policy, sourceObject, null);
                     sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
                     continue;
                 } else if (sourceObject == null) {
-                    reconcileObject(null, destinationObject);
+                    reconcileObject(policy, null, destinationObject);
                     destinationObject = Utils.getNextOrNull(destinationIterator);
                     continue;
                 }
                 int compare = destinationObject.getName().compareTo(sourceObject.getName());
                 if (compare == 0) {
                     // they are the same key
-                    reconcileObject(sourceObject, destinationObject);
+                    reconcileObject(policy, sourceObject, destinationObject);
                     destinationObject = Utils.getNextOrNull(destinationIterator);
                     sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
                 } else if (compare < 0) {
                     // near store missing this object
-                    reconcileObject(null, destinationObject);
+                    reconcileObject(policy, null, destinationObject);
                     destinationObject = Utils.getNextOrNull(destinationIterator);
                 } else {
                     // destination store missing this object
-                    reconcileObject(sourceObject, null);
+                    reconcileObject(policy, sourceObject, null);
                     sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
                 }
             }
@@ -170,9 +168,9 @@ public final class BounceService {
             status.endTime = new Date();
         }
 
-        private void reconcileObject(BounceStorageMetadata source, StorageMetadata destination) {
+        private void reconcileObject(BouncePolicy policy, BounceStorageMetadata source, StorageMetadata destination) {
             try {
-                adjustCount(app.getBlobStore().getPolicy().reconcileObject(container, source, destination));
+                adjustCount(policy.reconcileObject(container, source, destination));
             } catch (Throwable e) {
                 logger.error("Failed to reconcile object {}, {} in {}: {}", source, destination, container,
                         e.getMessage());
