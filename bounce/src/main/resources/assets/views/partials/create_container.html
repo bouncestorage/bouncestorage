@@ -1,0 +1,27 @@
+<ng-include src="'views/partials/navbar.html'"></ng-include>
+
+<div class="container main">
+  <h1 class="page-header">Create a virtual container</h1>
+
+    <form class="form col-sm-5">
+      <div class="form-group">
+        <label class="control-label">Virtual container name</label>
+        <input type="text" class="form-control" ng-model="name" placeholder="Virtual container name">
+      </div>
+      <div class="form-group"> 
+        <label class="control-label">Primary data source</label>
+        <div class="form-inline">
+          <select class="form-control" ng-model="store" ng-change="actions.storeChanged()">
+            <option value="none">Select an object store...</option>
+            <option value="new">Create a new object store</option>
+            <option ng-repeat="store in stores" value="{{store.id}}">{{store.nickname}}</option> 
+          </select>
+          <select class="form-control" ng-model="container">
+            <option value="none">Select a container...</option>
+            <option ng-repeat="container in containers" value="{{container}}">{{container}}</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-success" ng-click="actions.createContainer()">Submit</button>
+    </form>
+</div>

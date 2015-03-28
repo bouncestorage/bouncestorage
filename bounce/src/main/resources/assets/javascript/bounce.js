@@ -2,6 +2,7 @@ var bounce = angular.module('bounce', [
   'ngResource',
   'ngRoute',
   'storesControllers',
+  'virtualContainersControllers',
   'welcomeControllers'
 ]);
 
@@ -11,6 +12,10 @@ bounce.config(['$locationProvider', function($locationProvider) {
 
 bounce.config(['$routeProvider', function($routeProvider) {
   $routeProvider.
+    when('/create_container', {
+      templateUrl: 'views/partials/create_container.html',
+      controller: 'CreateVirtualContainerCtrl'
+    }).
     when('/create_store/:welcomeUrl?', {
       templateUrl: 'views/partials/create_store.html',
       controller: 'CreateStoreCtrl'
@@ -26,6 +31,10 @@ bounce.config(['$routeProvider', function($routeProvider) {
 
 bounce.factory('Container', ['$resource', function($resource) {
   return $resource('/api/service');
+}]);
+
+bounce.factory('VirtualContainer', ['$resource', function($resource) {
+  return $resource('/api/virtual_container');
 }]);
 
 bounce.factory('ObjectStore', ['$resource', function($resource) {
