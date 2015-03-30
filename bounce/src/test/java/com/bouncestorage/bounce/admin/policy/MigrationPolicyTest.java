@@ -30,6 +30,7 @@ public final class MigrationPolicyTest {
     BlobStoreContext bounceContext;
     BounceBlobStore blobStore;
     BounceService bounceService;
+    BounceApplication app;
 
     @Before
     public void setUp() throws Exception {
@@ -39,14 +40,12 @@ public final class MigrationPolicyTest {
         blobStore = (BounceBlobStore) bounceContext.getBlobStore();
         blobStore.createContainerInLocation(null, containerName);
 
-        BounceApplication app;
         synchronized (BounceApplication.class) {
             app = new BounceApplication(new MapConfiguration(new HashMap<>()));
         }
         app.useRandomPorts();
-        app.useBlobStore(blobStore);
         bounceService = app.getBounceService();
-        bounceService.setDefaultPolicy(new MigrationPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, MigrationPolicy.class);
     }
 
     @After
@@ -122,11 +121,11 @@ public final class MigrationPolicyTest {
     public void testRemoveCopiedBlob() throws Exception {
         String[] blobs = {"a", "b", "c"};
         putSourceBlobs(blobs);
-        bounceService.setDefaultPolicy(new CopyPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getCopiedObjectCount()).isEqualTo(blobs.length);
-        bounceService.setDefaultPolicy(new MigrationPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, MigrationPolicy.class);
 
         status = bounceService.bounce(containerName);
         status.future().get();
@@ -213,8 +212,8 @@ public final class MigrationPolicyTest {
     }
 
     private void putSourceBlobs(String[] sourceNames) throws Exception {
-        bounceService.setDefaultPolicy(new BounceNothingPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, BounceNothingPolicy.class);
         putBlobs(sourceNames);
-        bounceService.setDefaultPolicy(new MigrationPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, MigrationPolicy.class);
     }
 }

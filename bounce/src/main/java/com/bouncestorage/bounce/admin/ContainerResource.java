@@ -23,6 +23,7 @@ import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.codahale.metrics.annotation.Timed;
 
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.StorageMetadata;
 
 @Path("/container")
@@ -38,15 +39,17 @@ public final class ContainerResource {
     @Timed
     public ContainerStats getContainerStats(
             @QueryParam("name") String containerName) {
-        BounceBlobStore blobStore = app.getBlobStore();
+        BlobStore blobStore = app.getBlobStore(containerName);
         Iterable<StorageMetadata> metas = Utils.crawlBlobStore(blobStore,
                 containerName);
         AtomicLong bounceLinkCount = new AtomicLong();
         List<String> blobNames = StreamSupport.stream(metas.spliterator(), /*parallel=*/ false)
-                .map(sm -> (BounceStorageMetadata) sm)
                 .peek(sm -> {
-                    if (sm.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
-                        bounceLinkCount.getAndIncrement();
+                    if (blobStore instanceof BouncePolicy) {
+                        BounceStorageMetadata bsm = (BounceStorageMetadata) sm;
+                        if (bsm.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
+                            bounceLinkCount.getAndIncrement();
+                        }
                     }
                 })
                 .map(sm -> sm.getName())

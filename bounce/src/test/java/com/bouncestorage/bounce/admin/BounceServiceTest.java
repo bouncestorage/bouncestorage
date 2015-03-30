@@ -16,8 +16,10 @@ import java.util.Properties;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceLink;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
+import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
 import com.bouncestorage.bounce.admin.policy.CopyPolicy;
 import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
 import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
@@ -35,6 +37,7 @@ public final class BounceServiceTest {
     private BounceBlobStore blobStore;
     private String containerName;
     private BounceService bounceService;
+    BounceApplication app;
 
     @Before
     public void setUp() throws Exception {
@@ -44,12 +47,10 @@ public final class BounceServiceTest {
         blobStore = (BounceBlobStore) bounceContext.getBlobStore();
         blobStore.createContainerInLocation(null, containerName);
 
-        BounceApplication app;
         synchronized (BounceApplication.class) {
             app = new BounceApplication(new MapConfiguration(new HashMap<>()));
         }
         app.useRandomPorts();
-        app.useBlobStore(blobStore);
         bounceService = app.getBounceService();
     }
 
@@ -126,7 +127,8 @@ public final class BounceServiceTest {
 
     @Test
     public void testBounceLastModifiedTimePolicy() throws Exception {
-        bounceService.setDefaultPolicy(lastModifiedTimePolicy(Duration.ofHours(1)));
+        UtilsTest.switchPolicyforContainer(app, containerName, LastModifiedTimePolicy.class,
+                ImmutableMap.of(LastModifiedTimePolicy.DURATION, Duration.ofHours(1).toString()));
 
         Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
         blobStore.putBlob(containerName, blob);
@@ -147,7 +149,7 @@ public final class BounceServiceTest {
 
     @Test
     public void testCopyBouncePolicy() throws Exception {
-        bounceService.setDefaultPolicy(new CopyPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
         Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
         blobStore.putBlob(containerName, blob);
         BounceTaskStatus status = bounceService.bounce(containerName);
@@ -159,7 +161,7 @@ public final class BounceServiceTest {
 
     @Test
     public void testCopyTwice() throws Exception {
-        bounceService.setDefaultPolicy(new CopyPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
         Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
         blobStore.putBlob(containerName, blob);
         BounceTaskStatus status = bounceService.bounce(containerName);
@@ -174,13 +176,13 @@ public final class BounceServiceTest {
 
     @Test
     public void testCopyAfterMove() throws Exception {
-        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
         Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
         blobStore.putBlob(containerName, blob);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
-        bounceService.setDefaultPolicy(new CopyPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
         status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getCopiedObjectCount()).isEqualTo(0);
@@ -188,14 +190,14 @@ public final class BounceServiceTest {
 
     @Test
     public void testMoveAfterCopy() throws Exception {
-        bounceService.setDefaultPolicy(new CopyPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
         Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
         blobStore.putBlob(containerName, blob);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getCopiedObjectCount()).isEqualTo(1);
 
-        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
         status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getMovedObjectCount()).isEqualTo(0);
@@ -214,11 +216,11 @@ public final class BounceServiceTest {
     }
 
     private void toggleBounceNothing() {
-        bounceService.setDefaultPolicy(Optional.empty());
+        UtilsTest.switchPolicyforContainer(app, containerName, BounceNothingPolicy.class);
     }
 
     private void toggleMoveEverything() {
-        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
     }
 
     private BouncePolicy lastModifiedTimePolicy(Duration duration) {

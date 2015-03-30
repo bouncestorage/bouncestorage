@@ -49,7 +49,7 @@ public final class ConfigTest {
 
     @After
     public void tearDown() throws Exception {
-        BounceBlobStore blobStore = app.getBlobStore();
+        BlobStore blobStore = app.getBlobStore();
         if (blobStore != null) {
             blobStore.deleteContainer(containerName);
         }

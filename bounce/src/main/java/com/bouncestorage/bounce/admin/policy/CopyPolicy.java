@@ -9,11 +9,14 @@ import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
 
+import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.google.auto.service.AutoService;
 
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
 
@@ -43,4 +46,5 @@ public final class CopyPolicy extends MarkerPolicy {
             throw propagate(e);
         }
     }
+
 }

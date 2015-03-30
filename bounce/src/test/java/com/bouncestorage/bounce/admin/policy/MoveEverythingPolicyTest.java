@@ -29,6 +29,7 @@ public final class MoveEverythingPolicyTest {
     BlobStoreContext bounceContext;
     BounceBlobStore blobStore;
     BounceService bounceService;
+    BounceApplication app;
 
     @Before
     public void setUp() throws Exception {
@@ -38,14 +39,12 @@ public final class MoveEverythingPolicyTest {
         blobStore = (BounceBlobStore) bounceContext.getBlobStore();
         blobStore.createContainerInLocation(null, containerName);
 
-        BounceApplication app;
         synchronized (BounceApplication.class) {
             app = new BounceApplication(new MapConfiguration(new HashMap<>()));
         }
         app.useRandomPorts();
-        app.useBlobStore(blobStore);
         bounceService = app.getBounceService();
-        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
     }
 
     @After
@@ -85,7 +84,7 @@ public final class MoveEverythingPolicyTest {
         blobStore.putBlob(containerName, blob);
 
         // Copy the blob over
-        blobStore.setPolicy(new CopyPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         Blob farBlob = blobStore.getFromFarStore(containerName, blobName);
@@ -93,7 +92,7 @@ public final class MoveEverythingPolicyTest {
         UtilsTest.assertEqualBlobs(nearBlob, farBlob);
 
         // Run the move policy and ensure that a link is created
-        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
         status = bounceService.bounce(containerName);
         status.future().get();
         BlobMetadata source = blobStore.blobMetadataNoFollow(containerName, blobName);

@@ -8,4 +8,5 @@ server:
 logging:
   level: DEBUG
   loggers:
-    org.eclipse.jetty: INFO
+    org.eclipse.jetty: info
+    jclouds.wire: debug

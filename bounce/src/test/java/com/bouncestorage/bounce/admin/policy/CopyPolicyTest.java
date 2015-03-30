@@ -29,6 +29,7 @@ public final class CopyPolicyTest {
     BlobStoreContext bounceContext;
     BounceBlobStore blobStore;
     BounceService bounceService;
+    BounceApplication app;
 
     @Before
     public void setUp() throws Exception {
@@ -38,14 +39,12 @@ public final class CopyPolicyTest {
         blobStore = (BounceBlobStore) bounceContext.getBlobStore();
         blobStore.createContainerInLocation(null, containerName);
 
-        BounceApplication app;
         synchronized (BounceApplication.class) {
             app = new BounceApplication(new MapConfiguration(new HashMap<>()));
         }
         app.useRandomPorts();
-        app.useBlobStore(blobStore);
         bounceService = app.getBounceService();
-        bounceService.setDefaultPolicy(new CopyPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
     }
 
     @After
@@ -84,13 +83,13 @@ public final class CopyPolicyTest {
         blobStore.putBlob(containerName, blob);
         assertThat(blobStore.getFromFarStore(containerName, blobName)).isNull();
         assertThat(blobStore.getFromNearStore(containerName, blobName)).isNotNull();
-        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
         bounceService.bounce(containerName).future().get();
         assertThat(blobStore.getFromNearStore(containerName, blobName)).isNotNull();
         assertThat(blobStore.getFromFarStore(containerName, blobName)).isNotNull();
         BlobMetadata source = blobStore.blobMetadataNoFollow(containerName, blobName);
         assertThat(BounceLink.isLink(source)).isTrue();
-        bounceService.setDefaultPolicy(new CopyPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         Blob far = blobStore.getFromFarStore(containerName, blobName);

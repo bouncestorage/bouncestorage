@@ -11,9 +11,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 
+import com.bouncestorage.bounce.admin.BounceApplication;
+import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -23,6 +26,7 @@ import com.google.common.io.ByteSource;
 import com.google.common.net.MediaType;
 import com.google.inject.Module;
 
+import org.apache.commons.configuration.Configuration;
 import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
@@ -42,6 +46,23 @@ public final class UtilsTest {
     private BlobStore nearBlobStore;
     private BlobStore farBlobStore;
     private String containerName;
+
+    public static void switchPolicyforContainer(BounceApplication app, String container, Class<? extends BouncePolicy>
+            policy) {
+        switchPolicyforContainer(app, container, policy, ImmutableMap.of());
+    }
+
+    public static void switchPolicyforContainer(BounceApplication app, String container, Class<? extends BouncePolicy> policy,
+                                                Map<String, String> policyConfig) {
+        Configuration config = app.getConfiguration();
+        config.setProperty("bounce.container.0.tier.0.backend", 0);
+        config.setProperty("bounce.container.0.tier.0.policy", policy.getSimpleName());
+        policyConfig.entrySet()
+                .forEach(entry -> config.setProperty("bounce.container.0.tier.0." + entry.getKey(), entry.getValue()));
+        config.setProperty("bounce.container.0.tier.1.backend", 1);
+        config.setProperty("bounce.container.0.name", container);
+        config.setProperty("bounce.containers", config.getList("bounce.containers").add(0));
+    }
 
     public static BlobStoreContext createTestBounceBlobStore() {
         Properties properties = new Properties();

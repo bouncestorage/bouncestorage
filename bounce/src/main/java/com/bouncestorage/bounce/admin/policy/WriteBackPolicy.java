@@ -25,46 +25,55 @@ import org.jclouds.blobstore.options.PutOptions;
 
 @AutoService(BouncePolicy.class)
 public final class WriteBackPolicy extends MovePolicy {
-    public static final String DURATION = "duration";
+    public static final String COPY_DELAY = "copy-delay";
+    public static final String EVICT_DELAY = "evict-delay";
     private BounceService service;
-    private Duration timeAgo;
+    private Duration copyDelay;
+    private boolean copy;
+    private boolean immediateCopy;
+    private Duration evictDelay;
+    private boolean evict;
 
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions options) {
-        // TODO: implement write back
+        if (immediateCopy) {
+            // TODO: implement immediate write back
+        }
         return super.putBlob(containerName, blob, options);
     }
 
     public void init(BounceService inService, Configuration config) {
         this.service = requireNonNull(inService);
-        this.timeAgo = requireNonNull(Duration.parse(config.getString(DURATION)));
+        this.copyDelay = requireNonNull(Duration.parse(config.getString(COPY_DELAY)));
+        this.copy = !copyDelay.isNegative();
+        this.immediateCopy = copyDelay.isZero();
+        this.evictDelay = requireNonNull(Duration.parse(config.getString(EVICT_DELAY)));
+        this.evict = !evictDelay.isNegative();
     }
 
     @Override
     public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject) {
         if (sourceObject != null) {
-            if (!isObjectExpired(sourceObject)) {
-                try {
+            try {
+                if (copy && (immediateCopy || isObjectExpired(sourceObject, copyDelay))) {
                     return maybeCopyObject(container, sourceObject, destinationObject);
-                } catch (IOException e) {
-                    propagate(e);
-                }
-            } else {
-                try {
+                } else if (evict && isObjectExpired(sourceObject, evictDelay)) {
                     return maybeMoveObject(container, sourceObject, destinationObject);
-                } catch (IOException e) {
-                    throw propagate(e);
                 }
+            } catch (IOException e) {
+                throw propagate(e);
             }
+
+            return BounceResult.NO_OP;
         }
 
         return maybeRemoveDestinationObject(container, destinationObject);
     }
 
-    private boolean isObjectExpired(StorageMetadata metadata) {
+    private boolean isObjectExpired(StorageMetadata metadata, Duration duration) {
         Instant now = service.getClock().instant();
         Instant then = metadata.getLastModified().toInstant();
-        return now.minus(timeAgo).isAfter(then);
+        return now.minus(duration).isAfter(then);
     }
 }

@@ -28,6 +28,7 @@ public final class MovePolicyTest {
     BlobStoreContext bounceContext;
     BounceBlobStore blobStore;
     BounceService bounceService;
+    BounceApplication app;
 
     @Before
     public void setUp() throws Exception {
@@ -42,7 +43,6 @@ public final class MovePolicyTest {
             app = new BounceApplication(new MapConfiguration(new HashMap<>()));
         }
         app.useRandomPorts();
-        app.useBlobStore(blobStore);
         bounceService = app.getBounceService();
     }
 
@@ -63,7 +63,7 @@ public final class MovePolicyTest {
         String blobName = UtilsTest.createRandomBlobName();
         Blob blob = UtilsTest.makeBlob(blobStore, blobName);
         blobStore.putBlob(containerName, blob);
-        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(blobStore.getFromNearStore(containerName, blobName)).isNotNull();
