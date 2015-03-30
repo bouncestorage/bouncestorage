@@ -24,14 +24,14 @@ import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.PutOptions;
 
 @AutoService(BouncePolicy.class)
-public final class WriteBackPolicy extends MovePolicy {
+public class WriteBackPolicy extends MovePolicy {
     public static final String COPY_DELAY = "copy-delay";
     public static final String EVICT_DELAY = "evict-delay";
     private BounceService service;
-    private Duration copyDelay;
+    protected Duration copyDelay;
     private boolean copy;
     private boolean immediateCopy;
-    private Duration evictDelay;
+    protected Duration evictDelay;
     private boolean evict;
 
     @Override
@@ -71,9 +71,9 @@ public final class WriteBackPolicy extends MovePolicy {
         return maybeRemoveDestinationObject(container, destinationObject);
     }
 
-    private boolean isObjectExpired(StorageMetadata metadata, Duration duration) {
+    protected boolean isObjectExpired(StorageMetadata metadata, Duration duration) {
         Instant now = service.getClock().instant();
         Instant then = metadata.getLastModified().toInstant();
-        return now.minus(duration).isAfter(then);
+        return !now.minus(duration).isBefore(then);
     }
 }

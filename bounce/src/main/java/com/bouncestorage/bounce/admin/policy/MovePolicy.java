@@ -21,7 +21,7 @@ import org.jclouds.blobstore.options.GetOptions;
 
 public abstract class MovePolicy extends MarkerPolicy {
     @Override
-    public final Blob getBlob(String container, String blobName, GetOptions options) {
+    public Blob getBlob(String container, String blobName, GetOptions options) {
         Blob blob = super.getBlob(container, blobName, options);
         if (blob == null) {
             return null;
