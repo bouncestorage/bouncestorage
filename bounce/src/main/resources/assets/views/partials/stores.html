@@ -1,0 +1,31 @@
+<ng-include src="'views/partials/navbar.html'"></ng-include>
+
+<div class="container main">
+  <h1 class="page-header">Object Stores</h1>
+
+  <div class="col-sm-6 table-responsive">
+    <button class="btn btn-primary" ng-click="actions.addStore()">
+      <span class="glyphicon glyphicon-plus"></span> Add an object store
+    </button>
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Provider</th>
+          <th>Identity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="store in stores">
+          <td>
+            <a href="" ng-click="actions.editStore()" class="icon">
+              <span class="glyphicon glyphicon-edit"></span>
+            </a> {{store.nickname}}
+          </td>
+          <td>{{store.provider}}</td>
+          <td>{{store.identity}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

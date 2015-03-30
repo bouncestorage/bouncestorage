@@ -28,3 +28,20 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
       console.log($scope.provider);
     };
 }]);
+
+storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
+  '$timeout', 'ObjectStore',
+  function ($scope, $location, $timeout, ObjectStore) {
+    $scope.actions = {};
+    ObjectStore.query(function(results) {
+      $scope.stores = results;
+    });
+
+    $scope.actions.addStore = function() {
+      $location.path("/create_store");
+    };
+
+    $scope.actions.editStore = function() {
+      $location.path("/");
+    };
+}]);

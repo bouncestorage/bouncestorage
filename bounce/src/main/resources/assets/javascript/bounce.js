@@ -26,6 +26,10 @@ bounce.config(['$routeProvider', function($routeProvider) {
       templateUrl: 'views/partials/dashboard.html',
       controller: 'DashboardCtrl'
     }).
+    when('/stores', {
+      templateUrl: 'views/partials/stores.html',
+      controller: 'ViewStoresCtrl'
+    }).
     when('/edit_container/:containerId?', {
     }).
     when('/welcome', {
