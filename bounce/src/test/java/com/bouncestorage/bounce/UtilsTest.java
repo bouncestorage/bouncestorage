@@ -95,6 +95,10 @@ public final class UtilsTest {
                 .build(BlobStoreContext.class);
     }
 
+    public static BlobStore createTransientBlobStore() {
+        return ContextBuilder.newBuilder("transient").build(BlobStoreContext.class).getBlobStore();
+    }
+
     public static void assertEqualBlobs(Blob one, Blob two) throws Exception {
         try (InputStream is = one.getPayload().openStream();
              InputStream is2 = two.getPayload().openStream()) {
