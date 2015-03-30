@@ -1,45 +1,57 @@
 <ng-include src="'views/partials/navbar.html'"></ng-include>
 
 <div class="container main">
-  <h1 class="page-header">Create an object store</h1>
-
+  <h1 class="page-header" ng-if="edit !== true">Create an object store</h1>
+  <h1 class="page-header" ng-if="edit">Edit object store</h1>
   <div class="col-sm-4">
-  <form class="form">
-    <div class="form-group">
-      <label class="control-label">Object store nickname</label>
-      <input type="text" class="form-control" ng-model="nickname" placeholder="Object store nickname">
-    </div>
-    <div class="form-group">
-      <label class="control-label">Object store type</label>
-      <select class="form-control" ng-model="provider" ng-change="actions.updatePrompts()">
-        <option value="none">Select a storage type...</option>
-        <option value="aws-s3">AWS S3</option>
-        <option value="swift">OpenStack Swift</option>
-        <option value="google">Google Cloud Storage</option>
-        <option value="azure">Azure</option>
-        <option value="filesystem">Local filesystem (debugging only)</option>
-        <option value="transient">In-memory store (debugging only)</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="control-label">Object store identity</label>
-      <input type="text" class="form-control" ng-model="identity" placeholder="API identity">
-    </div>
-    <div class="form-group">
-      <label class="control-label">Object store credential</label>
-      <input type="password" class="form-control" ng-model="credential" placeholder="Secret key">
-    </div> 
-    <div class="form-group">
-      <label class="control-label">Object store endpoint</label>
-      <input type="text" class="form-control" ng-model="endpoint" placeholder="Endpoint">
-    </div>
-    <div class="form-group">
-      <label class="control-label">Object store region</label>
-      <select class="form-control" ng-model="region">
-      <!-- regions are provider dependent and dynamically populated -->
-      </select>
-    </div>
-    <button class="btn btn-default" ng-click="actions.submitNewStore()">Submit</button>
-  </form>
+    <form class="form">
+      <div class="form-group">
+        <label class="control-label">Object store nickname</label>
+        <input type="text" class="form-control" ng-model="nickname"
+          placeholder="Object store nickname">
+      </div>
+      <div class="form-group">
+        <label class="control-label">Object store type</label>
+        <select class="form-control" ng-model="provider"
+            ng-change="actions.updatePrompts()" ng-disabled="edit">
+          <option value="none">Select a storage type...</option>
+          <option value="aws-s3">AWS S3</option>
+          <option value="swift">OpenStack Swift</option>
+          <option value="google">Google Cloud Storage</option>
+          <option value="azure">Azure</option>
+          <option value="filesystem">Local filesystem (debugging only)</option>
+          <option value="transient">In-memory store (debugging only)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="control-label">Object store identity</label>
+        <input type="text" class="form-control" ng-model="identity"
+          ng-disabled="edit" placeholder="API identity">
+      </div>
+      <div class="form-group">
+        <label class="control-label">Object store credential</label>
+        <input type="password" class="form-control" ng-model="credential"
+          placeholder="Secret key">
+      </div>
+      <div class="form-group">
+        <label class="control-label">Object store endpoint</label>
+        <input type="text" class="form-control" ng-model="endpoint"
+          ng-disabled="edit" placeholder="Endpoint">
+      </div>
+      <div class="form-group">
+        <label class="control-label">Object store region</label>
+        <select class="form-control" ng-model="region" ng-disabled="edit">
+        <!-- regions are provider dependent and dynamically populated -->
+        </select>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-default" ng-click="actions.submitNewStore()"
+          ng-if="edit !== true">Submit</button>
+        <button class="btn btn-danger" ng-click="actions.cancelEdit()"
+          ng-if="edit">Cancel</button>
+        <button class="btn btn-success" ng-click="actions.updateStore()"
+          ng-if="edit">Edit</button>
+      </div>
+    </form>
   </div>
 </div>

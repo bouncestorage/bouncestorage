@@ -6,6 +6,19 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
     $scope.actions = {};
     $scope.provider = "none";
 
+    if (typeof($routeParams.objectStoreId) === "string") {
+      $scope.edit = true;
+      ObjectStore.get({ id:$routeParams.objectStoreId },
+        function(result) {
+          $scope.nickname = result.nickname;
+          $scope.provider = result.provider;
+          $scope.identity = result.identity;
+          $scope.credential = result.credential;
+          $scope.region = result.region;
+          $scope.endpoint = result.endpoint;
+      });
+    }
+
     $scope.actions.submitNewStore = function() {
       ObjectStore.save(
         { nickname: $scope.nickname,
@@ -15,7 +28,6 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
           region: $scope.region,
           endpoint: $scope.endpoint
         }, function (res) {
-          console.log($routeParams);
           if ($routeParams.welcomeUrl === 'welcome') {
             $location.path("/dashboard");
           } else {
@@ -24,8 +36,29 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
         });
     };
 
+    $scope.actions.updateStore = function() {
+      ObjectStore.update({
+        id: $routeParams.objectStoreId,
+        nickname: $scope.nickname,
+        provider: $scope.provider,
+        identity: $scope.identity,
+        credential: $scope.credential,
+        region: $scope.region,
+        endpoint: $scope.endpoint
+      }, function(res) {
+        $location.path("/stores");
+      }, function(error) {
+        console.log("Error: " + error);
+      });
+    };
+
     $scope.actions.updatePrompts = function () {
+      // TODO: dynamically load prompts for various providers
       console.log($scope.provider);
+    };
+
+    $scope.actions.cancelEdit = function() {
+      $location.path("/stores");
     };
 }]);
 
@@ -38,10 +71,10 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     });
 
     $scope.actions.addStore = function() {
-      $location.path("/create_store");
+      $location.path("/create_store/false");
     };
 
-    $scope.actions.editStore = function() {
-      $location.path("/");
+    $scope.actions.editStore = function(store) {
+      $location.path("/edit_store/" + store.id);
     };
 }]);

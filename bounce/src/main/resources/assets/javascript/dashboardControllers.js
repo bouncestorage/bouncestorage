@@ -5,7 +5,6 @@ dashboardControllers.controller('DashboardCtrl', ['$scope', '$q', '$location',
     function ($scope, $q, $location, $timeout, VirtualContainer) {
   $scope.actions = {};
   VirtualContainer.query(function(results) {
-    console.log(results);
     $scope.containers = results;
   });
 

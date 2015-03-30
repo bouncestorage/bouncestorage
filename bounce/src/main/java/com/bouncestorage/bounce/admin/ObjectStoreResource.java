@@ -17,7 +17,9 @@ import java.util.Properties;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
@@ -25,6 +27,7 @@ import javax.ws.rs.core.Response;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.codahale.metrics.annotation.Timed;
+import com.google.common.collect.ImmutableSet;
 
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.ContextBuilder;
@@ -36,6 +39,8 @@ import org.jclouds.blobstore.BlobStoreContext;
 public final class ObjectStoreResource {
     private static final String SUCCESS_RESPONSE = "{\"status\": \"success\"}";
     private static final String PROPERTIES_PREFIX = "jclouds.";
+    private static final ImmutableSet<String> IMMUTABLE_FIELDS = ImmutableSet.of("identity", "provider",
+            "region", "endpoint");
 
     private final BounceApplication app;
 
@@ -46,7 +51,6 @@ public final class ObjectStoreResource {
     @POST
     @Timed
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
     public String createObjectStore(ObjectStore objectStore) {
         try {
             Properties properties = new Properties();
@@ -70,18 +74,24 @@ public final class ObjectStoreResource {
     }
 
     @GET
+    @Path("{id}")
     @Timed
-    @Produces(MediaType.APPLICATION_JSON)
+    public ObjectStore getObjectStore(@PathParam("id") int id) {
+        ObjectStore store = getStoreById(id, app.getConfiguration());
+        if (store == null) {
+            throw new WebApplicationException(Response.Status.NOT_FOUND);
+        }
+        return store;
+    }
+
+    @GET
+    @Timed
     public List<ObjectStore> getObjectStores() {
         Map<Integer, ObjectStore> results = new HashMap<>();
         Configuration config = app.getConfiguration();
-        Iterator<String> configIterator = config.getKeys();
+        Iterator<String> configIterator = config.getKeys(BounceBlobStore.STORE_PROPERTY);
         while (configIterator.hasNext()) {
             String key = configIterator.next();
-            if (!key.startsWith(BounceBlobStore.STORE_PROPERTY)) {
-                continue;
-            }
-
             int id = getStoreId(key);
             ObjectStore store;
             if (!results.containsKey(id)) {
@@ -96,6 +106,55 @@ public final class ObjectStoreResource {
         return new LinkedList<>(results.values());
     }
 
+    @PUT
+    @Path("{id}")
+    @Timed
+    public String updateObjectStore(@PathParam("id") int id,
+                                    ObjectStore objectStore) {
+        Configuration config = app.getConfiguration();
+        ObjectStore current = getStoreById(id, config);
+        if (current == null) {
+            throw new WebApplicationException(Response.Status.NOT_FOUND);
+        }
+        for (String field : IMMUTABLE_FIELDS) {
+            String currentValue = current.getValueByName(field);
+            String newValue = objectStore.getValueByName(field);
+            boolean immutableSet = false;
+            if (currentValue == null && newValue != null) {
+                immutableSet = true;
+            }
+            if (currentValue != null && newValue != null) {
+                if (!current.getValueByName(field).equalsIgnoreCase(objectStore.getValueByName(field))) {
+                    immutableSet = true;
+                }
+            }
+            if (immutableSet) {
+                throw new WebApplicationException(Response.status(Response.Status.BAD_REQUEST).entity(
+                    "Parameter " + field + " cannot be changed").build());
+            }
+        }
+
+        String prefix = BounceBlobStore.STORE_PROPERTY + "." + current.id + ".";
+        config.setProperty(prefix + "nickname", objectStore.nickname);
+        config.setProperty(prefix + PROPERTIES_PREFIX + "credential", objectStore.credential);
+        return "{\"status\":\"success\"}";
+    }
+
+    private ObjectStore getStoreById(int id, Configuration config) {
+        String prefix = BounceBlobStore.STORE_PROPERTY + "." + id;
+        Iterator<String> keysIterator = config.getKeys(prefix);
+        ObjectStore result = null;
+        while (keysIterator.hasNext()) {
+            String key = keysIterator.next();
+            if (result == null) {
+                result = new ObjectStore();
+                result.setId(id);
+            }
+            setProperty(result, getFieldName(key), config.getString(key));
+        }
+        return result;
+    }
+
     private int getStoreId(String key) {
         int indexEnd = key.indexOf(".", BounceBlobStore.STORE_PROPERTY.length() + 1);
         return Integer.decode(key.substring(BounceBlobStore.STORE_PROPERTY.length() + 1, indexEnd));
@@ -103,7 +162,7 @@ public final class ObjectStoreResource {
 
     private String getFieldName(String key) {
         int indexEnd;
-        if (key.indexOf(PROPERTIES_PREFIX) == -1) {
+        if (!key.contains(PROPERTIES_PREFIX)) {
             indexEnd = key.indexOf(".", BounceBlobStore.STORE_PROPERTY.length() + 1) + 1;
         } else {
             indexEnd = key.indexOf(PROPERTIES_PREFIX) + PROPERTIES_PREFIX.length();
@@ -125,12 +184,9 @@ public final class ObjectStoreResource {
 
     private int getLastBlobStoreIndex(Configuration config) {
         int lastIndex = 1;
-        Iterator<String> keyIterator = config.getKeys();
+        Iterator<String> keyIterator = config.getKeys(BounceBlobStore.STORE_PROPERTY);
         while (keyIterator.hasNext()) {
             String key = keyIterator.next();
-            if (!key.startsWith(BounceBlobStore.STORE_PROPERTY)) {
-                continue;
-            }
             // Skip the "." and the first digit
             int indexStart = key.indexOf(BounceBlobStore.STORE_PROPERTY) + BounceBlobStore.STORE_PROPERTY.length() + 1;
             int indexEnd = key.indexOf(".", indexStart);
@@ -203,6 +259,28 @@ public final class ObjectStoreResource {
 
         public int getId() {
             return id;
+        }
+
+        public String getValueByName(String field) {
+            if (field.equalsIgnoreCase("nickname")) {
+                return nickname;
+            }
+            if (field.equalsIgnoreCase("identity")) {
+                return identity;
+            }
+            if (field.equalsIgnoreCase("credential")) {
+                return credential;
+            }
+            if (field.equalsIgnoreCase("provider")) {
+                return provider;
+            }
+            if (field.equalsIgnoreCase("region")) {
+                return region;
+            }
+            if (field.equalsIgnoreCase("endpoint")) {
+                return endpoint;
+            }
+            throw new IllegalArgumentException("Unknown field");
         }
 
         public String toString() {

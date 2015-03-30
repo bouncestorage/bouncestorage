@@ -18,9 +18,9 @@
       <tbody>
         <tr ng-repeat="store in stores">
           <td>
-            <a href="" ng-click="actions.editStore()" class="icon">
-              <span class="glyphicon glyphicon-edit"></span>
-            </a> {{store.nickname}}
+            <a href="" ng-click="actions.editStore(store)" class="icon">
+              <span class="glyphicon glyphicon-edit"></span></a>
+            {{store.nickname}}
           </td>
           <td>{{store.provider}}</td>
           <td>{{store.identity}}</td>

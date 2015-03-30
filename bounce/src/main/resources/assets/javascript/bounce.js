@@ -17,11 +17,13 @@ bounce.config(['$routeProvider', function($routeProvider) {
       templateUrl: 'views/partials/create_container.html',
       controller: 'CreateVirtualContainerCtrl'
     }).
-    when('/create_store/:welcomeUrl?', {
+    when('/create_store/:welcomeUrl/:objectStoreId?', {
       templateUrl: 'views/partials/create_store.html',
       controller: 'CreateStoreCtrl'
     }).
-
+    when('/edit_store/:objectStore', {
+      redirectTo: '/create_store/false/:objectStore'
+    }).
     when('/dashboard', {
       templateUrl: 'views/partials/dashboard.html',
       controller: 'DashboardCtrl'
@@ -31,6 +33,7 @@ bounce.config(['$routeProvider', function($routeProvider) {
       controller: 'ViewStoresCtrl'
     }).
     when('/edit_container/:containerId?', {
+      redirectTo: 'create_store/false'
     }).
     when('/welcome', {
       templateUrl: 'views/partials/welcome.html',
@@ -50,5 +53,7 @@ bounce.factory('VirtualContainer', ['$resource', function($resource) {
 }]);
 
 bounce.factory('ObjectStore', ['$resource', function($resource) {
-  return $resource('/api/object_store');
+  return $resource('/api/object_store/:id', { id: "@id" },
+    { 'update': { method: 'PUT',}
+    });
 }]);
