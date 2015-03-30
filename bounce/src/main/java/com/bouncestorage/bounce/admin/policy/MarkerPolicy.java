@@ -180,22 +180,4 @@ public abstract class MarkerPolicy extends BouncePolicy {
         return BouncePolicy.BounceResult.COPY;
     }
 
-    protected final BounceResult maybeMoveObject(String container, BounceStorageMetadata sourceObject,
-            StorageMetadata destinationObject) throws IOException {
-        if (sourceObject.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
-            return BounceResult.NO_OP;
-        }
-        if (sourceObject.getRegions().equals(BounceBlobStore.EVERYWHERE)) {
-            BlobMetadata sourceMetadata = getSource().blobMetadata(container, sourceObject.getName());
-            BlobMetadata destinationMetadata = getDestination().blobMetadata(container, destinationObject.getName());
-            if (destinationMetadata.getETag().equalsIgnoreCase(sourceMetadata.getETag())) {
-                Utils.createBounceLink(this, sourceMetadata);
-                return BounceResult.LINK;
-            }
-        }
-
-        Utils.copyBlobAndCreateBounceLink(getSource(), getDestination(), container,
-                sourceObject.getName());
-        return BounceResult.MOVE;
-    }
 }

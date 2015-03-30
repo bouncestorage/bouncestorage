@@ -50,9 +50,7 @@ public final class AdminTest {
                     "server", config
             });
         }
-        app.useBlobStore(bounceBlobStore);
-        BounceService bounceService = app.getBounceService();
-        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
+        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
     }
 
     @After

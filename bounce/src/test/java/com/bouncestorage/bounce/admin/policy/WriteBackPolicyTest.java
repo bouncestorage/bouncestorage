@@ -17,6 +17,7 @@ import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.bouncestorage.bounce.admin.ConfigurationResource;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
 import org.apache.commons.configuration.MapConfiguration;
@@ -49,7 +50,6 @@ public final class WriteBackPolicyTest {
             app = new BounceApplication(new MapConfiguration(new HashMap<>()));
         }
         app.useRandomPorts();
-        app.useBlobStore(blobStore);
         bounceService = app.getBounceService();
         setWriteBackPolicy();
     }
@@ -219,9 +219,7 @@ public final class WriteBackPolicyTest {
     }
 
     private void setWriteBackPolicy() {
-        Properties properties = new Properties();
-        properties.put(BounceService.BOUNCE_POLICY_PREFIX + "." + WriteBackPolicy.DURATION, durationSetting);
-        properties.put(BounceService.BOUNCE_POLICY_PREFIX, "WriteBackPolicy");
-        new ConfigurationResource(app).updateConfig(properties);
+        UtilsTest.switchPolicyforContainer(app, containerName, WriteBackPolicy.class,
+                ImmutableMap.of(WriteBackPolicy.EVICT_DELAY, durationSetting));
     }
 }

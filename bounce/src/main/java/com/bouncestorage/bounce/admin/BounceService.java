@@ -49,12 +49,6 @@ public final class BounceService {
 
     public BounceService(BounceApplication app) {
         this.app = requireNonNull(app);
-        if (app.getConfiguration().containsKey(BOUNCE_POLICY_PREFIX)) {
-            Optional<BouncePolicy> policy = getBouncePolicyFromName(app.getConfiguration().getString(
-                    BOUNCE_POLICY_PREFIX));
-            policy.ifPresent(p -> p.init(this, app.getConfiguration().subset(BOUNCE_POLICY_PREFIX)));
-            setDefaultPolicy(policy);
-        }
     }
 
     @VisibleForTesting
@@ -74,37 +68,6 @@ public final class BounceService {
 
     synchronized Collection<BounceTaskStatus> status() {
         return bounceStatus.values();
-    }
-
-    static Optional<BouncePolicy> getBouncePolicyFromName(String name) {
-        ServiceLoader<BouncePolicy> loader = ServiceLoader.load(BouncePolicy.class);
-        return StreamSupport.stream(loader.spliterator(), false)
-                .filter(p -> p.getClass().getSimpleName().equals(name))
-                .findAny();
-    }
-
-    ConfigurationListener getConfigurationListener() {
-        return event -> {
-            if (event.getPropertyName().equals(BOUNCE_POLICY_PREFIX)) {
-                Optional<BouncePolicy> policy =
-                        getBouncePolicyFromName((String) event.getPropertyValue());
-                policy.ifPresent(p ->
-                        p.init(this, app.getConfiguration().subset(BOUNCE_POLICY_PREFIX)));
-                setDefaultPolicy(policy);
-            }
-        };
-    }
-
-    public synchronized void setDefaultPolicy(BouncePolicy policy) {
-        if (bounceStatus.values().stream().anyMatch(status -> !status.done())) {
-            throw new IllegalStateException("Cannot change policies while bouncing objects");
-        }
-
-        app.getBlobStore().setPolicy(policy);
-    }
-
-    public synchronized void setDefaultPolicy(Optional<BouncePolicy> policy) {
-        setDefaultPolicy(policy.orElse(new BounceNothingPolicy()));
     }
 
     public Clock getClock() {
