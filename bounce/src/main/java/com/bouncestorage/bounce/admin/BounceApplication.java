@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
 import ch.qos.logback.classic.Level;
 
 
-public final class BounceApplication extends Application<BounceConfiguration> {
+public final class BounceApplication extends Application<BounceDropWizardConfiguration> {
     private static final ImmutableSet<String> REQUIRED_PROPERTIES =
             ImmutableSet.of(S3ProxyConstants.PROPERTY_ENDPOINT);
 
@@ -286,13 +286,13 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     }
 
     @Override
-    public void initialize(Bootstrap<BounceConfiguration> bootstrap) {
+    public void initialize(Bootstrap<BounceDropWizardConfiguration> bootstrap) {
         bootstrap.addBundle(new AssetsBundle());
         bootstrap.setConfigurationSourceProvider(new UrlConfigurationSourceProvider());
     }
 
     @Override
-    public void run(BounceConfiguration configuration, Environment environment) {
+    public void run(BounceDropWizardConfiguration configuration, Environment environment) {
         environment.jersey().register(new ServiceResource(this));
         environment.jersey().register(new ContainerResource(this));
         environment.jersey().register(new BounceBlobsResource(this));
