@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.google.auto.service.AutoService;
@@ -27,7 +28,7 @@ import org.jclouds.blobstore.options.PutOptions;
 public class WriteBackPolicy extends MovePolicy {
     public static final String COPY_DELAY = "copy-delay";
     public static final String EVICT_DELAY = "evict-delay";
-    private BounceService service;
+    private BounceApplication app;
     protected Duration copyDelay;
     private boolean copy;
     private boolean immediateCopy;
@@ -42,8 +43,8 @@ public class WriteBackPolicy extends MovePolicy {
         return super.putBlob(containerName, blob, options);
     }
 
-    public void init(BounceService inService, Configuration config) {
-        this.service = requireNonNull(inService);
+    public void init(BounceApplication app, Configuration config) {
+        this.app = requireNonNull(app);
         this.copyDelay = requireNonNull(Duration.parse(config.getString(COPY_DELAY)));
         this.copy = !copyDelay.isNegative();
         this.immediateCopy = copyDelay.isZero();
@@ -56,10 +57,10 @@ public class WriteBackPolicy extends MovePolicy {
             destinationObject) {
         if (sourceObject != null) {
             try {
-                if (copy && (immediateCopy || isObjectExpired(sourceObject, copyDelay))) {
-                    return maybeCopyObject(container, sourceObject, destinationObject);
-                } else if (evict && isObjectExpired(sourceObject, evictDelay)) {
+                if (evict && isObjectExpired(sourceObject, evictDelay)) {
                     return maybeMoveObject(container, sourceObject, destinationObject);
+                } else if (copy && (immediateCopy || isObjectExpired(sourceObject, copyDelay))) {
+                    return maybeCopyObject(container, sourceObject, destinationObject);
                 }
             } catch (IOException e) {
                 throw propagate(e);
@@ -72,7 +73,7 @@ public class WriteBackPolicy extends MovePolicy {
     }
 
     protected boolean isObjectExpired(StorageMetadata metadata, Duration duration) {
-        Instant now = service.getClock().instant();
+        Instant now = app.getClock().instant();
         Instant then = metadata.getLastModified().toInstant();
         return !now.minus(duration).isBefore(then);
     }

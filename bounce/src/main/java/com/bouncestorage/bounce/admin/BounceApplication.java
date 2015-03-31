@@ -10,6 +10,7 @@ import static java.util.Objects.requireNonNull;
 import static com.google.common.base.Throwables.propagate;
 
 import java.net.URI;
+import java.time.Clock;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -67,6 +68,7 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     private Map<String, BouncePolicy> virtualContainers = new HashMap<>();
     private final Pattern providerConfigPattern = Pattern.compile("(bounce.backend.\\d+).jclouds.provider");
     private final Pattern containerConfigPattern = Pattern.compile("(bounce.container.\\d+).name");
+    private Clock clock = Clock.systemUTC();
 
     public BounceApplication(AbstractConfiguration config) {
         this.config = requireNonNull(config);
@@ -76,10 +78,12 @@ public final class BounceApplication extends Application<BounceConfiguration> {
             String name = evt.getPropertyName();
             Matcher m;
 
-            if ((m = providerConfigPattern.matcher(name)).matches()) {
-                addProviderFromConfig(m.group(0));
-            } else if ((m = containerConfigPattern.matcher(name)).matches()) {
-                addContainerFromConfig(m.group(0));
+            if (!evt.isBeforeUpdate()) {
+                if ((m = providerConfigPattern.matcher(name)).matches()) {
+                    addProviderFromConfig(m.group(1), (String) evt.getPropertyValue());
+                } else if ((m = containerConfigPattern.matcher(name)).matches()) {
+                    addContainerFromConfig(m.group(1), (String) evt.getPropertyValue());
+                }
             }
         });
     }
@@ -123,17 +127,21 @@ public final class BounceApplication extends Application<BounceConfiguration> {
         }
     }
 
-    private void addProviderFromConfig(String prefix) {
+    private void addProviderFromConfig(String prefix, String provider) {
+        logger.info("adding provider from {}", prefix);
         Configuration c = config.subset(prefix);
         BlobStoreContext context;
         try {
-            context = ContextBuilder.newBuilder(c.getString(Constants.PROPERTY_PROVIDER))
-                    .credentials(c.getString(Constants.PROPERTY_IDENTITY), c.getString(Constants.PROPERTY_CREDENTIAL))
-                    .overrides(new ConfigurationPropertiesView(c))
+            ContextBuilder builder = ContextBuilder.newBuilder(provider);
+            String identity = c.getString(Constants.PROPERTY_IDENTITY);
+            if (identity != null) {
+                builder.credentials(identity, c.getString(Constants.PROPERTY_CREDENTIAL));
+            }
+            context = builder.overrides(new ConfigurationPropertiesView(c))
                     .build(BlobStoreContext.class);
         } catch (CreationException e) {
             e.printStackTrace();
-            return;
+            throw propagate(e);
         }
 
         addProvider(context.getBlobStore());
@@ -146,7 +154,8 @@ public final class BounceApplication extends Application<BounceConfiguration> {
                 .findAny();
     }
 
-    private void addContainerFromConfig(String prefix) {
+    private void addContainerFromConfig(String prefix, String containerName) {
+        logger.info("adding container from {}: {}", prefix);
         Configuration c = config.subset(prefix);
         int sourceId = c.getInt("tier.0.backend");
         int destId = c.getInt("tier.1.backend");
@@ -154,9 +163,9 @@ public final class BounceApplication extends Application<BounceConfiguration> {
         BlobStore dest = providers.get(destId);
         Optional<BouncePolicy> policy = getBouncePolicyFromName(c.getString("tier.0.policy"));
         policy.ifPresent(p -> {
-            p.init(bounceService, c.subset("tier.0"));
+            p.init(this, c.subset("tier.0"));
             p.setBlobStores(source, dest);
-            virtualContainers.put(c.getString("name"), p);
+            virtualContainers.put(containerName, p);
         });
     }
 
@@ -190,8 +199,9 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     }
 
     public void addProvider(BlobStore blobStore) {
-        int nextID = providers.keySet().stream().reduce(Math::max).orElse(-1);
-        providers.put(nextID + 1, blobStore);
+        int nextID = providers.keySet().stream().reduce(Math::max).orElse(-1) + 1;
+        logger.info("allocated provider id: {}", nextID);
+        providers.put(nextID, blobStore);
     }
 
     @VisibleForTesting
@@ -240,8 +250,12 @@ public final class BounceApplication extends Application<BounceConfiguration> {
             return;
         }
 
-        config.getList("bounce.backends").forEach(id -> addProviderFromConfig("bounce.backend." + id));
-        config.getList("bounce.containers").forEach(id -> addContainerFromConfig("bounce.container." + id));
+        config.getList("bounce.backends").forEach(id ->
+                addProviderFromConfig("bounce.backend." + id,
+                        config.getString("bounce.backend." + id + ".jclouds.provider")));
+        config.getList("bounce.containers").forEach(id ->
+                addContainerFromConfig("bounce.container." + id,
+                        config.getString("bounce.container." + id + ".name")));
     }
 
     public AbstractConfiguration getConfiguration() {
@@ -326,5 +340,14 @@ public final class BounceApplication extends Application<BounceConfiguration> {
         // DropWizard's Application class has a static initializer that forces the filter
         // to be at WARN, this overrides that
         LoggingFactory.bootstrap(Level.toLevel(System.getProperty("LOG_LEVEL"), Level.INFO));
+    }
+
+    public Clock getClock() {
+        return clock;
+    }
+
+    @VisibleForTesting
+    public void setClock(Clock clock) {
+        this.clock = clock;
     }
 }

@@ -7,8 +7,8 @@ package com.bouncestorage.bounce.admin.policy;
 
 import java.time.Duration;
 
+import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.BounceService;
 import com.google.auto.service.AutoService;
 
 import org.apache.commons.configuration.Configuration;
@@ -18,10 +18,10 @@ import org.jclouds.blobstore.options.GetOptions;
 @AutoService(BouncePolicy.class)
 public final class CopyPolicy extends WriteBackPolicy {
     @Override
-    public void init(BounceService inService, Configuration config) {
+    public void init(BounceApplication app, Configuration config) {
         config.setProperty(EVICT_DELAY, Duration.ofSeconds(-1).toString());
         config.setProperty(COPY_DELAY, Duration.ofSeconds(0).toString());
-        super.init(inService, config);
+        super.init(app, config);
     }
 
     @Override

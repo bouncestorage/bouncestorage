@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
@@ -27,6 +29,7 @@ import com.google.common.net.MediaType;
 import com.google.inject.Module;
 
 import org.apache.commons.configuration.Configuration;
+import org.assertj.core.api.Condition;
 import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
@@ -47,6 +50,11 @@ public final class UtilsTest {
     private BlobStore farBlobStore;
     private String containerName;
 
+    public static <T extends BouncePolicy> T switchPolicy(BouncePolicy old, T newPolicy) {
+        newPolicy.setBlobStores(old.getSource(), old.getDestination());
+        return newPolicy;
+    }
+
     public static void switchPolicyforContainer(BounceApplication app, String container, Class<? extends BouncePolicy>
             policy) {
         switchPolicyforContainer(app, container, policy, ImmutableMap.of());
@@ -55,7 +63,11 @@ public final class UtilsTest {
     public static void switchPolicyforContainer(BounceApplication app, String container, Class<? extends BouncePolicy> policy,
                                                 Map<String, String> policyConfig) {
         Configuration config = app.getConfiguration();
+        assertThat(config.getList("bounce.backends").size() >= 2).isTrue();
         config.setProperty("bounce.container.0.tier.0.backend", 0);
+        config.setProperty("bounce.container.0.tier.0.policy", policy.getSimpleName());
+        config.setProperty("bounce.container.0.tier.0.copy-delay", Duration.ofSeconds(0).toString());
+        config.setProperty("bounce.container.0.tier.0.evict-delay", Duration.ofSeconds(0).toString());
         config.setProperty("bounce.container.0.tier.0.policy", policy.getSimpleName());
         policyConfig.entrySet()
                 .forEach(entry -> config.setProperty("bounce.container.0.tier.0." + entry.getKey(), entry.getValue()));
@@ -93,6 +105,19 @@ public final class UtilsTest {
                 .newBuilder("bounce")
                 .overrides(properties)
                 .build(BlobStoreContext.class);
+    }
+
+    public static void createTransientProviderConfig(Configuration config) {
+        List<Object> backends = config.getList("bounce.backends");
+        int lastId = backends.stream()
+                .map(id -> Integer.valueOf(id.toString()))
+                .reduce(Math::max)
+                .orElse(-1);
+        backends = new ArrayList<>(backends);
+        lastId++;
+        backends.add(lastId);
+        config.setProperty("bounce.backend." + lastId + ".jclouds.provider", "transient");
+        config.setProperty("bounce.backends", backends);
     }
 
     public static BlobStore createTransientBlobStore() {

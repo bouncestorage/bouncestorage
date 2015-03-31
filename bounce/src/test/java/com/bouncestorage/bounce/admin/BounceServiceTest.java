@@ -11,12 +11,10 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Optional;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceLink;
-import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
 import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
@@ -229,7 +227,7 @@ public final class BounceServiceTest {
         properties.putAll(ImmutableMap.of(
                 LastModifiedTimePolicy.DURATION, duration.toString()
         ));
-        p.init(bounceService, new MapConfiguration(properties));
+        p.init(app, new MapConfiguration(properties));
         return p;
     }
 }

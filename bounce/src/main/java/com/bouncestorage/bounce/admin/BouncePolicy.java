@@ -37,7 +37,7 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
     private BlobStore sourceBlobStore;
     private BlobStore destinationBlobStore;
 
-    public void init(BounceService service, Configuration config) {
+    public void init(BounceApplication bounceApplication, Configuration config) {
     }
 
     public final void setBlobStores(BlobStore source, BlobStore destination) {
