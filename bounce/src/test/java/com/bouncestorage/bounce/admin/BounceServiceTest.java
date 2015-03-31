@@ -118,7 +118,7 @@ public final class BounceServiceTest {
         blob.getMetadata().setLastModified(Date.from(bounceService.getClock().instant()));
         assertThat(((LastModifiedTimePolicy) p).isObjectExpired(blob.getMetadata())).isFalse();
 
-        UtilsTest.advanceServiceClock(bounceService, Duration.ofHours(2));
+        UtilsTest.advanceServiceClock(app, Duration.ofHours(2));
 
         assertThat(((LastModifiedTimePolicy) p).isObjectExpired(blob.getMetadata())).isTrue();
     }
@@ -137,7 +137,7 @@ public final class BounceServiceTest {
         assertThat(status.getMovedObjectCount()).isEqualTo(0);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
 
-        UtilsTest.advanceServiceClock(bounceService, Duration.ofHours(2));
+        UtilsTest.advanceServiceClock(app, Duration.ofHours(2));
         status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
