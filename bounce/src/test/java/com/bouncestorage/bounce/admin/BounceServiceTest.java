@@ -11,10 +11,9 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Properties;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceLink;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
 import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
@@ -24,41 +23,37 @@ import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.google.common.collect.ImmutableMap;
 
 import org.apache.commons.configuration.MapConfiguration;
-import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 public final class BounceServiceTest {
-    private BlobStoreContext bounceContext;
-    private BounceBlobStore blobStore;
+    private BouncePolicy policy;
     private String containerName;
     private BounceService bounceService;
-    BounceApplication app;
+    private BounceApplication app;
 
     @Before
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        bounceContext = UtilsTest.createTestBounceBlobStore();
-        blobStore = (BounceBlobStore) bounceContext.getBlobStore();
-        blobStore.createContainerInLocation(null, containerName);
-
         synchronized (BounceApplication.class) {
             app = new BounceApplication(new MapConfiguration(new HashMap<>()));
         }
         app.useRandomPorts();
-        bounceService = app.getBounceService();
+        bounceService = new BounceService(app);
+
+        UtilsTest.createTransientProviderConfig(app.getConfiguration());
+        UtilsTest.createTransientProviderConfig(app.getConfiguration());
     }
 
     @After
     public void tearDown() throws Exception {
-        if (blobStore != null) {
-            blobStore.deleteContainer(containerName);
-        }
-        if (bounceContext != null) {
-            bounceContext.close();
+        if (policy != null) {
+            policy.deleteContainer(containerName);
         }
     }
 
@@ -66,8 +61,8 @@ public final class BounceServiceTest {
     public void testBounceNothingPolicy() throws Exception {
         toggleBounceNothing();
 
-        blobStore.putBlob(containerName,
-                UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName()));
+        policy.putBlob(containerName,
+                UtilsTest.makeBlob(policy, UtilsTest.createRandomBlobName()));
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
@@ -80,14 +75,14 @@ public final class BounceServiceTest {
         toggleMoveEverything();
 
         String blobName = UtilsTest.createRandomBlobName();
-        blobStore.putBlob(containerName, UtilsTest.makeBlob(blobStore, blobName));
-        Blob blob = blobStore.getBlob(containerName, blobName);
+        policy.putBlob(containerName, UtilsTest.makeBlob(policy, blobName));
+        Blob blob = policy.getBlob(containerName, blobName);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
-        UtilsTest.assertEqualBlobs(blob, blobStore.getBlob(containerName, blobName));
+        UtilsTest.assertEqualBlobs(blob, policy.getBlob(containerName, blobName));
     }
 
     @Test
@@ -95,8 +90,8 @@ public final class BounceServiceTest {
         toggleMoveEverything();
 
         String blobName = UtilsTest.createRandomBlobName();
-        blobStore.putBlob(containerName, UtilsTest.makeBlob(blobStore, blobName));
-        Blob blob = blobStore.getBlob(containerName, blobName);
+        policy.putBlob(containerName, UtilsTest.makeBlob(policy, blobName));
+        Blob blob = policy.getBlob(containerName, blobName);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
@@ -108,28 +103,27 @@ public final class BounceServiceTest {
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
         assertThat(status.getMovedObjectCount()).isEqualTo(0);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
-        UtilsTest.assertEqualBlobs(blob, blobStore.getBlob(containerName, blobName));
+        UtilsTest.assertEqualBlobs(blob, policy.getBlob(containerName, blobName));
     }
 
     @Test
     public void testLastModifiedTimePolicy() throws Exception {
-        BouncePolicy p = lastModifiedTimePolicy(Duration.ofHours(1));
-        Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
+        lastModifiedTimePolicy(Duration.ofHours(1));
+        Blob blob = UtilsTest.makeBlob(policy, UtilsTest.createRandomBlobName());
         blob.getMetadata().setLastModified(Date.from(bounceService.getClock().instant()));
-        assertThat(((LastModifiedTimePolicy) p).isObjectExpired(blob.getMetadata())).isFalse();
+        assertThat(((LastModifiedTimePolicy) policy).isObjectExpired(blob.getMetadata())).isFalse();
 
         UtilsTest.advanceServiceClock(app, Duration.ofHours(2));
 
-        assertThat(((LastModifiedTimePolicy) p).isObjectExpired(blob.getMetadata())).isTrue();
+        assertThat(((LastModifiedTimePolicy) policy).isObjectExpired(blob.getMetadata())).isTrue();
     }
 
     @Test
     public void testBounceLastModifiedTimePolicy() throws Exception {
-        UtilsTest.switchPolicyforContainer(app, containerName, LastModifiedTimePolicy.class,
-                ImmutableMap.of(LastModifiedTimePolicy.EVICT_DELAY, Duration.ofHours(1).toString()));
+        lastModifiedTimePolicy(Duration.ofHours(1));
 
-        Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
-        blobStore.putBlob(containerName, blob);
+        Blob blob = UtilsTest.makeBlob(policy, UtilsTest.createRandomBlobName());
+        policy.putBlob(containerName, blob);
 
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
@@ -148,8 +142,11 @@ public final class BounceServiceTest {
     @Test
     public void testCopyBouncePolicy() throws Exception {
         UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
-        Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
-        blobStore.putBlob(containerName, blob);
+        policy = (BouncePolicy) app.getBlobStore(containerName);
+        policy.createContainerInLocation(null, containerName);
+
+        Blob blob = UtilsTest.makeBlob(policy, UtilsTest.createRandomBlobName());
+        policy.putBlob(containerName, blob);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getCopiedObjectCount()).isEqualTo(1);
@@ -160,8 +157,11 @@ public final class BounceServiceTest {
     @Test
     public void testCopyTwice() throws Exception {
         UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
-        Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
-        blobStore.putBlob(containerName, blob);
+        policy = (BouncePolicy) app.getBlobStore(containerName);
+        policy.createContainerInLocation(null, containerName);
+
+        Blob blob = UtilsTest.makeBlob(policy, UtilsTest.createRandomBlobName());
+        policy.putBlob(containerName, blob);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getCopiedObjectCount()).isEqualTo(1);
@@ -174,39 +174,40 @@ public final class BounceServiceTest {
 
     @Test
     public void testCopyAfterMove() throws Exception {
-        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
-        Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
-        blobStore.putBlob(containerName, blob);
-        BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
-        assertThat(status.getMovedObjectCount()).isEqualTo(1);
         UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
-        status = bounceService.bounce(containerName);
+        policy = (BouncePolicy) app.getBlobStore(containerName);
+        policy.createContainerInLocation(null, containerName);
+
+        Blob blob = UtilsTest.makeBlob(policy, UtilsTest.createRandomBlobName());
+        policy.getSource().putBlob(containerName, blob);
+        Utils.copyBlobAndCreateBounceLink(policy.getSource(), policy.getDestination(), containerName,
+                blob.getMetadata().getName());
+
+        BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getCopiedObjectCount()).isEqualTo(0);
     }
 
     @Test
     public void testMoveAfterCopy() throws Exception {
-        UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
-        Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
-        blobStore.putBlob(containerName, blob);
-        BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
-        assertThat(status.getCopiedObjectCount()).isEqualTo(1);
+        toggleMoveEverything();
 
-        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
-        status = bounceService.bounce(containerName);
+        Blob blob = UtilsTest.makeBlob(policy, UtilsTest.createRandomBlobName());
+        policy.getSource().putBlob(containerName, blob);
+        Utils.copyBlob(policy.getSource(), policy.getDestination(), containerName, containerName,
+                blob.getMetadata().getName());
+
+        BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getMovedObjectCount()).isEqualTo(0);
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        Blob nearBlob = blobStore.getFromNearStore(containerName, blob.getMetadata().getName());
-        assertThat(BounceLink.isLink(nearBlob.getMetadata())).isTrue();
+        BlobMetadata nearBlob = policy.getSource().blobMetadata(containerName, blob.getMetadata().getName());
+        assertThat(BounceLink.isLink(nearBlob)).isTrue();
     }
 
     private void checkCopiedBlob(String blobName) throws Exception {
-        Blob nearBlob = blobStore.getFromNearStore(containerName, blobName);
-        Blob farBlob = blobStore.getFromFarStore(containerName, blobName);
+        Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
+        Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
         try (InputStream nearPayload = nearBlob.getPayload().openStream();
              InputStream farPayload = farBlob.getPayload().openStream()) {
             assertThat(nearPayload).hasContentEqualTo(farPayload);
@@ -215,19 +216,20 @@ public final class BounceServiceTest {
 
     private void toggleBounceNothing() {
         UtilsTest.switchPolicyforContainer(app, containerName, BounceNothingPolicy.class);
+        policy = (BouncePolicy) app.getBlobStore(containerName);
+        policy.createContainerInLocation(null, containerName);
     }
 
     private void toggleMoveEverything() {
         UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
+        policy = (BouncePolicy) app.getBlobStore(containerName);
+        policy.createContainerInLocation(null, containerName);
     }
 
-    private BouncePolicy lastModifiedTimePolicy(Duration duration) {
-        BouncePolicy p = new LastModifiedTimePolicy();
-        Properties properties = new Properties();
-        properties.putAll(ImmutableMap.of(
-                LastModifiedTimePolicy.EVICT_DELAY, duration.toString()
-        ));
-        p.init(app, new MapConfiguration(properties));
-        return p;
+    private void lastModifiedTimePolicy(Duration duration) {
+        UtilsTest.switchPolicyforContainer(app, containerName, LastModifiedTimePolicy.class,
+                ImmutableMap.of(LastModifiedTimePolicy.EVICT_DELAY, duration.toString()));
+        policy = (BouncePolicy) app.getBlobStore(containerName);
+        policy.createContainerInLocation(null, containerName);
     }
 }

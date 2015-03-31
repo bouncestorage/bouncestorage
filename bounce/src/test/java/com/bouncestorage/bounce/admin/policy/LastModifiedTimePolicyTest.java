@@ -46,9 +46,8 @@ public final class LastModifiedTimePolicyTest {
         app.useRandomPorts();
         bounceService = new BounceService(app);
 
-        Configuration config = app.getConfiguration();
-        UtilsTest.createTransientProviderConfig(config);
-        UtilsTest.createTransientProviderConfig(config);
+        UtilsTest.createTransientProviderConfig(app.getConfiguration());
+        UtilsTest.createTransientProviderConfig(app.getConfiguration());
         UtilsTest.switchPolicyforContainer(app, containerName, LastModifiedTimePolicy.class,
                 ImmutableMap.of(LastModifiedTimePolicy.EVICT_DELAY, duration.toString()));
 
