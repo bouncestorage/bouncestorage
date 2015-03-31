@@ -67,7 +67,6 @@ public final class UtilsTest {
         config.setProperty("bounce.container.0.tier.0.policy", policy.getSimpleName());
         config.setProperty("bounce.container.0.tier.0.copy-delay", policyConfig.get(WriteBackPolicy.COPY_DELAY));
         config.setProperty("bounce.container.0.tier.0.evict-delay", policyConfig.get(WriteBackPolicy.EVICT_DELAY));
-        config.setProperty("bounce.container.0.tier.0.policy", policy.getSimpleName());
         policyConfig.entrySet()
                 .forEach(entry -> config.setProperty("bounce.container.0.tier.0." + entry.getKey(), entry.getValue()));
         config.setProperty("bounce.container.0.tier.1.backend", 1);

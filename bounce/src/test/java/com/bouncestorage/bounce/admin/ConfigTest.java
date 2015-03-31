@@ -8,12 +8,15 @@ package com.bouncestorage.bounce.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
+import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
+import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.google.common.collect.ImmutableMap;
 
 import org.apache.commons.configuration.MapConfiguration;
@@ -30,6 +33,7 @@ public final class ConfigTest {
     public ExpectedException expectedException = ExpectedException.none();
     private String containerName;
     private BounceApplication app;
+    BounceService bounceService;
     private MapConfiguration configuration;
 
     @Before
@@ -45,6 +49,7 @@ public final class ConfigTest {
             app = new BounceApplication(configuration);
         }
         app.useRandomPorts();
+        bounceService = new BounceService(app);
     }
 
     @After
@@ -78,8 +83,8 @@ public final class ConfigTest {
     public void testGetConfig() throws Exception {
         ConfigurationResource config = new ConfigurationResource(app);
         Properties properties = config.getConfig();
-        String[] blobStores = {BounceBlobStore.STORE_PROPERTY_1 + "." + Constants.PROPERTY_PROVIDER,
-                BounceBlobStore.STORE_PROPERTY_2 + "." + Constants.PROPERTY_PROVIDER };
+        String[] blobStores = { "bounce.backend.0.jclouds.provider",
+                "bounce.backend.1.jclouds.provider" };
         assertThat(properties).doesNotContainKeys(blobStores);
         setTransientBackend();
         assertThat(properties).containsKeys(blobStores);
@@ -88,23 +93,26 @@ public final class ConfigTest {
     @Test
     public void testConfigMoveEverythingPolicy() throws Exception {
         setTransientBackend();
-        BlobStore blobStore = app.getBlobStore();
+
+        BlobStore blobStore = app.getBlobStore(containerName);
         blobStore.createContainerInLocation(null, containerName);
-        BounceService bounceService = app.getBounceService();
+
         blobStore.putBlob(containerName,
                 UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName()));
-        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getMovedObjectCount()).isEqualTo(0);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
 
         Properties properties = new Properties();
         properties.putAll(ImmutableMap.of(
-                "bounce.service.bounce-policy", "MoveEverythingPolicy"
+                "bounce.container.0.tier.0.backend", "0",
+                "bounce.container.0.tier.0.policy", MoveEverythingPolicy.class.getSimpleName(),
+                "bounce.container.0.tier.1.backend", "1",
+                "bounce.container.0.name", containerName,
+                "bounce.containers", "0"
         ));
         new ConfigurationResource(app).updateConfig(properties);
-        status = bounceService.bounce(containerName);
+        blobStore = app.getBlobStore(containerName);
+        blobStore.createContainerInLocation(null, containerName);
+
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
@@ -116,22 +124,21 @@ public final class ConfigTest {
         setTransientBackend();
         BlobStore blobStore = app.getBlobStore();
         blobStore.createContainerInLocation(null, containerName);
-        BounceService bounceService = app.getBounceService();
+
         blobStore.putBlob(containerName,
                 UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName()));
-        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getMovedObjectCount()).isEqualTo(0);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
 
         Properties properties = new Properties();
         properties.putAll(ImmutableMap.of(
-                "bounce.service.bounce-policy", "LastModifiedTimePolicy",
-                "bounce.service.bounce-policy.duration", "PT1H"
+                "bounce.container.0.tier.0.backend", "0",
+                "bounce.container.0.tier.0.policy", LastModifiedTimePolicy.class.getSimpleName(),
+                "bounce.container.0.tier.0.evict-delay", Duration.ofHours(1).toString(),
+                "bounce.container.0.tier.1.backend", "1",
+                "bounce.container.0.name", containerName
         ));
+        properties.setProperty("bounce.containers", "0");
         new ConfigurationResource(app).updateConfig(properties);
-        status = bounceService.bounce(containerName);
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
         assertThat(status.getMovedObjectCount()).isEqualTo(0);
@@ -140,16 +147,9 @@ public final class ConfigTest {
 
     private void setTransientBackend() throws Exception {
         Properties properties = new Properties();
-        Utils.insertAllWithPrefix(properties,
-                BounceBlobStore.STORE_PROPERTY_1 + ".",
-                ImmutableMap.of(
-                        Constants.PROPERTY_PROVIDER, "transient"
-                ));
-        Utils.insertAllWithPrefix(properties,
-                BounceBlobStore.STORE_PROPERTY_2 + ".",
-                ImmutableMap.of(
-                        Constants.PROPERTY_PROVIDER, "transient"
-                ));
+        properties.setProperty("bounce.backend.0.jclouds.provider", "transient");
+        properties.setProperty("bounce.backend.1.jclouds.provider", "transient");
+        properties.setProperty("bounce.backends", "0,1");
 
         new ConfigurationResource(app).updateConfig(properties);
     }
