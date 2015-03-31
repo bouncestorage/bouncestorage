@@ -5,14 +5,23 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import static com.google.common.base.Throwables.propagate;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceApplication;
+import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 
 import org.apache.commons.configuration.MapConfiguration;
@@ -27,8 +36,7 @@ import org.junit.Test;
 
 public final class MigrationPolicyTest {
     String containerName;
-    BlobStoreContext bounceContext;
-    BounceBlobStore blobStore;
+    BouncePolicy policy;
     BounceService bounceService;
     BounceApplication app;
 
@@ -36,26 +44,23 @@ public final class MigrationPolicyTest {
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        bounceContext = UtilsTest.createTransientBounceBlobStore();
-        blobStore = (BounceBlobStore) bounceContext.getBlobStore();
-        blobStore.createContainerInLocation(null, containerName);
-
         synchronized (BounceApplication.class) {
             app = new BounceApplication(new MapConfiguration(new HashMap<>()));
         }
         app.useRandomPorts();
-        bounceService = app.getBounceService();
+        bounceService = new BounceService(app);
+
+        UtilsTest.createTransientProviderConfig(app.getConfiguration());
+        UtilsTest.createTransientProviderConfig(app.getConfiguration());
         UtilsTest.switchPolicyforContainer(app, containerName, MigrationPolicy.class);
+        policy = (BouncePolicy) app.getBlobStore(containerName);
+        policy.createContainerInLocation(null, containerName);
     }
 
     @After
     public void tearDown() {
-        if (blobStore != null) {
-            blobStore.deleteContainer(containerName);
-        }
-
-        if (bounceContext != null) {
-            bounceContext.close();
+        if (policy != null) {
+            policy.deleteContainer(containerName);
         }
     }
     @Test
@@ -121,13 +126,16 @@ public final class MigrationPolicyTest {
     public void testRemoveCopiedBlob() throws Exception {
         String[] blobs = {"a", "b", "c"};
         putSourceBlobs(blobs);
-        UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
-        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
-        assertThat(status.getCopiedObjectCount()).isEqualTo(blobs.length);
-        UtilsTest.switchPolicyforContainer(app, containerName, MigrationPolicy.class);
 
-        status = bounceService.bounce(containerName);
+        Arrays.stream(blobs).forEach(b -> {
+            try {
+                Utils.copyBlob(policy.getSource(), policy.getDestination(), containerName, containerName, b);
+            } catch (IOException e) {
+                throw propagate(e);
+            }
+        });
+
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getRemovedObjectCount()).isEqualTo(blobs.length);
         verifyList(blobs);
@@ -151,12 +159,12 @@ public final class MigrationPolicyTest {
         String[] blobs = {"a", "b", "c"};
         putBlobs(blobs);
         ArrayList<String> results = new ArrayList<>();
-        PageSet<? extends StorageMetadata> listResults = blobStore.list(containerName, ListContainerOptions.Builder
+        PageSet<? extends StorageMetadata> listResults = policy.list(containerName, ListContainerOptions.Builder
                 .maxResults(2));
         listResults.stream().forEach(meta -> results.add(meta.getName()));
         String marker = listResults.getNextMarker();
         assertThat(marker).isEqualTo("b");
-        listResults = blobStore.list(containerName, ListContainerOptions.Builder.afterMarker(marker));
+        listResults = policy.list(containerName, ListContainerOptions.Builder.afterMarker(marker));
         listResults.stream().forEach(meta -> results.add(meta.getName()));
         assertThat(results.size()).isEqualTo(blobs.length);
         for (int i = 0; i < blobs.length; i++) {
@@ -168,7 +176,7 @@ public final class MigrationPolicyTest {
         String[] blobs = {"a", "b", "c"};
         putBlobs(blobs);
         ArrayList<String> results = new ArrayList<>();
-        PageSet<? extends StorageMetadata> listResults = blobStore.list(containerName, ListContainerOptions.Builder
+        PageSet<? extends StorageMetadata> listResults = policy.list(containerName, ListContainerOptions.Builder
                 .maxResults(3));
         listResults.stream().forEach(meta -> results.add(meta.getName()));
         String marker = listResults.getNextMarker();
@@ -184,7 +192,7 @@ public final class MigrationPolicyTest {
         String[] blobs = {"a", "b", "c"};
         putSourceBlobs(blobs);
         ArrayList<String> results = new ArrayList<>();
-        PageSet<? extends StorageMetadata> listResults = blobStore.list(containerName, ListContainerOptions.Builder
+        PageSet<? extends StorageMetadata> listResults = policy.list(containerName, ListContainerOptions.Builder
                 .maxResults(3));
         listResults.stream().forEach(meta -> results.add(meta.getName()));
         String marker = listResults.getNextMarker();
@@ -196,24 +204,24 @@ public final class MigrationPolicyTest {
     }
 
     private void verifyList(String[] expectedNames) throws Exception {
-        ArrayList<String> listedBlobNames = new ArrayList<>();
-        blobStore.list(containerName).stream().forEach(meta -> listedBlobNames.add(meta.getName()));
-        assertThat(listedBlobNames.size()).isEqualTo(expectedNames.length);
-        for (int i = 0; i < expectedNames.length; i++) {
-            assertThat(expectedNames[i]).isEqualTo(listedBlobNames.get(i));
-        }
+        List<String> listedBlobNames = policy.list(containerName, new ListContainerOptions().recursive())
+                .stream()
+                .map(meta -> meta.getName())
+                .collect(Collectors.toList());
+        assertThat(listedBlobNames).containsExactly(expectedNames);
     }
 
     private void putBlobs(String[] destinationNames) throws Exception {
         for (String name : destinationNames) {
-            Blob blob = UtilsTest.makeBlob(blobStore, name);
-            blobStore.putBlob(containerName, blob);
+            Blob blob = UtilsTest.makeBlob(policy, name);
+            policy.putBlob(containerName, blob);
         }
     }
 
     private void putSourceBlobs(String[] sourceNames) throws Exception {
-        UtilsTest.switchPolicyforContainer(app, containerName, BounceNothingPolicy.class);
-        putBlobs(sourceNames);
-        UtilsTest.switchPolicyforContainer(app, containerName, MigrationPolicy.class);
+        for (String name : sourceNames) {
+            Blob blob = UtilsTest.makeBlob(policy, name);
+            policy.getSource().putBlob(containerName, blob);
+        }
     }
 }
