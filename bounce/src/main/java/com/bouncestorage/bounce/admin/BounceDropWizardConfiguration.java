@@ -9,7 +9,7 @@ import io.dropwizard.Configuration;
 import io.dropwizard.jetty.HttpConnectorFactory;
 import io.dropwizard.server.DefaultServerFactory;
 
-public final class BounceConfiguration extends Configuration {
+public final class BounceDropWizardConfiguration extends Configuration {
     void useRandomPorts() {
         DefaultServerFactory serverFactory = (DefaultServerFactory) getServerFactory();
         ((HttpConnectorFactory) serverFactory.getApplicationConnectors().get(0)).setPort(0);
