@@ -9,17 +9,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.Properties;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceLink;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceApplication;
+import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
-import com.bouncestorage.bounce.admin.ConfigurationResource;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
+import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.MapConfiguration;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
@@ -32,32 +32,34 @@ public final class LastModifiedTimePolicyTest {
     String containerName;
     BounceApplication app;
     BlobStoreContext bounceContext;
-    BounceBlobStore blobStore;
+    BouncePolicy policy;
     BounceService bounceService;
-    String durationSetting = "PT1h";
-    Duration duration;
+    Duration duration = Duration.ofHours(1);
 
     @Before
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        bounceContext = UtilsTest.createTransientBounceBlobStore();
-        blobStore = (BounceBlobStore) bounceContext.getBlobStore();
-        blobStore.createContainerInLocation(null, containerName);
-        duration = Duration.parse(durationSetting);
-
         synchronized (BounceApplication.class) {
             app = new BounceApplication(new MapConfiguration(new HashMap<>()));
         }
         app.useRandomPorts();
-        bounceService = app.getBounceService();
-        setLastModifiedTimePolicy();
+        bounceService = new BounceService(app);
+
+        Configuration config = app.getConfiguration();
+        UtilsTest.createTransientProviderConfig(config);
+        UtilsTest.createTransientProviderConfig(config);
+        UtilsTest.switchPolicyforContainer(app, containerName, LastModifiedTimePolicy.class,
+                ImmutableMap.of(LastModifiedTimePolicy.DURATION, duration.toString()));
+
+        policy = (BouncePolicy) app.getBlobStore(containerName);
+        policy.createContainerInLocation(null, containerName);
     }
 
     @After
     public void tearDown() {
-        if (blobStore != null) {
-            blobStore.deleteContainer(containerName);
+        if (policy != null) {
+            policy.deleteContainer(containerName);
         }
 
         if (bounceContext != null) {
@@ -68,20 +70,20 @@ public final class LastModifiedTimePolicyTest {
     @Test
     public void testMoveObject() throws Exception {
         String blobName = UtilsTest.createRandomBlobName();
-        Blob blob = UtilsTest.makeBlob(blobStore, blobName);
-        blobStore.putBlob(containerName, blob);
-        assertThat(blobStore.getFromFarStore(containerName, blobName)).isNull();
-        assertThat(blobStore.getFromNearStore(containerName, blobName)).isNotNull();
+        Blob blob = UtilsTest.makeBlob(policy, blobName);
+        policy.putBlob(containerName, blob);
+        assertThat(policy.getDestination().blobExists(containerName, blobName)).isFalse();
+        assertThat(policy.getSource().blobExists(containerName, blobName)).isTrue();
 
         UtilsTest.advanceServiceClock(bounceService, duration.plusHours(1));
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
-        assertThat(blobStore.getFromNearStore(containerName, blobName)).isNotNull();
-        assertThat(blobStore.getFromFarStore(containerName, blobName)).isNotNull();
-        BlobMetadata source = blobStore.blobMetadataNoFollow(containerName, blobName);
+        assertThat(policy.getDestination().blobExists(containerName, blobName)).isTrue();
+        assertThat(policy.getSource().blobExists(containerName, blobName)).isTrue();
+        BlobMetadata source = policy.getSource().blobMetadata(containerName, blobName);
         assertThat(BounceLink.isLink(source)).isTrue();
-        Blob linkedBlob = blobStore.getBlob(containerName, blobName);
+        Blob linkedBlob = policy.getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(linkedBlob, blob);
     }
 
@@ -89,26 +91,24 @@ public final class LastModifiedTimePolicyTest {
     public void testCopiedBlobChangedToLink() throws Exception {
         // Check that after a blob is copied, LastModifiedTime policy will create a link
         String blobName = UtilsTest.createRandomBlobName();
-        Blob blob = UtilsTest.makeBlob(blobStore, blobName);
-        blobStore.putBlob(containerName, blob);
+        Blob blob = UtilsTest.makeBlob(policy, blobName);
+        policy.putBlob(containerName, blob);
 
         // Copy the blob over
-        blobStore.setPolicy(new CopyPolicy());
-        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
-        Blob farBlob = blobStore.getFromFarStore(containerName, blobName);
-        Blob nearBlob = blobStore.getFromNearStore(containerName, blobName);
+        Utils.copyBlob(policy.getSource(), policy.getDestination(), containerName, containerName, blobName);
+        Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
+        Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(nearBlob, farBlob);
 
         // Run the move policy and ensure that a link is created
         UtilsTest.advanceServiceClock(bounceService, duration.plusHours(1));
-        setLastModifiedTimePolicy();
-        status = bounceService.bounce(containerName);
+
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        BlobMetadata source = blobStore.blobMetadataNoFollow(containerName, blobName);
+        BlobMetadata source = policy.getSource().blobMetadata(containerName, blobName);
         assertThat(BounceLink.isLink(source)).isTrue();
         assertThat(status.getLinkedObjectCount()).isEqualTo(1);
-        Blob linkedBlob = blobStore.getBlob(containerName, blobName);
+        Blob linkedBlob = policy.getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(linkedBlob, blob);
     }
 
@@ -116,48 +116,48 @@ public final class LastModifiedTimePolicyTest {
     public void testRemoveFarBlobWithoutLink() throws Exception {
         // Check that after a link is removed, the blob in the far store is removed as well
         String blobName = UtilsTest.createRandomBlobName();
-        Blob blob = UtilsTest.makeBlob(blobStore, blobName);
-        blobStore.putBlob(containerName, blob);
+        Blob blob = UtilsTest.makeBlob(policy, blobName);
+        policy.putBlob(containerName, blob);
 
         // Move the blob over
         UtilsTest.advanceServiceClock(bounceService, duration.plusHours(1));
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        Blob farBlob = blobStore.getFromFarStore(containerName, blobName);
+        Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(blob, farBlob);
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
 
         // Run the last modified time policy and ensure that the blob is removed
-        blobStore.removeBlob(containerName, blobName);
-        farBlob = blobStore.getFromFarStore(containerName, blobName);
-        assertThat(blobStore.getBlob(containerName, blobName)).isNull();
+        policy.removeBlob(containerName, blobName);
+        farBlob = policy.getDestination().getBlob(containerName, blobName);
+        assertThat(policy.getBlob(containerName, blobName)).isNull();
         UtilsTest.assertEqualBlobs(farBlob, blob);
         status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getRemovedObjectCount()).isEqualTo(1);
-        assertThat(blobStore.getFromFarStore(containerName, blobName)).isNull();
+        assertThat(policy.getDestination().blobExists(containerName, blobName)).isFalse();
     }
 
     @Test
     public void testOverwriteLink() throws Exception {
         // Check that after moving a blob, a PUT to the same key will force a move
         String blobName = UtilsTest.createRandomBlobName();
-        Blob blobFoo = UtilsTest.makeBlob(blobStore, blobName, ByteSource.wrap("foo".getBytes()));
-        Blob blobBar = UtilsTest.makeBlob(blobStore, blobName, ByteSource.wrap("bar".getBytes()));
-        blobStore.putBlob(containerName, blobFoo);
+        Blob blobFoo = UtilsTest.makeBlob(policy, blobName, ByteSource.wrap("foo".getBytes()));
+        Blob blobBar = UtilsTest.makeBlob(policy, blobName, ByteSource.wrap("bar".getBytes()));
+        policy.putBlob(containerName, blobFoo);
 
         // Move the blob
         UtilsTest.advanceServiceClock(bounceService, duration.plusHours(1));
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        Blob farBlob = blobStore.getFromFarStore(containerName, blobName);
+        Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(blobFoo, farBlob);
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
 
         // Update the object
-        blobStore.putBlob(containerName, blobBar);
-        Blob nearBlob = blobStore.getFromNearStore(containerName, blobName);
-        Blob canonicalBlob = blobStore.getBlob(containerName, blobName);
+        policy.putBlob(containerName, blobBar);
+        Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
+        Blob canonicalBlob = policy.getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(nearBlob, blobBar);
         UtilsTest.assertEqualBlobs(farBlob, blobFoo);
         UtilsTest.assertEqualBlobs(canonicalBlob, blobBar);
@@ -167,12 +167,8 @@ public final class LastModifiedTimePolicyTest {
         status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
-        farBlob = blobStore.getFromFarStore(containerName, blobName);
+        farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(farBlob, blobBar);
     }
 
-    private void setLastModifiedTimePolicy() {
-        UtilsTest.switchPolicyforContainer(app, containerName, LastModifiedTimePolicy.class,
-                ImmutableMap.of(LastModifiedTimePolicy.DURATION, durationSetting));
-    }
 }
