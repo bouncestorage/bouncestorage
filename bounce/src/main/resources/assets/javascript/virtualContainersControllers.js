@@ -33,8 +33,9 @@ virtualContainersControllers.controller('CreateVirtualContainerCtrl', ['$scope',
   $scope.actions.createContainer = function() {
     VirtualContainer.save({
         name: $scope.name,
-        originBlobStoreId: $scope.store,
-        originContainerName: $scope.container
+        originLocation: { blobStoreId: $scope.store,
+                          containerName: $scope.container
+                        }
       },
       function(result) {
         $location.path("/dashboard");
