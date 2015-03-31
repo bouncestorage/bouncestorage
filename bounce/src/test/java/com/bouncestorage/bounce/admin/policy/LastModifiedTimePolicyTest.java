@@ -50,7 +50,7 @@ public final class LastModifiedTimePolicyTest {
         UtilsTest.createTransientProviderConfig(config);
         UtilsTest.createTransientProviderConfig(config);
         UtilsTest.switchPolicyforContainer(app, containerName, LastModifiedTimePolicy.class,
-                ImmutableMap.of(LastModifiedTimePolicy.DURATION, duration.toString()));
+                ImmutableMap.of(LastModifiedTimePolicy.EVICT_DELAY, duration.toString()));
 
         policy = (BouncePolicy) app.getBlobStore(containerName);
         policy.createContainerInLocation(null, containerName);

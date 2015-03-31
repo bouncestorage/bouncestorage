@@ -126,7 +126,7 @@ public final class BounceServiceTest {
     @Test
     public void testBounceLastModifiedTimePolicy() throws Exception {
         UtilsTest.switchPolicyforContainer(app, containerName, LastModifiedTimePolicy.class,
-                ImmutableMap.of(LastModifiedTimePolicy.DURATION, Duration.ofHours(1).toString()));
+                ImmutableMap.of(LastModifiedTimePolicy.EVICT_DELAY, Duration.ofHours(1).toString()));
 
         Blob blob = UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName());
         blobStore.putBlob(containerName, blob);
@@ -225,7 +225,7 @@ public final class BounceServiceTest {
         BouncePolicy p = new LastModifiedTimePolicy();
         Properties properties = new Properties();
         properties.putAll(ImmutableMap.of(
-                LastModifiedTimePolicy.DURATION, duration.toString()
+                LastModifiedTimePolicy.EVICT_DELAY, duration.toString()
         ));
         p.init(app, new MapConfiguration(properties));
         return p;

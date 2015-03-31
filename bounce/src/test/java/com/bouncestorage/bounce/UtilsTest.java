@@ -19,6 +19,7 @@ import java.util.Random;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -64,8 +65,8 @@ public final class UtilsTest {
         assertThat(config.getList("bounce.backends").size() >= 2).isTrue();
         config.setProperty("bounce.container.0.tier.0.backend", 0);
         config.setProperty("bounce.container.0.tier.0.policy", policy.getSimpleName());
-        config.setProperty("bounce.container.0.tier.0.copy-delay", Duration.ofSeconds(0).toString());
-        config.setProperty("bounce.container.0.tier.0.evict-delay", Duration.ofSeconds(0).toString());
+        config.setProperty("bounce.container.0.tier.0.copy-delay", policyConfig.get(WriteBackPolicy.COPY_DELAY));
+        config.setProperty("bounce.container.0.tier.0.evict-delay", policyConfig.get(WriteBackPolicy.EVICT_DELAY));
         config.setProperty("bounce.container.0.tier.0.policy", policy.getSimpleName());
         policyConfig.entrySet()
                 .forEach(entry -> config.setProperty("bounce.container.0.tier.0." + entry.getKey(), entry.getValue()));
