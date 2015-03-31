@@ -7,12 +7,11 @@ package com.bouncestorage.bounce.admin.policy;
 
 import java.time.Duration;
 
+import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.BounceService;
 import com.google.auto.service.AutoService;
 
 import org.apache.commons.configuration.Configuration;
-import org.jclouds.blobstore.domain.MutableBlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 
 @AutoService(BouncePolicy.class)
@@ -20,9 +19,9 @@ public final class LastModifiedTimePolicy extends WriteBackPolicy {
     public static final String DURATION = "duration";
 
     @Override
-    public void init(BounceService inService, Configuration config) {
+    public void init(BounceApplication bounceApplication, Configuration config) {
         config.setProperty(COPY_DELAY, Duration.ofSeconds(-1).toString());
-        super.init(inService, config);
+        super.init(bounceApplication, config);
     }
 
     public boolean isObjectExpired(StorageMetadata metadata) {
