@@ -19,7 +19,6 @@ import java.util.Random;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.BounceService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -29,7 +28,6 @@ import com.google.common.net.MediaType;
 import com.google.inject.Module;
 
 import org.apache.commons.configuration.Configuration;
-import org.assertj.core.api.Condition;
 import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
@@ -291,7 +289,7 @@ public final class UtilsTest {
         return makeBlob(blobStore, blobName, ByteSource.wrap(new byte[new Random().nextInt(1000)]));
     }
 
-    public static void advanceServiceClock(BounceService bounceService, Duration duration) {
-        bounceService.setClock(Clock.offset(bounceService.getClock(), duration));
+    public static void advanceServiceClock(BounceApplication app, Duration duration) {
+        app.setClock(Clock.offset(app.getClock(), duration));
     }
 }

@@ -75,7 +75,7 @@ public final class LastModifiedTimePolicyTest {
         assertThat(policy.getDestination().blobExists(containerName, blobName)).isFalse();
         assertThat(policy.getSource().blobExists(containerName, blobName)).isTrue();
 
-        UtilsTest.advanceServiceClock(bounceService, duration.plusHours(1));
+        UtilsTest.advanceServiceClock(app, duration.plusHours(1));
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
@@ -101,7 +101,7 @@ public final class LastModifiedTimePolicyTest {
         UtilsTest.assertEqualBlobs(nearBlob, farBlob);
 
         // Run the move policy and ensure that a link is created
-        UtilsTest.advanceServiceClock(bounceService, duration.plusHours(1));
+        UtilsTest.advanceServiceClock(app, duration.plusHours(1));
 
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
@@ -120,7 +120,7 @@ public final class LastModifiedTimePolicyTest {
         policy.putBlob(containerName, blob);
 
         // Move the blob over
-        UtilsTest.advanceServiceClock(bounceService, duration.plusHours(1));
+        UtilsTest.advanceServiceClock(app, duration.plusHours(1));
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
@@ -147,7 +147,7 @@ public final class LastModifiedTimePolicyTest {
         policy.putBlob(containerName, blobFoo);
 
         // Move the blob
-        UtilsTest.advanceServiceClock(bounceService, duration.plusHours(1));
+        UtilsTest.advanceServiceClock(app, duration.plusHours(1));
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
@@ -163,7 +163,7 @@ public final class LastModifiedTimePolicyTest {
         UtilsTest.assertEqualBlobs(canonicalBlob, blobBar);
 
         // Run the last modified time policy and ensure that the blob is updated
-        UtilsTest.advanceServiceClock(bounceService, duration.plusHours(1));
+        UtilsTest.advanceServiceClock(app, duration.plusHours(1));
         status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
