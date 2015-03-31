@@ -155,18 +155,19 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     }
 
     private void addContainerFromConfig(String prefix, String containerName) {
-        logger.info("adding container from {}: {}", prefix);
+        logger.info("adding container {} from {}", containerName, prefix);
         Configuration c = config.subset(prefix);
         int sourceId = c.getInt("tier.0.backend");
         int destId = c.getInt("tier.1.backend");
         BlobStore source = providers.get(sourceId);
         BlobStore dest = providers.get(destId);
-        Optional<BouncePolicy> policy = getBouncePolicyFromName(c.getString("tier.0.policy"));
-        policy.ifPresent(p -> {
-            p.init(this, c.subset("tier.0"));
-            p.setBlobStores(source, dest);
-            virtualContainers.put(containerName, p);
-        });
+        String policyName = c.getString("tier.0.policy");
+        BouncePolicy policy = getBouncePolicyFromName(policyName)
+                .orElseThrow(() -> propagate(new ClassNotFoundException(policyName)));
+
+        policy.init(this, c.subset("tier.0"));
+        policy.setBlobStores(source, dest);
+        virtualContainers.put(containerName, policy);
     }
 
     Collection<BouncePolicy> getPolicies() {
