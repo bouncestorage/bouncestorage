@@ -13,6 +13,7 @@ import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceApplication;
+import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 
 import org.apache.commons.configuration.MapConfiguration;
@@ -25,8 +26,7 @@ import org.junit.Test;
 
 public final class MovePolicyTest {
     String containerName;
-    BlobStoreContext bounceContext;
-    BounceBlobStore blobStore;
+    BouncePolicy policy;
     BounceService bounceService;
     BounceApplication app;
 
@@ -34,26 +34,23 @@ public final class MovePolicyTest {
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        bounceContext = UtilsTest.createTransientBounceBlobStore();
-        blobStore = (BounceBlobStore) bounceContext.getBlobStore();
-        blobStore.createContainerInLocation(null, containerName);
-
-        BounceApplication app;
         synchronized (BounceApplication.class) {
             app = new BounceApplication(new MapConfiguration(new HashMap<>()));
         }
         app.useRandomPorts();
-        bounceService = app.getBounceService();
+        bounceService = new BounceService(app);
+
+        UtilsTest.createTransientProviderConfig(app.getConfiguration());
+        UtilsTest.createTransientProviderConfig(app.getConfiguration());
+        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
+        policy = (BouncePolicy) app.getBlobStore(containerName);
+        policy.createContainerInLocation(null, containerName);
     }
 
     @After
     public void tearDown() {
-        if (blobStore != null) {
-            blobStore.deleteContainer(containerName);
-        }
-
-        if (bounceContext != null) {
-            bounceContext.close();
+        if (policy != null) {
+            policy.deleteContainer(containerName);
         }
     }
 
@@ -61,23 +58,22 @@ public final class MovePolicyTest {
     public void testBringBackObject() throws Exception {
         // Checks that after a GET, the object is put back into the "source" store
         String blobName = UtilsTest.createRandomBlobName();
-        Blob blob = UtilsTest.makeBlob(blobStore, blobName);
-        blobStore.putBlob(containerName, blob);
-        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
+        Blob blob = UtilsTest.makeBlob(policy, blobName);
+        policy.putBlob(containerName, blob);
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(blobStore.getFromNearStore(containerName, blobName)).isNotNull();
-        assertThat(blobStore.getFromFarStore(containerName, blobName)).isNotNull();
-        BlobMetadata source = blobStore.blobMetadataNoFollow(containerName, blobName);
+        assertThat(policy.getDestination().blobExists(containerName, blobName)).isTrue();
+        assertThat(policy.getSource().blobExists(containerName, blobName)).isTrue();
+        BlobMetadata source = policy.getSource().blobMetadata(containerName, blobName);
         assertThat(BounceLink.isLink(source)).isTrue();
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
-        Blob linkedBlob = blobStore.getBlob(containerName, blobName);
+        Blob linkedBlob = policy.getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(linkedBlob, blob);
 
-        Blob retrievedBlob = blobStore.getBlob(containerName, blobName);
-        Blob nearBlob = blobStore.getFromNearStore(containerName, blobName);
+        Blob retrievedBlob = policy.getBlob(containerName, blobName);
+        Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(retrievedBlob, blob);
         UtilsTest.assertEqualBlobs(nearBlob, blob);
-        assertThat(BounceLink.isLink(blobStore.blobMetadataNoFollow(containerName, blobName))).isFalse();
+        assertThat(BounceLink.isLink(policy.getSource().blobMetadata(containerName, blobName))).isFalse();
     }
 }
