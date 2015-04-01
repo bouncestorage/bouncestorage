@@ -166,7 +166,7 @@ def run_test(provider_details, swift_port, test="all"):
     execute(command)
 
 def notify_failure(creds, error):
-    message = "Exception message:\n%s\n" % error.message
+    message = "Exception message:\n%s\n" % error
     with open(OUTPUT_LOG) as log_file:
         message += log_file.read()
     send_email(creds, "Nightly failed!", message)
