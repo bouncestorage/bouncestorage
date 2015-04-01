@@ -211,7 +211,7 @@ def main():
             maybe_update(log)
 
             all_creds = get_all_blobstore_credentials(creds)
-            os.chdir34(BOUNCE_SRC_DIR)
+            os.chdir(BOUNCE_SRC_DIR)
             setup_swift()
         else:
             all_creds = get_all_blobstore_from_argv()
