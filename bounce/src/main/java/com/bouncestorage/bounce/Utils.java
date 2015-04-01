@@ -149,7 +149,14 @@ public final class Utils {
 
         @Override
         public boolean hasNext() {
-            return iterator.hasNext() || marker != null;
+            if (iterator.hasNext()) {
+                return true;
+            }
+            // Presence of a marker does not guarantee that subsequent results; we must advance to determine this.
+            if (marker != null) {
+                advance();
+            }
+            return iterator.hasNext();
         }
 
         @Override
