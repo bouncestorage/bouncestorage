@@ -79,11 +79,17 @@ def execute(command):
         raise TestException(e.output)
 
 def git_clone(repo, directory):
-    if os.path.exists(directory):
-        execute("cd ~/%s && git pull" % directory)
+    target_dir = os.path.join(os.environ['HOME'], directory)
+    if os.path.exists(target_dir):
+        execute("cd %s && git pull" % target_dir)
     else:
         execute("echo \"StrictHostKeyChecking\tno\" | tee -a ~/.ssh/config")
-        execute("cd ~ && git clone %s %s" % (repo, directory))
+        execute("cd %s && git clone %s %s" % (os.environ['HOME'], repo, directory))
+
+def git_update_submodule(directory):
+    target_dir = os.path.join(os.environ['HOME'], directory)
+    execute("cd %s && git submodule init" % target_dir)
+    execute("cd %s && git submodule update" % target_dir)
 
 def setup_code():
     with open(APT_SOURCES) as f:
@@ -93,6 +99,7 @@ def setup_code():
     execute("sudo apt-get update")
     execute("sudo apt-get install -y openjdk-8-jdk git maven fortune cowsay docker.io")
     git_clone(BOUNCE_REPO, BOUNCE_SRC_DIR)
+    git_update_submodule(BOUNCE_SRC_DIR)
 
 def setup_swift():
     git_clone(DOCKER_SWIFT_REPO, DOCKER_SWIFT_DIR)
@@ -165,8 +172,9 @@ def run_test(provider_details, swift_port, test="all"):
     print(command)
     execute(command)
 
-def notify_failure(creds, error):
-    message = "Exception message:\n%s\n" % error
+def notify_failure(creds, error, backtrace):
+    message = "Exception message:\n%s\n" % error.message
+    message += backtrace + "\n"
     with open(OUTPUT_LOG) as log_file:
         message += log_file.read()
     send_email(creds, "Nightly failed!", message)
@@ -230,7 +238,7 @@ def main():
         for provider in all_creds:
             run_test(provider, swift_near_port, test)
     except:
-        exception = sys.exc_info()[0]
+        exception = sys.exc_info()[1]
         if not ec2:
             traceback.print_exc()
 
@@ -243,7 +251,7 @@ def main():
 
     if ec2:
         log.close()
-        notify_failure(creds, traceback.format_exc()) if exception else notify_success(creds)
+        notify_failure(creds, exception, traceback.format_exc()) if exception else notify_success(creds)
 
 if __name__ == '__main__':
     main()
