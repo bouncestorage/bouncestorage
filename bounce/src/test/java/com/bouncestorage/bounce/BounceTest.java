@@ -8,7 +8,6 @@ package com.bouncestorage.bounce;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
