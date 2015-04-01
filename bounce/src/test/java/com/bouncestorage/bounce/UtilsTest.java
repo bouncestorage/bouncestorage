@@ -14,7 +14,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Random;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
@@ -22,14 +21,12 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
 import com.google.common.net.MediaType;
 import com.google.inject.Module;
 
 import org.apache.commons.configuration.Configuration;
-import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -67,37 +64,6 @@ public final class UtilsTest {
         config.setProperty("bounce.container.0.tier.1.backend", 1);
         config.setProperty("bounce.container.0.name", container);
         config.setProperty("bounce.containers", config.getList("bounce.containers").add(0));
-    }
-
-    public static BlobStoreContext createTestBounceBlobStore() {
-        Properties properties = new Properties();
-        Properties systemProperties = System.getProperties();
-        loadWithPrefix(properties, systemProperties, BounceBlobStore.STORE_PROPERTY_1);
-        loadWithPrefix(properties, systemProperties, BounceBlobStore.STORE_PROPERTY_2);
-        ImmutableSet.of(BounceBlobStore.STORE_PROPERTY_1, BounceBlobStore.STORE_PROPERTY_2)
-                .stream()
-                .filter(key -> !properties.containsKey(key + "." + Constants.PROPERTY_PROVIDER))
-                .forEach(key -> Utils.insertAllWithPrefix(properties, key + ".", ImmutableMap.of(
-                        Constants.PROPERTY_PROVIDER, "transient")));
-        return ContextBuilder.newBuilder("bounce").overrides(properties).build(BlobStoreContext.class);
-    }
-
-    public static BlobStoreContext createTransientBounceBlobStore() {
-        Properties properties = new Properties();
-        Utils.insertAllWithPrefix(properties,
-                BounceBlobStore.STORE_PROPERTY_1 + ".",
-                ImmutableMap.of(
-                        Constants.PROPERTY_PROVIDER, "transient"
-                ));
-        Utils.insertAllWithPrefix(properties,
-                BounceBlobStore.STORE_PROPERTY_2 + ".",
-                ImmutableMap.of(
-                        Constants.PROPERTY_PROVIDER, "transient"
-                ));
-        return ContextBuilder
-                .newBuilder("bounce")
-                .overrides(properties)
-                .build(BlobStoreContext.class);
     }
 
     public static void createTransientProviderConfig(Configuration config) {
@@ -270,18 +236,6 @@ public final class UtilsTest {
 
     public static Blob makeBlob(BlobStore blobStore, String blobName) throws IOException {
         return makeBlob(blobStore, blobName, ByteSource.empty());
-    }
-
-    private static void loadWithPrefix(Properties out, Properties in, String prefix) {
-        in.stringPropertyNames()
-                .stream()
-                .filter(key -> key.startsWith(prefix))
-                .forEach(key -> out.put(key, in.getProperty(key))
-                );
-    }
-
-    public static Blob makeBlobRandomSize(BlobStore blobStore, String blobName) throws IOException {
-        return makeBlob(blobStore, blobName, ByteSource.wrap(new byte[new Random().nextInt(1000)]));
     }
 
     public static void advanceServiceClock(BounceApplication app, Duration duration) {
