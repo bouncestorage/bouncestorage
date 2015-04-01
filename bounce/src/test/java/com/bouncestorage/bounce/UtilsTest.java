@@ -49,11 +49,6 @@ public final class UtilsTest {
     private BlobStore farBlobStore;
     private String containerName;
 
-    public static <T extends BouncePolicy> T switchPolicy(BouncePolicy old, T newPolicy) {
-        newPolicy.setBlobStores(old.getSource(), old.getDestination());
-        return newPolicy;
-    }
-
     public static void switchPolicyforContainer(BounceApplication app, String container, Class<? extends BouncePolicy>
             policy) {
         switchPolicyforContainer(app, container, policy, ImmutableMap.of());
