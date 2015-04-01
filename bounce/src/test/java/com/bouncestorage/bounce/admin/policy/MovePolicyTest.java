@@ -7,17 +7,12 @@ package com.bouncestorage.bounce.admin.policy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.HashMap;
-
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 
-import org.apache.commons.configuration.MapConfiguration;
-import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.junit.After;

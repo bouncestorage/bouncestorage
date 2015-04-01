@@ -7,9 +7,7 @@ package com.bouncestorage.bounce;
 
 import static java.util.Objects.requireNonNull;
 
-import java.io.IOException;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 

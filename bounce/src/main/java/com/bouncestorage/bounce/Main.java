@@ -8,13 +8,10 @@ package com.bouncestorage.bounce;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.util.Map;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
 
-import org.apache.commons.configuration.AbstractConfiguration;
-import org.apache.commons.configuration.MapConfiguration;
 import org.gaul.s3proxy.S3ProxyConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
