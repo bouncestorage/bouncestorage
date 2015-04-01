@@ -9,18 +9,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
 import java.time.Duration;
-import java.util.Map;
 import java.util.Properties;
 
-import com.bouncestorage.bounce.BounceBlobStore;
-import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
 import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.google.common.collect.ImmutableMap;
 
-import org.apache.commons.configuration.MapConfiguration;
-import org.jclouds.Constants;
 import org.jclouds.blobstore.BlobStore;
 import org.junit.After;
 import org.junit.Before;
@@ -34,7 +29,6 @@ public final class ConfigTest {
     private String containerName;
     private BounceApplication app;
     BounceService bounceService;
-    private MapConfiguration configuration;
 
     @Before
     public void setUp() throws Exception {
@@ -44,10 +38,11 @@ public final class ConfigTest {
         try (InputStream is = ConfigTest.class.getResourceAsStream("/bounce.properties")) {
             properties.load(is);
         }
-        configuration = new MapConfiguration((Map) properties);
+
         synchronized (BounceApplication.class) {
-            app = new BounceApplication(configuration);
+            app = new BounceApplication();
         }
+        app.getConfiguration().setAll(properties);
         app.useRandomPorts();
         bounceService = new BounceService(app);
     }
@@ -138,6 +133,9 @@ public final class ConfigTest {
         ));
         properties.setProperty("bounce.containers", "0");
         new ConfigurationResource(app).updateConfig(properties);
+        blobStore = app.getBlobStore(containerName);
+        blobStore.createContainerInLocation(null, containerName);
+
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
         assertThat(status.getTotalObjectCount()).isEqualTo(1);

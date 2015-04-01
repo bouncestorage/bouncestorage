@@ -59,8 +59,8 @@ public final class Main {
             System.exit(1);
         }
 
-        AbstractConfiguration config = new MapConfiguration((Map) properties);
-        BounceApplication app = new BounceApplication(config);
+        BounceApplication app = new BounceApplication();
+        app.getConfiguration().setAll(properties);
         String webConfig = Main.class.getResource("/bounce.yml").toExternalForm();
         app.run(new String[] {"server", webConfig});
     }

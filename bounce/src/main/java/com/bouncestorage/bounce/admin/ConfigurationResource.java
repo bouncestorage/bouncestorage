@@ -33,9 +33,7 @@ public final class ConfigurationResource {
     @Timed
     @Consumes(MediaType.APPLICATION_JSON)
     public void updateConfig(Properties newProperties) {
-        Configuration config = app.getConfiguration();
-        newProperties.entrySet().forEach(
-                e -> config.setProperty((String) e.getKey(), e.getValue()));
+        app.getConfiguration().setAll(newProperties);
     }
 
     @GET
