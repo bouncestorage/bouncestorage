@@ -16,7 +16,6 @@ import java.time.Instant;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.BounceService;
 import com.google.auto.service.AutoService;
 
 import org.apache.commons.configuration.Configuration;
@@ -28,11 +27,11 @@ import org.jclouds.blobstore.options.PutOptions;
 public class WriteBackPolicy extends MovePolicy {
     public static final String COPY_DELAY = "copy-delay";
     public static final String EVICT_DELAY = "evict-delay";
-    private BounceApplication app;
     protected Duration copyDelay;
+    protected Duration evictDelay;
+    private BounceApplication app;
     private boolean copy;
     private boolean immediateCopy;
-    protected Duration evictDelay;
     private boolean evict;
 
     @Override
@@ -43,8 +42,8 @@ public class WriteBackPolicy extends MovePolicy {
         return super.putBlob(containerName, blob, options);
     }
 
-    public void init(BounceApplication app, Configuration config) {
-        this.app = requireNonNull(app);
+    public void init(BounceApplication inApp, Configuration config) {
+        this.app = requireNonNull(inApp);
         this.copyDelay = requireNonNull(Duration.parse(config.getString(COPY_DELAY)));
         this.copy = !copyDelay.isNegative();
         this.immediateCopy = copyDelay.isZero();

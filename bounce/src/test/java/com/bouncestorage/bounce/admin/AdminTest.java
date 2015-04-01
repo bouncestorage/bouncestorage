@@ -9,22 +9,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 
-import org.apache.commons.configuration.MapConfiguration;
 import org.jclouds.blobstore.domain.Blob;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public final class AdminTest {

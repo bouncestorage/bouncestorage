@@ -28,7 +28,7 @@ public final class ConfigTest {
     public ExpectedException expectedException = ExpectedException.none();
     private String containerName;
     private BounceApplication app;
-    BounceService bounceService;
+    private BounceService bounceService;
 
     @Before
     public void setUp() throws Exception {
@@ -78,8 +78,10 @@ public final class ConfigTest {
     public void testGetConfig() throws Exception {
         ConfigurationResource config = new ConfigurationResource(app);
         Properties properties = config.getConfig();
-        String[] blobStores = { "bounce.backend.0.jclouds.provider",
-                "bounce.backend.1.jclouds.provider" };
+        String[] blobStores = {
+                "bounce.backend.0.jclouds.provider",
+                "bounce.backend.1.jclouds.provider"
+        };
         assertThat(properties).doesNotContainKeys(blobStores);
         setTransientBackend();
         assertThat(properties).containsKeys(blobStores);

@@ -15,8 +15,6 @@ import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceConfiguration;
 import com.google.common.collect.ImmutableList;
 
-import org.apache.commons.configuration.AbstractConfiguration;
-import org.apache.commons.configuration.MapConfiguration;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
 import org.gaul.s3proxy.S3ProxyConstants;
 import org.jclouds.ContextBuilder;
@@ -33,8 +31,8 @@ public final class BounceApplicationTest {
     private String webConfig = Main.class.getResource("/bounce.yml")
             .toExternalForm();
     private BounceApplication app;
-    String IDENTITY;
-    String CREDENTIAL;
+    private String identity;
+    private String credential;
 
     @Before
     public void setUp() throws Exception {
@@ -44,16 +42,16 @@ public final class BounceApplicationTest {
             properties.load(is);
         }
 
-        IDENTITY = properties.getProperty(S3ProxyConstants.PROPERTY_IDENTITY);
-        CREDENTIAL = properties.getProperty(S3ProxyConstants.PROPERTY_CREDENTIAL);
+        identity = properties.getProperty(S3ProxyConstants.PROPERTY_IDENTITY);
+        credential = properties.getProperty(S3ProxyConstants.PROPERTY_CREDENTIAL);
 
         app = new BounceApplication();
         BounceConfiguration config = app.getConfiguration();
         config.setAll(properties);
         config.addProperty("bounce.backends", ImmutableList.of("0"));
         config.addProperty("bounce.backend.0.jclouds.provider", "transient");
-        config.addProperty("bounce.backend.0.jclouds.identity", IDENTITY);
-        config.addProperty("bounce.backend.0.jclouds.credential", CREDENTIAL);
+        config.addProperty("bounce.backend.0.jclouds.identity", identity);
+        config.addProperty("bounce.backend.0.jclouds.credential", credential);
         app.useRandomPorts();
         synchronized (BounceApplication.class) {
             app.run(new String[]{"server", webConfig});
@@ -83,8 +81,8 @@ public final class BounceApplicationTest {
 
     @Test
     public void testConfigureProviders() throws Exception {
-        Map.Entry<String, BlobStore> res = app.locateBlobStore(IDENTITY, null, null);
-        assertThat(res.getKey()).isEqualTo(CREDENTIAL);
+        Map.Entry<String, BlobStore> res = app.locateBlobStore(identity, null, null);
+        assertThat(res.getKey()).isEqualTo(credential);
         assertThat(res.getValue()).isNotNull();
     }
 }

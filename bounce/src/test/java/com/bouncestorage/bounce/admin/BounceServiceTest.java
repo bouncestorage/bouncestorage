@@ -10,7 +10,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.Date;
-import java.util.HashMap;
 
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.Utils;
@@ -22,8 +21,6 @@ import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
 import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.google.common.collect.ImmutableMap;
 
-import org.apache.commons.configuration.MapConfiguration;
-import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.junit.After;
