@@ -43,8 +43,8 @@ public final class AdminTest {
 
         String config = getClass().getResource("/bounce.yml").toExternalForm();
         synchronized (BounceApplication.class) {
-            app = new BounceApplication(
-                    new MapConfiguration((Map) properties));
+            app = new BounceApplication();
+            app.getConfiguration().setAll(properties);
             app.useRandomPorts();
 
             app.run(new String[]{

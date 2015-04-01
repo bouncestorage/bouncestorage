@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
+import com.bouncestorage.bounce.admin.BounceConfiguration;
 import com.google.common.collect.ImmutableList;
 
 import org.apache.commons.configuration.AbstractConfiguration;
@@ -46,12 +47,13 @@ public final class BounceApplicationTest {
         IDENTITY = properties.getProperty(S3ProxyConstants.PROPERTY_IDENTITY);
         CREDENTIAL = properties.getProperty(S3ProxyConstants.PROPERTY_CREDENTIAL);
 
-        AbstractConfiguration config = new MapConfiguration((Map) properties);
+        app = new BounceApplication();
+        BounceConfiguration config = app.getConfiguration();
+        config.setAll(properties);
         config.addProperty("bounce.backends", ImmutableList.of("0"));
         config.addProperty("bounce.backend.0.jclouds.provider", "transient");
         config.addProperty("bounce.backend.0.jclouds.identity", IDENTITY);
         config.addProperty("bounce.backend.0.jclouds.credential", CREDENTIAL);
-        app = new BounceApplication(config);
         app.useRandomPorts();
         synchronized (BounceApplication.class) {
             app.run(new String[]{"server", webConfig});

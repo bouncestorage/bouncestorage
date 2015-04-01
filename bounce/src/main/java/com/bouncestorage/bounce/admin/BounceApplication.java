@@ -57,7 +57,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
 
     private Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final AbstractConfiguration config;
+    private final BounceConfiguration config;
     private final Properties configView;
 
     private BounceService bounceService;
@@ -70,8 +70,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private final Pattern containerConfigPattern = Pattern.compile("(bounce.container.\\d+).name");
     private Clock clock = Clock.systemUTC();
 
-    public BounceApplication(AbstractConfiguration config) {
-        this.config = requireNonNull(config);
+    public BounceApplication() {
+        this.config = new BounceConfiguration();
         this.configView = new ConfigurationPropertiesView(config);
 
         config.addConfigurationListener(evt -> {
@@ -259,7 +259,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                         config.getString("bounce.container." + id + ".name")));
     }
 
-    public AbstractConfiguration getConfiguration() {
+    public BounceConfiguration getConfiguration() {
         return config;
     }
 
