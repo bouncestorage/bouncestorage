@@ -43,8 +43,7 @@ public final class BounceServiceTest {
         app.useRandomPorts();
         bounceService = new BounceService(app);
 
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
+        UtilsTest.createTestProvidersConfig(app.getConfiguration());
     }
 
     @After

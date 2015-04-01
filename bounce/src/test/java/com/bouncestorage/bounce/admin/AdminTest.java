@@ -22,6 +22,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import net.jcip.annotations.NotThreadSafe;
+
+@NotThreadSafe
 public final class AdminTest {
     private BouncePolicy policy;
     private String containerName;
@@ -45,10 +48,9 @@ public final class AdminTest {
             app.run(new String[]{
                     "server", config
             });
-
         }
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
+
+        UtilsTest.createTestProvidersConfig(app.getConfiguration());
         UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
         policy = (BouncePolicy) app.getBlobStore(containerName);
         policy.createContainerInLocation(null, containerName);

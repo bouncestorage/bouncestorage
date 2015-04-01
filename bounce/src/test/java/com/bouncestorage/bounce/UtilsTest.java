@@ -14,19 +14,23 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
+import com.bouncestorage.bounce.admin.BounceConfiguration;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
 import com.google.common.net.MediaType;
 import com.google.inject.Module;
 
 import org.apache.commons.configuration.Configuration;
+import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -64,6 +68,20 @@ public final class UtilsTest {
         config.setProperty("bounce.container.0.tier.1.backend", 1);
         config.setProperty("bounce.container.0.name", container);
         config.setProperty("bounce.containers", config.getList("bounce.containers").add(0));
+    }
+
+    public static void createTestProvidersConfig(BounceConfiguration config) {
+        Properties properties = new Properties();
+        Properties systemProperties = System.getProperties();
+        loadWithPrefix(properties, systemProperties, "bounce.backend.0");
+        loadWithPrefix(properties, systemProperties, "bounce.backend.1");
+        ImmutableSet.of("bounce.backend.0", "bounce.backend.1")
+                .stream()
+                .filter(key -> !properties.containsKey(key + "." + Constants.PROPERTY_PROVIDER))
+                .forEach(key -> Utils.insertAllWithPrefix(properties, key + ".", ImmutableMap.of(
+                        Constants.PROPERTY_PROVIDER, "transient")));
+        properties.setProperty("bounce.backends", "0,1");
+        config.setAll(properties);
     }
 
     public static void createTransientProviderConfig(Configuration config) {
@@ -236,6 +254,13 @@ public final class UtilsTest {
 
     public static Blob makeBlob(BlobStore blobStore, String blobName) throws IOException {
         return makeBlob(blobStore, blobName, ByteSource.empty());
+    }
+
+    private static void loadWithPrefix(Properties out, Properties in, String prefix) {
+        in.stringPropertyNames()
+                .stream()
+                .filter(key -> key.startsWith(prefix))
+                .forEach(key -> out.put(key, in.getProperty(key)));
     }
 
     public static void advanceServiceClock(BounceApplication app, Duration duration) {

@@ -15,7 +15,6 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.google.common.io.ByteSource;
 
-import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.junit.After;
@@ -38,9 +37,7 @@ public final class CopyPolicyTest {
         app.useRandomPorts();
         bounceService = new BounceService(app);
 
-        Configuration config = app.getConfiguration();
-        UtilsTest.createTransientProviderConfig(config);
-        UtilsTest.createTransientProviderConfig(config);
+        UtilsTest.createTestProvidersConfig(app.getConfiguration());
         UtilsTest.switchPolicyforContainer(app, containerName, CopyPolicy.class);
         policy = (BouncePolicy) app.getBlobStore(containerName);
         policy.createContainerInLocation(null, containerName);
