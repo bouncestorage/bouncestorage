@@ -1,9 +1,41 @@
 var virtualContainersControllers = angular.module('virtualContainersControllers', ['bounce']);
 
-virtualContainersControllers.controller('CreateVirtualContainerCtrl', ['$scope', '$q', '$location',
-    '$timeout', 'ObjectStore', 'Container', 'VirtualContainer',
-    function ($scope, $q, $location, $timeout, ObjectStore, Container,
-        VirtualContainer) {
+virtualContainersControllers.controller('ViewContainersCtrl', ['$scope', '$location',
+    'VirtualContainer', 'ObjectStore',
+    function ($scope, $location, VirtualContainer, ObjectStore) {
+  $scope.actions = {};
+  $scope.objectStoreMap = {};
+  VirtualContainer.query(function(results) {
+    $scope.containers = results;
+  });
+
+  ObjectStore.query(function(results) {
+    for (var i = 0; i < results.length; i++) {
+      $scope.objectStoreMap[results[i].id] = results[i].nickname;
+    }
+  });
+
+  $scope.describeLocation = function(locationObject) {
+    if (locationObject.blobStoreId < 0 || locationObject.containerName == null) {
+      return "Not configured";
+    }
+    return $scope.objectStoreMap[locationObject.blobStoreId] + "/" +
+      locationObject.containerName;
+  };
+
+  $scope.actions.configureContainer = function(container) {
+    $location.path("/edit_container/" + container.id);
+  };
+
+  $scope.actions.addContainer = function() {
+    $location.path("/create_container");
+  };
+
+}]);
+
+virtualContainersControllers.controller('CreateVirtualContainerCtrl', ['$scope',
+    '$location', 'ObjectStore', 'Container', 'VirtualContainer',
+    function ($scope, $location, ObjectStore, Container, VirtualContainer) {
   $scope.actions = {};
   $scope.store = "none";
   $scope.container = "none";
@@ -13,7 +45,6 @@ virtualContainersControllers.controller('CreateVirtualContainerCtrl', ['$scope',
   });
 
   $scope.actions.storeChanged = function() {
-    console.log("Maybe fetching containers " + $scope.store);
     if ($scope.store === "new") {
       $location.path("/create_store");
       return;
@@ -26,7 +57,6 @@ virtualContainersControllers.controller('CreateVirtualContainerCtrl', ['$scope',
 
     Container.get({}, function(results) {
       $scope.containers = results.containerNames;
-      console.log($scope.containers);
     });
   };
 
@@ -45,5 +75,94 @@ virtualContainersControllers.controller('CreateVirtualContainerCtrl', ['$scope',
       }
     );
   };
+}]);
 
+virtualContainersControllers.controller('EditVirtualContainerCtrl', ['$scope',
+    '$location', '$routeParams', 'ObjectStore', 'Container', 'VirtualContainer',
+    function ($scope, $location, $routeParams, ObjectStore, Container,
+        VirtualContainer) {
+  $scope.actions = {};
+  $scope.utils = {};
+  $scope.stores = [{ id: -1,
+                     nickname: "Select an object store.."
+                   }];
+  $scope.containersMap = {};
+  $scope.storeNameMap = {};
+
+  $scope.actions.updateContainerMap = function(blobStoreId) {
+    $scope.containersMap[blobStoreId] = [];
+    Container.get({}, function(results) {
+      for (var i = 0; i < results.containerNames.length; i++) {
+        $scope.containersMap[blobStoreId].push(results.containerNames[i]);
+      }
+    }); 
+  };
+  
+  $scope.utils.setContainerNames = function(locations) {
+    for (var i = 0; i < locations.length; i++) {
+      if (locations[i].containerName === null) {
+        locations[i].containerName = "";
+        continue;
+      }
+    }
+  };
+
+  VirtualContainer.get({ id: $routeParams.containerId },
+    function(container) {
+      $scope.name = container.name;
+      $scope.originLocation = container.originLocation;
+      $scope.cacheLocation = container.cacheLocation;
+      $scope.migrationTargetLocation = container.migrationTargetLocation;
+      $scope.archiveLocation = container.archiveLocation;
+      $scope.allLocations = [ $scope.originLocation,
+                              $scope.cacheLocation,
+                              $scope.migrationTargetLocation,
+                              $scope.archiveLocation
+                            ];
+      $scope.utils.setContainerNames($scope.allLocations);
+
+      var setStores = {};
+      for (var i = 0; i < $scope.allLocations.length; i++) {
+        if ($scope.allLocations[i].blobStoreId < 0) {
+          continue;
+        }
+
+        if ($scope.allLocations[i].blobStoreId in setStores) {
+          continue;
+        }
+
+        setStores[$scope.allLocations[i].blobStoreId] = true;
+        $scope.actions.updateContainerMap($scope.allLocations[i].blobStoreId);
+      }
+    },
+    function(error) {
+      $location.path("/dashboard");
+    }
+  );
+
+  ObjectStore.query(function(results) {
+    $scope.stores = $scope.stores.concat(results);
+    for (var i = 0; i < results.length; i++) {
+      $scope.storeNameMap[results[i].id] = results[i].nickname;
+    }
+  });
+
+  $scope.actions.cancel = function() {
+    $location.path("/dashboard");
+  };
+
+  $scope.actions.editContainer = function() {
+    VirtualContainer.update({
+      id: $routeParams.containerId,
+      cacheLocation: $scope.cacheLocation,
+      originLocation: $scope.originLocation,
+      archiveLocation: $scope.archiveLocation,
+      migrationTargetLocation: $scope.migrationTargetLocation,
+      name: $scope.name
+    }, function(result) {
+      $location.path("/dashboard");
+    }, function(error) {
+      console.log(error);
+    });
+  };
 }]);

@@ -1,5 +1,4 @@
 var bounce = angular.module('bounce', [
-  'dashboardControllers',
   'ngResource',
   'ngRoute',
   'storesControllers',
@@ -21,19 +20,20 @@ bounce.config(['$routeProvider', function($routeProvider) {
       templateUrl: 'views/partials/create_store.html',
       controller: 'CreateStoreCtrl'
     }).
+    when('/dashboard', {
+      templateUrl: 'views/partials/dashboard.html',
+      controller: 'ViewContainersCtrl'
+    }).
     when('/edit_store/:objectStore', {
       redirectTo: '/create_store/false/:objectStore'
     }).
-    when('/dashboard', {
-      templateUrl: 'views/partials/dashboard.html',
-      controller: 'DashboardCtrl'
+    when('/edit_container/:containerId', {
+      templateUrl: 'views/partials/edit_container.html',
+      controller: 'EditVirtualContainerCtrl'
     }).
     when('/stores', {
       templateUrl: 'views/partials/stores.html',
       controller: 'ViewStoresCtrl'
-    }).
-    when('/edit_container/:containerId?', {
-      redirectTo: 'create_store/false'
     }).
     when('/welcome', {
       templateUrl: 'views/partials/welcome.html',
@@ -49,11 +49,13 @@ bounce.factory('Container', ['$resource', function($resource) {
 }]);
 
 bounce.factory('VirtualContainer', ['$resource', function($resource) {
-  return $resource('/api/virtual_container');
+  return $resource('/api/virtual_container/:id', { id: "@id" },
+    { 'update': { method: 'PUT'}
+    });
 }]);
 
 bounce.factory('ObjectStore', ['$resource', function($resource) {
   return $resource('/api/object_store/:id', { id: "@id" },
-    { 'update': { method: 'PUT',}
+    { 'update': { method: 'PUT'}
     });
 }]);

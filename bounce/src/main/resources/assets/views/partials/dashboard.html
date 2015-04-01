@@ -11,7 +11,10 @@
       <thead>
         <tr>
           <th>Name</th>
-          <th>Status</th>
+          <th>Source</th>
+          <th>Cache</th>
+          <th>Archive</th>
+          <th>Migration target</th>
         </tr>
       </thead>
       <tbody>
@@ -21,7 +24,10 @@
               <span class="glyphicon glyphicon-edit"></span></a>
             {{container.name}}
           </td>
-          <td>Not configured</td>
+          <td>{{describeLocation(container.originLocation)}}</td>
+          <td>{{describeLocation(container.cacheLocation)}}</td>
+          <td>{{describeLocation(container.archiveLocation)}}</td>
+          <td>{{describeLocation(container.migrationTargetLocation)}}</td>
         </tr>
       </tbody>
     </table>

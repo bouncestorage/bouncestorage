@@ -25,6 +25,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import com.codahale.metrics.annotation.Timed;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Joiner;
 
 import org.apache.commons.configuration.Configuration;
@@ -104,20 +105,36 @@ public final class VirtualContainerResource {
         if (current == null) {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
         }
-        if (current.getOriginLocation() != container.getOriginLocation()) {
+        if (!current.getOriginLocation().equals(container.getOriginLocation())) {
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
         }
 
+        String prefix = Joiner.on(".").join(VIRTUAL_CONTAINER_PREFIX, id);
         if (current.getArchiveLocation().isUnset()) {
             current.setArchiveLocation(container.getArchiveLocation());
+            String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.ARCHIVE_LOCATION_PREFIX);
+            updateLocationConfig(config, current.getArchiveLocation(), locationPrefix);
         }
         if (current.getCacheLocation().isUnset()) {
             current.setCacheLocation(container.getCacheLocation());
+            String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.CACHE_LOCATION_PREFIX);
+            updateLocationConfig(config, current.getCacheLocation(), locationPrefix);
         }
         if (current.getMigrationTargetLocation().isUnset()) {
             current.setMigrationTargetLocation(container.getMigrationTargetLocation());
+            String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.MIGRATION_TARGET_LOCATION_PREFIX);
+            updateLocationConfig(config, current.getMigrationTargetLocation(), locationPrefix);
         }
+
+        config.setProperty(Joiner.on(".").join(prefix, "name"), container.getName());
+
         return "{\"status\":\"success\"}";
+    }
+
+    private void updateLocationConfig(Configuration config, Location location, String prefix) {
+        config.setProperty(Joiner.on(".").join(prefix, Location.BLOB_STORE_ID_FIELD),
+                Integer.toString(location.getBlobStoreId()));
+        config.setProperty(Joiner.on(".").join(prefix, Location.CONTAINER_NAME_FIELD), location.getContainerName());
     }
 
     private VirtualContainer getContainer(int id, Configuration config) {
@@ -234,6 +251,7 @@ public final class VirtualContainerResource {
             return new HashCodeBuilder(5, 127).append(containerName).append(blobStoreId).toHashCode();
         }
 
+        @JsonIgnore
         public boolean isUnset() {
             return containerName == null || blobStoreId < 0;
         }
@@ -265,6 +283,7 @@ public final class VirtualContainerResource {
             originLocation = new Location();
             archiveLocation = new Location();
             migrationTargetLocation = new Location();
+            cacheLocation = new Location();
         }
 
         public void setName(String name) {
