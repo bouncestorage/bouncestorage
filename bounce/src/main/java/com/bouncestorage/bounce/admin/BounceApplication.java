@@ -10,14 +10,21 @@ import static java.util.Objects.requireNonNull;
 import static com.google.common.base.Throwables.propagate;
 
 import java.net.URI;
-import java.util.ArrayList;
+import java.time.Clock;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
-import java.util.function.Consumer;
+import java.util.ServiceLoader;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.StreamSupport;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.inject.CreationException;
 
@@ -28,12 +35,14 @@ import io.dropwizard.logging.LoggingFactory;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 
-import org.apache.commons.configuration.AbstractConfiguration;
+import org.apache.commons.configuration.Configuration;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.ServerConnector;
 import org.gaul.s3proxy.S3Proxy;
 import org.gaul.s3proxy.S3ProxyConstants;
+import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,76 +50,192 @@ import org.slf4j.LoggerFactory;
 import ch.qos.logback.classic.Level;
 
 
-public final class BounceApplication extends Application<BounceConfiguration> {
+public final class BounceApplication extends Application<BounceDropWizardConfiguration> {
     private static final ImmutableSet<String> REQUIRED_PROPERTIES =
-            ImmutableSet.of(S3ProxyConstants.PROPERTY_ENDPOINT,
-                    S3ProxyConstants.PROPERTY_IDENTITY,
-                    S3ProxyConstants.PROPERTY_CREDENTIAL);
+            ImmutableSet.of(S3ProxyConstants.PROPERTY_ENDPOINT);
 
     private Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final AbstractConfiguration config;
+    private final BounceConfiguration config;
     private final Properties configView;
-    private BounceBlobStore blobStore;
-    private final List<Consumer<BlobStoreContext>> blobStoreListeners =
-            new ArrayList<>();
+
     private BounceService bounceService;
     private int port = -1;
     private boolean useRandomPorts;
     private S3Proxy s3Proxy;
+    private Map<Integer, BlobStore> providers = new HashMap<>();
+    private Map<String, BouncePolicy> virtualContainers = new HashMap<>();
+    private final Pattern providerConfigPattern = Pattern.compile("(bounce.backend.\\d+).jclouds.provider");
+    private final Pattern containerConfigPattern = Pattern.compile("(bounce.container.\\d+).name");
+    private Clock clock = Clock.systemUTC();
 
-    public BounceApplication(AbstractConfiguration config) {
-        this.config = requireNonNull(config);
+    public BounceApplication() {
+        this.config = new BounceConfiguration();
         this.configView = new ConfigurationPropertiesView(config);
 
         config.addConfigurationListener(evt -> {
-            boolean storeChanged = false;
-            if (evt.getPropertyName().startsWith("bounce.store.properties.")) {
-                storeChanged = true;
-            }
-            if (storeChanged) {
-                reinitBlobStore();
-            }
-        });
+            String name = evt.getPropertyName();
+            Matcher m;
 
-        addBlobStoreListener(context -> {
-            try {
-                if (s3Proxy != null) {
-                    s3Proxy.stop();
+            if (!evt.isBeforeUpdate()) {
+                if ((m = providerConfigPattern.matcher(name)).matches()) {
+                    addProviderFromConfig(m.group(1), (String) evt.getPropertyValue());
+                } else if ((m = containerConfigPattern.matcher(name)).matches()) {
+                    addContainerFromConfig(m.group(1), (String) evt.getPropertyValue());
                 }
-                S3Proxy.Builder builder = S3Proxy.builder()
-                        .blobStore(context.getBlobStore())
-                        .endpoint(new URI(config.getString(
-                                S3ProxyConstants.PROPERTY_ENDPOINT)));
-
-                String identity = (String) configView.get(
-                        S3ProxyConstants.PROPERTY_IDENTITY);
-                String credential = (String) configView.get(
-                        S3ProxyConstants.PROPERTY_CREDENTIAL);
-                if (identity != null || credential != null) {
-                    builder.awsAuthentication(identity, credential);
-                }
-
-                String keyStorePath = (String) configView.get(
-                        S3ProxyConstants.PROPERTY_KEYSTORE_PATH);
-                String keyStorePassword = (String) configView.get(
-                        S3ProxyConstants.PROPERTY_KEYSTORE_PASSWORD);
-                if (keyStorePath != null || keyStorePassword != null) {
-                    builder.keyStore(keyStorePath, keyStorePassword);
-                }
-
-                String virtualHost = config.getString(
-                        S3ProxyConstants.PROPERTY_VIRTUAL_HOST);
-                if (virtualHost != null) {
-                    builder.virtualHost(virtualHost);
-                }
-
-                s3Proxy = builder.build();
-                s3Proxy.start();
-            } catch (Exception e) {
-                throw propagate(e);
             }
         });
+    }
+
+    private void startS3Proxy() {
+        try {
+            if (s3Proxy != null) {
+                s3Proxy.stop();
+            }
+            S3Proxy.Builder builder = S3Proxy.builder()
+                    .endpoint(new URI(config.getString(
+                            S3ProxyConstants.PROPERTY_ENDPOINT)));
+
+            String identity = (String) configView.get(
+                    S3ProxyConstants.PROPERTY_IDENTITY);
+            String credential = (String) configView.get(
+                    S3ProxyConstants.PROPERTY_CREDENTIAL);
+            if (identity != null || credential != null) {
+                builder.awsAuthentication(identity, credential);
+            }
+
+            String keyStorePath = (String) configView.get(
+                    S3ProxyConstants.PROPERTY_KEYSTORE_PATH);
+            String keyStorePassword = (String) configView.get(
+                    S3ProxyConstants.PROPERTY_KEYSTORE_PASSWORD);
+            if (keyStorePath != null || keyStorePassword != null) {
+                builder.keyStore(keyStorePath, keyStorePassword);
+            }
+
+            String virtualHost = config.getString(
+                    S3ProxyConstants.PROPERTY_VIRTUAL_HOST);
+            if (virtualHost != null) {
+                builder.virtualHost(virtualHost);
+            }
+
+            s3Proxy = builder.build();
+            s3Proxy.setBlobStoreLocator((i, c, b) -> locateBlobStore(i, c, b));
+            s3Proxy.start();
+        } catch (Exception e) {
+            throw propagate(e);
+        }
+    }
+
+    private void addProviderFromConfig(String prefix, String provider) {
+        logger.info("adding provider from {}", prefix);
+        Configuration c = config.subset(prefix);
+        BlobStoreContext context;
+        try {
+            ContextBuilder builder = ContextBuilder.newBuilder(provider);
+            String identity = c.getString(Constants.PROPERTY_IDENTITY);
+            if (identity != null) {
+                builder.credentials(identity, c.getString(Constants.PROPERTY_CREDENTIAL));
+            }
+            context = builder.overrides(new ConfigurationPropertiesView(c))
+                    .build(BlobStoreContext.class);
+        } catch (CreationException e) {
+            e.printStackTrace();
+            throw propagate(e);
+        }
+
+        addProvider(context.getBlobStore());
+    }
+
+    static Optional<BouncePolicy> getBouncePolicyFromName(String name) {
+        ServiceLoader<BouncePolicy> loader = ServiceLoader.load(BouncePolicy.class);
+        return StreamSupport.stream(loader.spliterator(), false)
+                .filter(p -> p.getClass().getSimpleName().equals(name))
+                .findAny();
+    }
+
+    private void addContainerFromConfig(String prefix, String containerName) {
+        logger.info("adding container {} from {}", containerName, prefix);
+        Configuration c = config.subset(prefix);
+        int sourceId = c.getInt("tier.0.backend");
+        int destId = c.getInt("tier.1.backend");
+        BlobStore source = providers.get(sourceId);
+        BlobStore dest = providers.get(destId);
+        String policyName = c.getString("tier.0.policy");
+        BouncePolicy policy = getBouncePolicyFromName(policyName)
+                .orElseThrow(() -> propagate(new ClassNotFoundException(policyName)));
+
+        policy.init(this, c.subset("tier.0"));
+        policy.setBlobStores(source, dest);
+        virtualContainers.put(containerName, policy);
+    }
+
+    Collection<BouncePolicy> getPolicies() {
+        return virtualContainers.values();
+    }
+
+    public BlobStore getBlobStore() {
+        if (providers.isEmpty()) {
+            return null;
+        }
+
+        return providers.values().iterator().next();
+    }
+
+    public BlobStore getBlobStore(String containerName) {
+        if (providers.isEmpty()) {
+            return null;
+        }
+        BlobStore blobStore = virtualContainers.get(containerName);
+        if (blobStore == null) {
+            blobStore = providers.values().iterator().next();
+        }
+
+        return blobStore;
+    }
+
+    private Optional<String> getCredentialOfContainer(String container) {
+        // TODO implement
+        return Optional.empty();
+    }
+
+    public void addProvider(BlobStore blobStore) {
+        int nextID = providers.keySet().stream().reduce(Math::max).orElse(-1) + 1;
+        logger.info("allocated provider id: {}", nextID);
+        providers.put(nextID, blobStore);
+    }
+
+    @VisibleForTesting
+    public Map.Entry<String, BlobStore> locateBlobStore(String identity,
+                                                        String container, String blob) {
+        BlobStore blobStore = null;
+        Optional<String> credential = Optional.empty();
+
+        if (container != null) {
+            blobStore = virtualContainers.get(container);
+
+            if (blobStore != null) {
+                credential = getCredentialOfContainer(container);
+            }
+        }
+
+        if (blobStore == null) {
+            List<Object> backendIDs = config.getList("bounce.backends");
+            logger.info("keys: {}", backendIDs);
+            for (Object id : backendIDs) {
+                Configuration c = config.subset("bounce.backend." + id);
+                if (identity.equals(c.getString(Constants.PROPERTY_IDENTITY))) {
+                    credential = Optional.of(c.getString(Constants.PROPERTY_CREDENTIAL));
+                    blobStore = providers.get(Integer.valueOf(id.toString()));
+                }
+            }
+        }
+
+        if (blobStore != null && credential.isPresent()) {
+            logger.info("identity: {} credential: {}", identity, credential);
+            return Maps.immutableEntry(credential.get(), blobStore);
+        }
+
+        return null;
     }
 
     private boolean isConfigValid() {
@@ -118,36 +243,22 @@ public final class BounceApplication extends Application<BounceConfiguration> {
                 REQUIRED_PROPERTIES);
     }
 
-    private void reinitBlobStore() {
+    private void initFromConfig() {
         if (!isConfigValid()) {
             logger.error("Missing parameters: {}.", Sets.difference(REQUIRED_PROPERTIES,
                     configView.stringPropertyNames()));
             return;
         }
-        try {
-            Properties contextProperties = new Properties();
-            contextProperties.putAll(System.getProperties());
-            contextProperties.putAll(configView);
-            BlobStoreContext context = ContextBuilder
-                    .newBuilder("bounce")
-                    .overrides(contextProperties)
-                    .build(BlobStoreContext.class);
-            useBlobStore((BounceBlobStore) context.getBlobStore());
-            blobStoreListeners.forEach(cb -> cb.accept(context));
-        } catch (CreationException e) {
-            logger.error("Unable to initialize blob: {}", e.getErrorMessages());
-        }
+
+        config.getList("bounce.backends").forEach(id ->
+                addProviderFromConfig("bounce.backend." + id,
+                        config.getString("bounce.backend." + id + ".jclouds.provider")));
+        config.getList("bounce.containers").forEach(id ->
+                addContainerFromConfig("bounce.container." + id,
+                        config.getString("bounce.container." + id + ".name")));
     }
 
-    public void useBlobStore(BounceBlobStore bounceBlobStore) {
-        blobStore = bounceBlobStore;
-        if (bounceService == null) {
-            bounceService = new BounceService(this);
-            config.addConfigurationListener(bounceService.getConfigurationListener());
-        }
-    }
-
-    public AbstractConfiguration getConfiguration() {
+    public BounceConfiguration getConfiguration() {
         return config;
     }
 
@@ -155,16 +266,8 @@ public final class BounceApplication extends Application<BounceConfiguration> {
         return configView;
     }
 
-    public void addBlobStoreListener(Consumer<BlobStoreContext> listener) {
-        blobStoreListeners.add(listener);
-    }
-
     public BounceService getBounceService() {
         return bounceService;
-    }
-
-    BounceBlobStore getBlobStore() {
-        return blobStore;
     }
 
     public String getS3ProxyState() {
@@ -182,13 +285,13 @@ public final class BounceApplication extends Application<BounceConfiguration> {
     }
 
     @Override
-    public void initialize(Bootstrap<BounceConfiguration> bootstrap) {
+    public void initialize(Bootstrap<BounceDropWizardConfiguration> bootstrap) {
         bootstrap.addBundle(new AssetsBundle());
         bootstrap.setConfigurationSourceProvider(new UrlConfigurationSourceProvider());
     }
 
     @Override
-    public void run(BounceConfiguration configuration, Environment environment) {
+    public void run(BounceDropWizardConfiguration configuration, Environment environment) {
         environment.jersey().register(new ServiceResource(this));
         environment.jersey().register(new ContainerResource(this));
         environment.jersey().register(new BounceBlobsResource(this));
@@ -213,7 +316,9 @@ public final class BounceApplication extends Application<BounceConfiguration> {
             }
         });
 
-        reinitBlobStore();
+        startS3Proxy();
+        bounceService = new BounceService(this);
+        initFromConfig();
     }
 
     public void stop() throws Exception {
@@ -235,5 +340,14 @@ public final class BounceApplication extends Application<BounceConfiguration> {
         // DropWizard's Application class has a static initializer that forces the filter
         // to be at WARN, this overrides that
         LoggingFactory.bootstrap(Level.toLevel(System.getProperty("LOG_LEVEL"), Level.INFO));
+    }
+
+    public Clock getClock() {
+        return clock;
+    }
+
+    @VisibleForTesting
+    public void setClock(Clock clock) {
+        this.clock = clock;
     }
 }

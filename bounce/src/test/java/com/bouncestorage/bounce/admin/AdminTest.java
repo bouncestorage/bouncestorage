@@ -7,27 +7,26 @@ package com.bouncestorage.bounce.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.InputStream;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.Properties;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 
-import org.apache.commons.configuration.MapConfiguration;
-import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
+import net.jcip.annotations.NotThreadSafe;
+
+@NotThreadSafe
 public final class AdminTest {
-    private BlobStoreContext bounceContext;
-    private BounceBlobStore bounceBlobStore;
+    private BouncePolicy policy;
     private String containerName;
     private BounceApplication app;
 
@@ -35,38 +34,35 @@ public final class AdminTest {
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        bounceContext = UtilsTest.createTransientBounceBlobStore();
-
-        bounceBlobStore = (BounceBlobStore) bounceContext.getBlobStore();
-        bounceBlobStore.createContainerInLocation(null, containerName);
-
+        Properties properties = new Properties();
+        try (InputStream is = AdminTest.class.getResourceAsStream("/bounce.properties")) {
+            properties.load(is);
+        }
 
         String config = getClass().getResource("/bounce.yml").toExternalForm();
         synchronized (BounceApplication.class) {
-            app = new BounceApplication(
-                    new MapConfiguration(new HashMap<>()));
+            app = new BounceApplication();
+            app.getConfiguration().setAll(properties);
             app.useRandomPorts();
+
             app.run(new String[]{
                     "server", config
             });
         }
-        app.useBlobStore(bounceBlobStore);
-        BounceService bounceService = app.getBounceService();
-        bounceService.setDefaultPolicy(new MoveEverythingPolicy());
+
+        UtilsTest.createTestProvidersConfig(app.getConfiguration());
+        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
+        policy = (BouncePolicy) app.getBlobStore(containerName);
+        policy.createContainerInLocation(null, containerName);
     }
 
     @After
     public void tearDown() throws Exception {
-        if (bounceBlobStore != null) {
-            bounceBlobStore.deleteContainer(containerName);
-        }
-        if (bounceContext != null) {
-            bounceContext.close();
+        if (policy != null) {
+            policy.deleteContainer(containerName);
         }
     }
 
-    // TODO: how to stop DropWizard to re-use port?
-    @Ignore
     @Test
     public void testServiceResource() throws Exception {
         ServiceStats stats = new ServiceResource(app).getServiceStats();
@@ -74,8 +70,6 @@ public final class AdminTest {
         assertThat(stats.getContainerNames()).containsOnly(containerName);
     }
 
-    // TODO: how to stop DropWizard to re-use port?
-    @Ignore
     @Test
     public void testContainerResource() throws Exception {
         ContainerStats stats = new ContainerResource(app)
@@ -87,11 +81,11 @@ public final class AdminTest {
     public void testBounceBlobsResource() throws Exception {
         String blobName = "blob";
         ByteSource byteSource = ByteSource.wrap(new byte[0]);
-        Blob blob = bounceBlobStore.blobBuilder(blobName)
+        Blob blob = policy.blobBuilder(blobName)
                 .payload(byteSource)
                 .contentLength(byteSource.size())
                 .build();
-        bounceBlobStore.putBlob(containerName, blob);
+        policy.putBlob(containerName, blob);
 
         ContainerResource containerResource = new ContainerResource(app);
         ContainerStats stats = containerResource.getContainerStats(containerName);
@@ -119,11 +113,11 @@ public final class AdminTest {
     public void testBounceAbort() throws Exception {
         String blobName = "blob";
         ByteSource byteSource = ByteSource.wrap(new byte[0]);
-        Blob blob = bounceBlobStore.blobBuilder(blobName)
+        Blob blob = policy.blobBuilder(blobName)
                 .payload(byteSource)
                 .contentLength(byteSource.size())
                 .build();
-        bounceBlobStore.putBlob(containerName, blob);
+        policy.putBlob(containerName, blob);
 
         BounceBlobsResource bounceBlobsResource = new BounceBlobsResource(app);
         BounceService.BounceTaskStatus status = bounceBlobsResource.bounceBlobs(containerName, Optional.absent(), Optional.absent());

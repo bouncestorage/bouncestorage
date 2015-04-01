@@ -7,7 +7,8 @@ package com.bouncestorage.bounce;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
+import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
@@ -25,24 +26,25 @@ public final class BounceTest {
     private BlobStoreContext bounceContext;
     private BlobStore nearBlobStore;
     private BlobStore farBlobStore;
-    private BounceBlobStore bounceBlobStore;
+    private BouncePolicy policy;
     private String containerName;
 
     @Before
     public void setUp() throws Exception {
         containerName = UtilsTest.createRandomContainerName();
 
-        bounceContext = UtilsTest.createTestBounceBlobStore();
-        bounceBlobStore = (BounceBlobStore) bounceContext.getBlobStore();
-        nearBlobStore = bounceBlobStore.getNearStore();
-        farBlobStore = bounceBlobStore.getFarStore();
-        bounceBlobStore.createContainerInLocation(null, containerName);
+        policy = new WriteBackPolicy();
+        policy.setBlobStores(UtilsTest.createTransientBlobStore(), UtilsTest.createTransientBlobStore());
+
+        nearBlobStore = policy.getSource();
+        farBlobStore = policy.getDestination();
+        policy.createContainerInLocation(null, containerName);
     }
 
     @After
     public void tearDown() throws Exception {
-        if (bounceBlobStore != null) {
-            bounceBlobStore.deleteContainer(containerName);
+        if (policy != null) {
+            policy.deleteContainer(containerName);
         }
         if (bounceContext != null) {
             bounceContext.close();
@@ -65,7 +67,7 @@ public final class BounceTest {
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
                 containerName, blobName))).isFalse();
 
-        Utils.copyBlobAndCreateBounceLink(bounceBlobStore.getNearStore(), bounceBlobStore.getFarStore(),
+        Utils.copyBlobAndCreateBounceLink(nearBlobStore, farBlobStore,
                 containerName, blobName);
 
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
@@ -75,7 +77,7 @@ public final class BounceTest {
     @Test
     public void testBounceNonexistentBlob() throws Exception {
         String blobName = UtilsTest.createRandomBlobName();
-        Utils.copyBlobAndCreateBounceLink(bounceBlobStore.getNearStore(), bounceBlobStore.getFarStore(),
+        Utils.copyBlobAndCreateBounceLink(nearBlobStore, farBlobStore,
                 containerName, blobName);
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isFalse();
         assertThat(farBlobStore.blobExists(containerName, blobName)).isFalse();
@@ -84,44 +86,41 @@ public final class BounceTest {
     @Test
     public void test404Meta() throws Exception {
         String blobName = UtilsTest.createRandomBlobName();
-        BlobMetadata meta = bounceBlobStore.blobMetadata(containerName, blobName);
+        BlobMetadata meta = policy.blobMetadata(containerName, blobName);
         assertThat(meta).isNull();
     }
 
     @Test
     public void testBounceBlob() throws Exception {
-        bounceBlobStore.setPolicy(new MoveEverythingPolicy());
         String blobName = "blob";
         ByteSource byteSource = ByteSource.wrap(new byte[1]);
-        Blob blob = UtilsTest.makeBlob(bounceBlobStore, blobName, byteSource);
+        Blob blob = UtilsTest.makeBlob(policy, blobName, byteSource);
         ContentMetadata metadata = blob.getMetadata().getContentMetadata();
-        bounceBlobStore.putBlob(containerName, blob);
-        BlobMetadata meta1 = bounceBlobStore.blobMetadata(containerName, blobName);
+        policy.putBlob(containerName, blob);
+        BlobMetadata meta1 = policy.blobMetadata(containerName, blobName);
 
-        Utils.copyBlobAndCreateBounceLink(bounceBlobStore.getNearStore(), bounceBlobStore.getFarStore(),
+        Utils.copyBlobAndCreateBounceLink(nearBlobStore, farBlobStore,
                 containerName, blobName);
-        BlobMetadata meta2 = bounceBlobStore.blobMetadata(containerName, blobName);
+        BlobMetadata meta2 = policy.blobMetadata(containerName, blobName);
         assertThat((Object) meta2).isEqualToComparingFieldByField(meta1);
 
-        Blob blob2 = bounceBlobStore.getBlob(containerName, blobName);
+        Blob blob2 = policy.getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(blob, blob2);
     }
 
     @Test
     public void testTakeOverFarStore() throws Exception {
-        bounceBlobStore.setPolicy(new MoveEverythingPolicy());
-
         String blobName = "blob";
         Blob blob = UtilsTest.makeBlob(farBlobStore, blobName);
         farBlobStore.putBlob(containerName, blob);
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isFalse();
-        assertThat(bounceBlobStore.sanityCheck(containerName)).isFalse();
+        assertThat(policy.sanityCheck(containerName)).isFalse();
 
-        bounceBlobStore.takeOver(containerName);
+        policy.takeOver(containerName);
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
                 containerName, blobName))).isTrue();
-        assertThat(bounceBlobStore.sanityCheck(containerName)).isTrue();
+        assertThat(policy.sanityCheck(containerName)).isTrue();
     }
 
     @Test
@@ -129,16 +128,15 @@ public final class BounceTest {
         String blobName = "blob";
         Blob blob = UtilsTest.makeBlob(farBlobStore, blobName);
         nearBlobStore.putBlob(containerName, blob);
-        Utils.copyBlobAndCreateBounceLink(bounceBlobStore.getNearStore(), bounceBlobStore.getFarStore(),
+        Utils.copyBlobAndCreateBounceLink(nearBlobStore, farBlobStore,
                 containerName, blobName);
-        bounceBlobStore.setPolicy(new MoveEverythingPolicy());
 
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
         assertThat(farBlobStore.blobExists(containerName, blobName)).isTrue();
         Blob nearBlob = nearBlobStore.getBlob(containerName, blobName);
         assertThat(BounceLink.isLink(nearBlob.getMetadata())).isTrue();
 
-        bounceBlobStore.getBlob(containerName, blobName, GetOptions.NONE);
+        policy.getBlob(containerName, blobName, GetOptions.NONE);
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
         assertThat(farBlobStore.blobExists(containerName, blobName)).isTrue();
         nearBlob = nearBlobStore.getBlob(containerName, blobName);
@@ -162,13 +160,13 @@ public final class BounceTest {
     @Test
     public void testUpdateMetadataTest() throws Exception {
         String blobName = UtilsTest.createRandomBlobName();
-        Blob blob = UtilsTest.makeBlob(bounceBlobStore, blobName);
+        Blob blob = UtilsTest.makeBlob(policy, blobName);
         blob.getMetadata().setUserMetadata(ImmutableMap.of("foo", "1"));
-        bounceBlobStore.putBlob(containerName, blob);
-        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata())
+        policy.putBlob(containerName, blob);
+        assertThat(policy.blobMetadata(containerName, blobName).getUserMetadata())
                 .containsKey("foo")
                 .doesNotContainKey("bar");
-        bounceBlobStore.updateBlobMetadata(containerName, blobName, ImmutableMap.of("bar", "2"));
-        assertThat(bounceBlobStore.blobMetadata(containerName, blobName).getUserMetadata()).containsKeys("foo", "bar");
+        policy.updateBlobMetadata(containerName, blobName, ImmutableMap.of("bar", "2"));
+        assertThat(policy.blobMetadata(containerName, blobName).getUserMetadata()).containsKeys("foo", "bar");
     }
 }

@@ -11,10 +11,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 
-import com.bouncestorage.bounce.admin.BounceService;
+import com.bouncestorage.bounce.admin.BounceApplication;
+import com.bouncestorage.bounce.admin.BounceConfiguration;
+import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -23,6 +29,7 @@ import com.google.common.io.ByteSource;
 import com.google.common.net.MediaType;
 import com.google.inject.Module;
 
+import org.apache.commons.configuration.Configuration;
 import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
@@ -43,35 +50,55 @@ public final class UtilsTest {
     private BlobStore farBlobStore;
     private String containerName;
 
-    public static BlobStoreContext createTestBounceBlobStore() {
+    public static void switchPolicyforContainer(BounceApplication app, String container, Class<? extends BouncePolicy>
+            policy) {
+        switchPolicyforContainer(app, container, policy, ImmutableMap.of());
+    }
+
+    public static void switchPolicyforContainer(BounceApplication app, String container, Class<? extends BouncePolicy> policy,
+                                                Map<String, String> policyConfig) {
+        Configuration config = app.getConfiguration();
+        assertThat(config.getList("bounce.backends").size() >= 2).isTrue();
+        config.setProperty("bounce.container.0.tier.0.backend", 0);
+        config.setProperty("bounce.container.0.tier.0.policy", policy.getSimpleName());
+        config.setProperty("bounce.container.0.tier.0.copy-delay", policyConfig.get(WriteBackPolicy.COPY_DELAY));
+        config.setProperty("bounce.container.0.tier.0.evict-delay", policyConfig.get(WriteBackPolicy.EVICT_DELAY));
+        policyConfig.entrySet()
+                .forEach(entry -> config.setProperty("bounce.container.0.tier.0." + entry.getKey(), entry.getValue()));
+        config.setProperty("bounce.container.0.tier.1.backend", 1);
+        config.setProperty("bounce.container.0.name", container);
+        config.setProperty("bounce.containers", config.getList("bounce.containers").add(0));
+    }
+
+    public static void createTestProvidersConfig(BounceConfiguration config) {
         Properties properties = new Properties();
         Properties systemProperties = System.getProperties();
-        loadWithPrefix(properties, systemProperties, BounceBlobStore.STORE_PROPERTY_1);
-        loadWithPrefix(properties, systemProperties, BounceBlobStore.STORE_PROPERTY_2);
-        ImmutableSet.of(BounceBlobStore.STORE_PROPERTY_1, BounceBlobStore.STORE_PROPERTY_2)
+        loadWithPrefix(properties, systemProperties, "bounce.backend.0");
+        loadWithPrefix(properties, systemProperties, "bounce.backend.1");
+        ImmutableSet.of("bounce.backend.0", "bounce.backend.1")
                 .stream()
                 .filter(key -> !properties.containsKey(key + "." + Constants.PROPERTY_PROVIDER))
                 .forEach(key -> Utils.insertAllWithPrefix(properties, key + ".", ImmutableMap.of(
                         Constants.PROPERTY_PROVIDER, "transient")));
-        return ContextBuilder.newBuilder("bounce").overrides(properties).build(BlobStoreContext.class);
+        properties.setProperty("bounce.backends", "0,1");
+        config.setAll(properties);
     }
 
-    public static BlobStoreContext createTransientBounceBlobStore() {
-        Properties properties = new Properties();
-        Utils.insertAllWithPrefix(properties,
-                BounceBlobStore.STORE_PROPERTY_1 + ".",
-                ImmutableMap.of(
-                        Constants.PROPERTY_PROVIDER, "transient"
-                ));
-        Utils.insertAllWithPrefix(properties,
-                BounceBlobStore.STORE_PROPERTY_2 + ".",
-                ImmutableMap.of(
-                        Constants.PROPERTY_PROVIDER, "transient"
-                ));
-        return ContextBuilder
-                .newBuilder("bounce")
-                .overrides(properties)
-                .build(BlobStoreContext.class);
+    public static void createTransientProviderConfig(Configuration config) {
+        List<Object> backends = config.getList("bounce.backends");
+        int lastId = backends.stream()
+                .map(id -> Integer.valueOf(id.toString()))
+                .reduce(Math::max)
+                .orElse(-1);
+        backends = new ArrayList<>(backends);
+        lastId++;
+        backends.add(lastId);
+        config.setProperty("bounce.backend." + lastId + ".jclouds.provider", "transient");
+        config.setProperty("bounce.backends", backends);
+    }
+
+    public static BlobStore createTransientBlobStore() {
+        return ContextBuilder.newBuilder("transient").build(BlobStoreContext.class).getBlobStore();
     }
 
     public static void assertEqualBlobs(Blob one, Blob two) throws Exception {
@@ -233,15 +260,10 @@ public final class UtilsTest {
         in.stringPropertyNames()
                 .stream()
                 .filter(key -> key.startsWith(prefix))
-                .forEach(key -> out.put(key, in.getProperty(key))
-                );
+                .forEach(key -> out.put(key, in.getProperty(key)));
     }
 
-    public static Blob makeBlobRandomSize(BlobStore blobStore, String blobName) throws IOException {
-        return makeBlob(blobStore, blobName, ByteSource.wrap(new byte[new Random().nextInt(1000)]));
-    }
-
-    public static void advanceServiceClock(BounceService bounceService, Duration duration) {
-        bounceService.setClock(Clock.offset(bounceService.getClock(), duration));
+    public static void advanceServiceClock(BounceApplication app, Duration duration) {
+        app.setClock(Clock.offset(app.getClock(), duration));
     }
 }

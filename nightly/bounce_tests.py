@@ -44,8 +44,8 @@ SWIFT_DATA_DIR = "/tmp/docker-swift"
 ACCESS_KEY_FIELD = 'AccessKeyId'
 SECRET_FIELD = 'SecretAccessKey'
 
-BLOBSTORE_1_PROPERTY_PREFIX = 'bounce.store.properties.1.jclouds'
-BLOBSTORE_2_PROPERTY_PREFIX = 'bounce.store.properties.2.jclouds'
+BLOBSTORE_1_PROPERTY_PREFIX = 'bounce.backend.0.jclouds'
+BLOBSTORE_2_PROPERTY_PREFIX = 'bounce.backend.1.jclouds'
 
 SSH_KEY_NAME = "/home/admin/.ssh/id_rsa"
 

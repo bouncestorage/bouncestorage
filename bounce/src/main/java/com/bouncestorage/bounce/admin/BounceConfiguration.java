@@ -5,14 +5,29 @@
 
 package com.bouncestorage.bounce.admin;
 
-import io.dropwizard.Configuration;
-import io.dropwizard.jetty.HttpConnectorFactory;
-import io.dropwizard.server.DefaultServerFactory;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
-public final class BounceConfiguration extends Configuration {
-    void useRandomPorts() {
-        DefaultServerFactory serverFactory = (DefaultServerFactory) getServerFactory();
-        ((HttpConnectorFactory) serverFactory.getApplicationConnectors().get(0)).setPort(0);
-        ((HttpConnectorFactory) serverFactory.getAdminConnectors().get(0)).setPort(0);
+import org.apache.commons.configuration.MapConfiguration;
+
+public class BounceConfiguration extends MapConfiguration {
+    public BounceConfiguration() {
+        super(new HashMap<>());
+    }
+
+    public void setAll(Properties properties) {
+        Set<Map.Entry<Object, Object>> newEntries = properties.entrySet();
+        newEntries.forEach(entry ->
+                fireEvent(EVENT_SET_PROPERTY, String.valueOf(entry.getKey()), entry.getValue(), true));
+        setDetailEvents(false);
+        try {
+            newEntries.forEach(entry -> setProperty(String.valueOf(entry.getKey()), entry.getValue()));
+        } finally {
+            setDetailEvents(true);
+        }
+        newEntries.forEach(entry ->
+                fireEvent(EVENT_SET_PROPERTY, String.valueOf(entry.getKey()), entry.getValue(), false));
     }
 }

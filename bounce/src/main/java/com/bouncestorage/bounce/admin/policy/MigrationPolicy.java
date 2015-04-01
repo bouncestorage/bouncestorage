@@ -17,6 +17,7 @@ import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.google.auto.service.AutoService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
@@ -31,6 +32,7 @@ import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 
+@AutoService(BouncePolicy.class)
 public final class MigrationPolicy extends BouncePolicy {
     // The policy implements migration from "source" to "destination"
     private static final Set<BounceBlobStore.Region> DESTINATION = BounceBlobStore.NEAR_ONLY;

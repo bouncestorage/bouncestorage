@@ -56,12 +56,6 @@ public final class Utils {
         return new CrawlBlobStoreIterable(blobStore, containerName, options);
     }
 
-    public static Iterable<StorageMetadata> crawlFarBlobStore(
-            BounceBlobStore blobStore, String containerName) {
-        return crawlBlobStore(blobStore.getFarStore(), containerName,
-                new ListContainerOptions());
-    }
-
     public static Properties propertiesFromFile(File file) throws IOException {
         Properties properties = new Properties();
         try (InputStream is = new FileInputStream(file)) {
