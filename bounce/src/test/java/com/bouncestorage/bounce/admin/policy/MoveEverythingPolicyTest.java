@@ -37,8 +37,7 @@ public final class MoveEverythingPolicyTest {
         app.useRandomPorts();
         bounceService = new BounceService(app);
 
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
+        UtilsTest.createTestProvidersConfig(app.getConfiguration());
         UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
         policy = (BouncePolicy) app.getBlobStore(containerName);
         policy.createContainerInLocation(null, containerName);
@@ -136,6 +135,7 @@ public final class MoveEverythingPolicyTest {
         policy.putBlob(containerName, blobBar);
         Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
         Blob canonicalBlob = policy.getBlob(containerName, blobName);
+        farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(nearBlob, blobBar);
         UtilsTest.assertEqualBlobs(farBlob, blobFoo);
         UtilsTest.assertEqualBlobs(canonicalBlob, blobBar);

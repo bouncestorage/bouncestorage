@@ -43,8 +43,7 @@ public final class LastModifiedTimePolicyTest {
         app.useRandomPorts();
         bounceService = new BounceService(app);
 
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
+        UtilsTest.createTestProvidersConfig(app.getConfiguration());
         UtilsTest.switchPolicyforContainer(app, containerName, LastModifiedTimePolicy.class,
                 ImmutableMap.of(LastModifiedTimePolicy.EVICT_DELAY, duration.toString()));
 
@@ -154,6 +153,8 @@ public final class LastModifiedTimePolicyTest {
         policy.putBlob(containerName, blobBar);
         Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
         Blob canonicalBlob = policy.getBlob(containerName, blobName);
+        // get far blob again so we can compare
+        farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(nearBlob, blobBar);
         UtilsTest.assertEqualBlobs(farBlob, blobFoo);
         UtilsTest.assertEqualBlobs(canonicalBlob, blobBar);

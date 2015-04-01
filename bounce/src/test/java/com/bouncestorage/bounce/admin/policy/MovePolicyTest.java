@@ -35,8 +35,7 @@ public final class MovePolicyTest {
         app.useRandomPorts();
         bounceService = new BounceService(app);
 
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
+        UtilsTest.createTestProvidersConfig(app.getConfiguration());
         UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
         policy = (BouncePolicy) app.getBlobStore(containerName);
         policy.createContainerInLocation(null, containerName);

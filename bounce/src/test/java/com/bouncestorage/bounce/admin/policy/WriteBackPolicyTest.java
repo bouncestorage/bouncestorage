@@ -40,8 +40,7 @@ public final class WriteBackPolicyTest {
         app.useRandomPorts();
         bounceService = new BounceService(app);
 
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
-        UtilsTest.createTransientProviderConfig(app.getConfiguration());
+        UtilsTest.createTestProvidersConfig(app.getConfiguration());
         UtilsTest.switchPolicyforContainer(app, containerName, WriteBackPolicy.class,
                 ImmutableMap.of(WriteBackPolicy.EVICT_DELAY, duration.toString(),
                         WriteBackPolicy.COPY_DELAY, Duration.ofSeconds(0).toString()));
@@ -164,6 +163,7 @@ public final class WriteBackPolicyTest {
         policy.putBlob(containerName, blobBar);
         Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
         Blob canonicalBlob = policy.getBlob(containerName, blobName);
+        farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(nearBlob, blobBar);
         UtilsTest.assertEqualBlobs(farBlob, blobFoo);
         UtilsTest.assertEqualBlobs(canonicalBlob, blobBar);
@@ -196,6 +196,7 @@ public final class WriteBackPolicyTest {
         policy.putBlob(containerName, blobBar);
         Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
         Blob canonicalBlob = policy.getBlob(containerName, blobName);
+        farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(nearBlob, blobBar);
         UtilsTest.assertEqualBlobs(farBlob, blobFoo);
         UtilsTest.assertEqualBlobs(canonicalBlob, blobBar);
