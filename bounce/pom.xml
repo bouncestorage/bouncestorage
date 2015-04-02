@@ -127,7 +127,7 @@
                 <configuration>
                     <parallel>methods</parallel>
                     <threadCount>1</threadCount>
-                    <argLine>-Xmx256m</argLine>
+                    <argLine>-Xmx64m</argLine>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <forkedProcessTimeoutInSeconds>300</forkedProcessTimeoutInSeconds>
                     <runOrder>random</runOrder>
