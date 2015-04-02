@@ -66,6 +66,7 @@ public final class UtilsTest {
         policyConfig.entrySet()
                 .forEach(entry -> config.setProperty("bounce.container.0.tier.0." + entry.getKey(), entry.getValue()));
         config.setProperty("bounce.container.0.tier.1.backend", 1);
+        config.setProperty("bounce.container.0.tier.1.name", container + "-dest");
         config.setProperty("bounce.container.0.name", container);
         config.setProperty("bounce.containers", config.getList("bounce.containers").add(0));
     }

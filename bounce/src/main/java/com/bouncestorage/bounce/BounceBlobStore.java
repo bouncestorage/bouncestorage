@@ -198,11 +198,6 @@ public final class BounceBlobStore implements BlobStore {
         return policy.putBlob(containerName, blob, putOptions);
     }
 
-    @Override
-    public String copyBlob(String fromContainer, String fromName, String toContainer, String toName, CopyOptions options) {
-        return policy.copyBlob(fromContainer, fromName, toContainer, toName, options);
-    }
-
     public BlobMetadata blobMetadataNoFollow(String container, String s) {
         return policy.getSource().blobMetadata(container, s);
     }
@@ -264,5 +259,10 @@ public final class BounceBlobStore implements BlobStore {
     @VisibleForTesting
     public Blob getFromNearStore(String containerName, String blobName) {
         return policy.getSource().getBlob(containerName, blobName);
+    }
+
+    @Override
+    public String copyBlob(String fromContainer, String fromName, String toContainer, String toName, CopyOptions options) {
+        return policy.copyBlob(fromContainer, fromName, toContainer, toName, options);
     }
 }

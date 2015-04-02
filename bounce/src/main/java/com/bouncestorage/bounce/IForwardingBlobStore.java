@@ -27,6 +27,9 @@ import org.jclouds.domain.Location;
 
 public interface IForwardingBlobStore extends BlobStore {
     BlobStore delegate();
+    default String mapContainer(String container) {
+        return container;
+    }
 
     @Override
     default BlobStoreContext getContext() {
@@ -50,7 +53,7 @@ public interface IForwardingBlobStore extends BlobStore {
 
     @Override
     default boolean containerExists(String container) {
-        return delegate().containerExists(container);
+        return delegate().containerExists(mapContainer(container));
     }
 
     @Override
@@ -62,30 +65,30 @@ public interface IForwardingBlobStore extends BlobStore {
     @Override
     default boolean createContainerInLocation(Location location,
             String container, CreateContainerOptions createContainerOptions) {
-        return delegate().createContainerInLocation(location, container,
+        return delegate().createContainerInLocation(location, mapContainer(container),
                 createContainerOptions);
     }
 
     @Override
     default ContainerAccess getContainerAccess(String container) {
-        return delegate().getContainerAccess(container);
+        return delegate().getContainerAccess(mapContainer(container));
     }
 
     @Override
     default void setContainerAccess(String container, ContainerAccess
             containerAccess) {
-        delegate().setContainerAccess(container, containerAccess);
+        delegate().setContainerAccess(mapContainer(container), containerAccess);
     }
 
     @Override
     default PageSet<? extends StorageMetadata> list(String container) {
-        return delegate().list(container);
+        return list(container, ListContainerOptions.NONE);
     }
 
     @Override
     default PageSet<? extends StorageMetadata> list(String container,
             ListContainerOptions options) {
-        return delegate().list(container, options);
+        return delegate().list(mapContainer(container), options);
     }
 
     @Override
@@ -95,37 +98,37 @@ public interface IForwardingBlobStore extends BlobStore {
 
     @Override
     default void clearContainer(String container, ListContainerOptions options) {
-        delegate().clearContainer(container, options);
+        delegate().clearContainer(mapContainer(container), options);
     }
 
     @Override
     default void deleteContainer(String container) {
-        delegate().deleteContainer(container);
+        delegate().deleteContainer(mapContainer(container));
     }
 
     @Override
     default boolean deleteContainerIfEmpty(String container) {
-        return delegate().deleteContainerIfEmpty(container);
+        return delegate().deleteContainerIfEmpty(mapContainer(container));
     }
 
     @Override
     default boolean directoryExists(String container, String directory) {
-        return delegate().directoryExists(container, directory);
+        return delegate().directoryExists(mapContainer(container), directory);
     }
 
     @Override
     default void createDirectory(String container, String directory) {
-        delegate().createDirectory(container, directory);
+        delegate().createDirectory(mapContainer(container), directory);
     }
 
     @Override
     default void deleteDirectory(String container, String directory) {
-        delegate().deleteDirectory(container, directory);
+        delegate().deleteDirectory(mapContainer(container), directory);
     }
 
     @Override
     default boolean blobExists(String container, String name) {
-        return delegate().blobExists(container, name);
+        return delegate().blobExists(mapContainer(container), name);
     }
 
     @Override
@@ -136,12 +139,12 @@ public interface IForwardingBlobStore extends BlobStore {
     @Override
     default String putBlob(String containerName, Blob blob,
             PutOptions putOptions) {
-        return delegate().putBlob(containerName, blob, putOptions);
+        return delegate().putBlob(mapContainer(containerName), blob, putOptions);
     }
 
     @Override
     default BlobMetadata blobMetadata(String container, String name) {
-        return delegate().blobMetadata(container, name);
+        return delegate().blobMetadata(mapContainer(container), name);
     }
 
     @Override
@@ -152,28 +155,28 @@ public interface IForwardingBlobStore extends BlobStore {
     @Override
     default Blob getBlob(String containerName, String blobName,
             GetOptions getOptions) {
-        return delegate().getBlob(containerName, blobName, getOptions);
+        return delegate().getBlob(mapContainer(containerName), blobName, getOptions);
     }
 
     @Override
     default void removeBlob(String container, String name) {
-        delegate().removeBlob(container, name);
+        delegate().removeBlob(mapContainer(container), name);
     }
 
     @Override
     default void removeBlobs(String container, Iterable<String> iterable) {
-        delegate().removeBlobs(container, iterable);
+        delegate().removeBlobs(mapContainer(container), iterable);
     }
 
     @Override
     default BlobAccess getBlobAccess(String container, String name) {
-        return delegate().getBlobAccess(container, name);
+        return delegate().getBlobAccess(mapContainer(container), name);
     }
 
     @Override
     default void setBlobAccess(String container, String name,
             BlobAccess access) {
-        delegate().setBlobAccess(container, name, access);
+        delegate().setBlobAccess(mapContainer(container), name, access);
     }
 
     @Override
@@ -183,7 +186,7 @@ public interface IForwardingBlobStore extends BlobStore {
 
     @Override
     default long countBlobs(String container, ListContainerOptions options) {
-        return delegate().countBlobs(container, options);
+        return delegate().countBlobs(mapContainer(container), options);
     }
 
     default void updateBlobMetadata(String containerName, String blobName, Map<String, String> userMetadata) {
@@ -195,7 +198,8 @@ public interface IForwardingBlobStore extends BlobStore {
     }
 
     @Override
-    default String copyBlob(String fromContainer, String fromName, String toContainer, String toName, CopyOptions options) {
-        return delegate().copyBlob(fromContainer, fromName, toContainer, toName, options);
+    default String copyBlob(String fromContainer, String fromName, String toContainer, String toName,
+                    CopyOptions options) {
+        return delegate().copyBlob(mapContainer(fromContainer), fromName, mapContainer(toContainer), toName, options);
     }
 }

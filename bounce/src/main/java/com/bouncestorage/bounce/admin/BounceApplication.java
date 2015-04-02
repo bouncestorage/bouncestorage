@@ -22,6 +22,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
+import com.bouncestorage.bounce.BlobStoreTarget;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
@@ -160,12 +161,15 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         int destId = c.getInt("tier.1.backend");
         BlobStore source = providers.get(sourceId);
         BlobStore dest = providers.get(destId);
+        String sourceContainerName = c.getString("tier.0.container-name", containerName);
+        String destContainerName = c.getString("tier.1.container-name", containerName);
         String policyName = c.getString("tier.0.policy");
         BouncePolicy policy = getBouncePolicyFromName(policyName)
                 .orElseThrow(() -> propagate(new ClassNotFoundException(policyName)));
 
         policy.init(this, c.subset("tier.0"));
-        policy.setBlobStores(source, dest);
+        policy.setBlobStores(new BlobStoreTarget(source, sourceContainerName),
+                new BlobStoreTarget(dest, destContainerName));
         virtualContainers.put(containerName, policy);
     }
 

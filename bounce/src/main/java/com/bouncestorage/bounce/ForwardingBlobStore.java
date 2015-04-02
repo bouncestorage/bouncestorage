@@ -36,11 +36,6 @@ public abstract class ForwardingBlobStore extends ForwardingObject
     }
 
     @Override
-    public String copyBlob(String fromContainer, String fromName, String toContainer, String toName, CopyOptions options) {
-        return delegate().copyBlob(fromContainer, fromName, toContainer, toName, options);
-    }
-
-    @Override
     public BlobStore delegate() {
         return blobStore;
     }
@@ -53,6 +48,12 @@ public abstract class ForwardingBlobStore extends ForwardingObject
     @Override
     public BlobBuilder blobBuilder(String name) {
         return delegate().blobBuilder(name);
+    }
+
+    @Override
+    public String copyBlob(String fromContainer, String fromName, String toContainer, String toName,
+                           CopyOptions options) {
+        return delegate().copyBlob(fromContainer, fromName, toContainer, toName, options);
     }
 
     @Override

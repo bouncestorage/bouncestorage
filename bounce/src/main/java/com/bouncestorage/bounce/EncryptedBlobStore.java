@@ -249,11 +249,6 @@ public final class EncryptedBlobStore implements BlobStore {
     }
 
     @Override
-    public String copyBlob(String fromContainer, String fromName, String toContainer, String toName, CopyOptions options) {
-        return delegate.copyBlob(fromContainer, fromName, toContainer, toName, options);
-    }
-
-    @Override
     public BlobMetadata blobMetadata(String container, String s) {
         return delegate.blobMetadata(container, s);
     }
@@ -298,4 +293,9 @@ public final class EncryptedBlobStore implements BlobStore {
         return delegate.countBlobs(container, listContainerOptions);
     }
 
+    @Override
+    public String copyBlob(String fromContainer, String fromName, String toContainer, String toName,
+                           CopyOptions options) {
+        return delegate().copyBlob(fromContainer, fromName, toContainer, toName, options);
+    }
 }
