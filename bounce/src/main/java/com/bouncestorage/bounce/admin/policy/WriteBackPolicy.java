@@ -25,8 +25,8 @@ import org.jclouds.blobstore.options.PutOptions;
 
 @AutoService(BouncePolicy.class)
 public class WriteBackPolicy extends MovePolicy {
-    public static final String COPY_DELAY = "copy-delay";
-    public static final String EVICT_DELAY = "evict-delay";
+    public static final String COPY_DELAY = "copyDelay";
+    public static final String EVICT_DELAY = "evictDelay";
     protected Duration copyDelay;
     protected Duration evictDelay;
     private BounceApplication app;

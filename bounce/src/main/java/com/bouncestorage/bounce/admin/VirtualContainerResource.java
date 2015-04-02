@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -25,16 +26,14 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import com.codahale.metrics.annotation.Timed;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Joiner;
 
 import org.apache.commons.configuration.Configuration;
-import org.apache.commons.lang.builder.HashCodeBuilder;
 
 @Path("/virtual_container")
 @Produces(MediaType.APPLICATION_JSON)
 public final class VirtualContainerResource {
-    public static final String VIRTUAL_CONTAINER_PREFIX = "bounce.virtualContainer";
+    public static final String VIRTUAL_CONTAINER_PREFIX = "bounce.container";
 
     private final BounceApplication app;
 
@@ -46,13 +45,10 @@ public final class VirtualContainerResource {
     @Timed
     public List<VirtualContainer> getContainers() {
         Configuration config = app.getConfiguration();
-        Iterator<String> iterator = config.getKeys();
+        Iterator<String> iterator = config.getKeys(VIRTUAL_CONTAINER_PREFIX);
         Map<Integer, VirtualContainer> results = new HashMap<>();
         while (iterator.hasNext()) {
             String key = iterator.next();
-            if (!key.startsWith(VIRTUAL_CONTAINER_PREFIX)) {
-                continue;
-            }
             int id = getContainerId(key);
             VirtualContainer container;
             if (!results.containsKey(id)) {
@@ -84,14 +80,16 @@ public final class VirtualContainerResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public String createContainer(VirtualContainer container) {
         int nextIndex = getNextContainerId();
-        Configuration config = app.getConfiguration();
+        BounceConfiguration config = app.getConfiguration();
         String prefix = VIRTUAL_CONTAINER_PREFIX + "." + nextIndex;
-        config.setProperty(Joiner.on(".").join(prefix, "name"), container.getName());
+        Properties properties = new Properties();
+        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.NAME), container.getName());
         Location origin = container.getOriginLocation();
-        config.setProperty(Joiner.on(".").join(prefix, VirtualContainer.ORIGIN_LOCATION_PREFIX,
+        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX,
                 Location.BLOB_STORE_ID_FIELD), Integer.toString(origin.getBlobStoreId()));
-        config.setProperty(Joiner.on(".").join(prefix, VirtualContainer.ORIGIN_LOCATION_PREFIX,
+        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX,
                 Location.CONTAINER_NAME_FIELD), origin.getContainerName());
+        config.setAll(properties);
         return "{\"status\":\"success\"}";
     }
 
@@ -100,7 +98,7 @@ public final class VirtualContainerResource {
     @Timed
     @Consumes(MediaType.APPLICATION_JSON)
     public String updateContainer(@PathParam("id") int id, VirtualContainer container) {
-        Configuration config = app.getConfiguration();
+        BounceConfiguration config = app.getConfiguration();
         VirtualContainer current = getContainer(id, config);
         if (current == null) {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
@@ -109,32 +107,34 @@ public final class VirtualContainerResource {
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
         }
 
+        Properties properties = new Properties();
         String prefix = Joiner.on(".").join(VIRTUAL_CONTAINER_PREFIX, id);
         if (current.getArchiveLocation().isUnset()) {
             current.setArchiveLocation(container.getArchiveLocation());
-            String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.ARCHIVE_LOCATION_PREFIX);
-            updateLocationConfig(config, current.getArchiveLocation(), locationPrefix);
+            String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.ARCHIVE_TIER_PREFIX);
+            updateLocationConfig(properties, current.getArchiveLocation(), locationPrefix);
         }
         if (current.getCacheLocation().isUnset()) {
             current.setCacheLocation(container.getCacheLocation());
-            String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.CACHE_LOCATION_PREFIX);
-            updateLocationConfig(config, current.getCacheLocation(), locationPrefix);
+            String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.CACHE_TIER_PREFIX);
+            updateLocationConfig(properties, current.getCacheLocation(), locationPrefix);
         }
         if (current.getMigrationTargetLocation().isUnset()) {
             current.setMigrationTargetLocation(container.getMigrationTargetLocation());
-            String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.MIGRATION_TARGET_LOCATION_PREFIX);
-            updateLocationConfig(config, current.getMigrationTargetLocation(), locationPrefix);
+            String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.MIGRATION_TIER_PREFIX);
+            updateLocationConfig(properties, current.getMigrationTargetLocation(), locationPrefix);
         }
 
-        config.setProperty(Joiner.on(".").join(prefix, "name"), container.getName());
+        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.NAME), container.getName());
+        config.setAll(properties);
 
         return "{\"status\":\"success\"}";
     }
 
-    private void updateLocationConfig(Configuration config, Location location, String prefix) {
-        config.setProperty(Joiner.on(".").join(prefix, Location.BLOB_STORE_ID_FIELD),
+    private void updateLocationConfig(Properties properties, Location location, String prefix) {
+        properties.setProperty(Joiner.on(".").join(prefix, Location.BLOB_STORE_ID_FIELD),
                 Integer.toString(location.getBlobStoreId()));
-        config.setProperty(Joiner.on(".").join(prefix, Location.CONTAINER_NAME_FIELD), location.getContainerName());
+        properties.setProperty(Joiner.on(".").join(prefix, Location.CONTAINER_NAME_FIELD), location.getContainerName());
     }
 
     private VirtualContainer getContainer(int id, Configuration config) {
@@ -153,7 +153,7 @@ public final class VirtualContainerResource {
     private int getContainerId(String key) {
         int indexStart = VIRTUAL_CONTAINER_PREFIX.length() + 1;
         String indexString = key.substring(indexStart, key.indexOf(".", indexStart));
-        return Integer.decode(indexString);
+        return Integer.parseInt(indexString);
     }
 
     private int getNextContainerId() {
@@ -180,7 +180,7 @@ public final class VirtualContainerResource {
     }
 
     private String getLocationField(String key) {
-        int index = key.indexOf(".");
+        int index = key.indexOf(".", VirtualContainer.TIER_PREFIX.length() + 1);
         if (index < 0) {
             return null;
         }
@@ -188,154 +188,21 @@ public final class VirtualContainerResource {
     }
 
     private void setProperty(VirtualContainer container, String field, String value) {
-        if (field.equalsIgnoreCase("name")) {
+        if (field.equalsIgnoreCase(VirtualContainer.NAME)) {
             container.setName(value);
         }
         Location location = null;
-        if (field.startsWith(VirtualContainer.ORIGIN_LOCATION_PREFIX)) {
+        if (field.startsWith(VirtualContainer.PRIMARY_TIER_PREFIX)) {
             location = container.getOriginLocation();
-        } else if (field.startsWith(VirtualContainer.CACHE_LOCATION_PREFIX)) {
+        } else if (field.startsWith(VirtualContainer.CACHE_TIER_PREFIX)) {
             location = container.getCacheLocation();
-        } else if (field.startsWith(VirtualContainer.ARCHIVE_LOCATION_PREFIX)) {
+        } else if (field.startsWith(VirtualContainer.ARCHIVE_TIER_PREFIX)) {
             location = container.getArchiveLocation();
-        } else if (field.startsWith(VirtualContainer.MIGRATION_TARGET_LOCATION_PREFIX)) {
+        } else if (field.startsWith(VirtualContainer.MIGRATION_TIER_PREFIX)) {
             location = container.getMigrationTargetLocation();
         }
         if (location != null) {
             location.setField(getLocationField(field), value);
-        }
-    }
-
-    private static class Location {
-        static final String BLOB_STORE_ID_FIELD = "blobStoreId";
-        static final String CONTAINER_NAME_FIELD = "containerName";
-
-        private int blobStoreId = -1;
-        private String containerName;
-
-        public void setBlobStoreId(int id) {
-            blobStoreId = id;
-        }
-
-        public int getBlobStoreId() {
-            return blobStoreId;
-        }
-
-        public void setContainerName(String name) {
-            containerName = name;
-        }
-
-        public String getContainerName() {
-            return containerName;
-        }
-
-        public void setLocation(Location location) {
-            containerName = location.containerName;
-            blobStoreId = location.blobStoreId;
-        }
-
-        @Override
-        public String toString() {
-            return "blobStoreId: " + blobStoreId + " container: " + containerName;
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            return other != null && other.getClass() == Location.class
-                    && containerName.equals(((Location) other).getContainerName())
-                    && blobStoreId == ((Location) other).getBlobStoreId();
-        }
-
-        @Override
-        public int hashCode() {
-            return new HashCodeBuilder(5, 127).append(containerName).append(blobStoreId).toHashCode();
-        }
-
-        @JsonIgnore
-        public boolean isUnset() {
-            return containerName == null || blobStoreId < 0;
-        }
-
-        public void setField(String key, String value) {
-            if (key.equals(BLOB_STORE_ID_FIELD)) {
-                setBlobStoreId(Integer.decode(value));
-            } else if (key.equals(CONTAINER_NAME_FIELD)) {
-                setContainerName(value);
-            }
-        }
-    }
-
-    private static class VirtualContainer {
-        static final String ORIGIN_LOCATION_PREFIX = "originLocation";
-        static final String CACHE_LOCATION_PREFIX = "cacheLocation";
-        static final String ARCHIVE_LOCATION_PREFIX = "archiveLocation";
-        static final String MIGRATION_TARGET_LOCATION_PREFIX = "migrationTargetLocation";
-
-        private String name;
-        private int id;
-        private Location originLocation;
-
-        private Location cacheLocation;
-        private Location archiveLocation;
-        private Location migrationTargetLocation;
-
-        public VirtualContainer() {
-            originLocation = new Location();
-            archiveLocation = new Location();
-            migrationTargetLocation = new Location();
-            cacheLocation = new Location();
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setId(int id) {
-            this.id = id;
-        }
-
-        public int getId() {
-            return id;
-        }
-
-        public void setOriginLocation(Location location) {
-            this.originLocation.setLocation(location);
-        }
-
-        public Location getOriginLocation() {
-            return originLocation;
-        }
-
-        public String toString() {
-            return "Name: " + name + " ID: " + id + " originLocation: " + originLocation.toString();
-        }
-
-        public Location getCacheLocation() {
-            return cacheLocation;
-        }
-
-        public void setCacheLocation(Location cacheLocation) {
-            this.cacheLocation = cacheLocation;
-        }
-
-        public Location getArchiveLocation() {
-            return archiveLocation;
-        }
-
-        public void setArchiveLocation(Location archiveLocation) {
-            this.archiveLocation = archiveLocation;
-        }
-
-        public Location getMigrationTargetLocation() {
-            return migrationTargetLocation;
-        }
-
-        public void setMigrationTargetLocation(Location migrationTargetLocation) {
-            this.migrationTargetLocation = migrationTargetLocation;
         }
     }
 }

@@ -20,7 +20,11 @@ import java.util.Random;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceConfiguration;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.admin.Location;
+import com.bouncestorage.bounce.admin.VirtualContainer;
+import com.bouncestorage.bounce.admin.VirtualContainerResource;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -55,20 +59,34 @@ public final class UtilsTest {
         switchPolicyforContainer(app, container, policy, ImmutableMap.of());
     }
 
-    public static void switchPolicyforContainer(BounceApplication app, String container, Class<? extends BouncePolicy> policy,
-                                                Map<String, String> policyConfig) {
-        Configuration config = app.getConfiguration();
+    public static void switchPolicyforContainer(BounceApplication app, String container,
+            Class<? extends BouncePolicy> policy, Map<String, String> policyConfig) {
+        BounceConfiguration config = app.getConfiguration();
         assertThat(config.getList("bounce.backends").size() >= 2).isTrue();
-        config.setProperty("bounce.container.0.tier.0.backend", 0);
-        config.setProperty("bounce.container.0.tier.0.policy", policy.getSimpleName());
-        config.setProperty("bounce.container.0.tier.0.copy-delay", policyConfig.get(WriteBackPolicy.COPY_DELAY));
-        config.setProperty("bounce.container.0.tier.0.evict-delay", policyConfig.get(WriteBackPolicy.EVICT_DELAY));
+        String containerPrefix = Joiner.on(".").join(VirtualContainerResource.VIRTUAL_CONTAINER_PREFIX, "0");
+        String cacheTierPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.CACHE_TIER_PREFIX);
+        Properties newProperties = new Properties();
+        newProperties.setProperty(Joiner.on(".").join(cacheTierPrefix, Location.BLOB_STORE_ID_FIELD), "0");
+        newProperties.setProperty(Joiner.on(".").join(cacheTierPrefix, "policy"), policy.getSimpleName());
+        if (policyConfig.get(WriteBackPolicy.COPY_DELAY) != null) {
+            newProperties.setProperty(Joiner.on(".").join(cacheTierPrefix, WriteBackPolicy.COPY_DELAY),
+                    policyConfig.get(WriteBackPolicy.COPY_DELAY));
+        }
+        if (policyConfig.get(WriteBackPolicy.EVICT_DELAY) != null) {
+            newProperties.setProperty(Joiner.on(".").join(cacheTierPrefix, WriteBackPolicy.EVICT_DELAY),
+                    policyConfig.get(WriteBackPolicy.EVICT_DELAY));
+        }
         policyConfig.entrySet()
-                .forEach(entry -> config.setProperty("bounce.container.0.tier.0." + entry.getKey(), entry.getValue()));
-        config.setProperty("bounce.container.0.tier.1.backend", 1);
-        config.setProperty("bounce.container.0.tier.1.name", container + "-dest");
-        config.setProperty("bounce.container.0.name", container);
+                .forEach(entry -> config.setProperty(Joiner.on(".").join(cacheTierPrefix, entry.getKey()),
+                        entry.getValue()));
+        String primaryTierPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.PRIMARY_TIER_PREFIX);
+        newProperties.setProperty(Joiner.on(".").join(primaryTierPrefix, Location.BLOB_STORE_ID_FIELD), "1");
+        newProperties.setProperty(Joiner.on(".").join(primaryTierPrefix, Location.CONTAINER_NAME_FIELD),
+                container + "-dest");
+        newProperties.setProperty(Joiner.on(".").join(containerPrefix, VirtualContainer.NAME), container);
+
         config.setProperty("bounce.containers", config.getList("bounce.containers").add(0));
+        config.setAll(newProperties);
     }
 
     public static void createTestProvidersConfig(BounceConfiguration config) {
