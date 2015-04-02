@@ -37,7 +37,7 @@ BOUNCE_REPO = "git@github.com:bouncestorage/bouncestorage.git"
 BOUNCE_SRC_DIR = "bouncestorage"
 BOUNCE_NIGHTLY_TEST_NAME = "nightly/bounce_tests.py"
 
-DOCKER_SWIFT_REPO = "https://github.com/ualbertalib/docker-swift"
+DOCKER_SWIFT_REPO = "https://github.com/timuralp/docker-swift"
 DOCKER_SWIFT_DIR = "docker-swift"
 SWIFT_DATA_DIR = "/tmp/docker-swift"
 
@@ -103,6 +103,7 @@ def setup_code():
 
 def setup_swift():
     git_clone(DOCKER_SWIFT_REPO, DOCKER_SWIFT_DIR)
+    execute("cd ~/%s && git checkout improvement/use_single_servers" % DOCKER_SWIFT_DIR)
     execute("cd ~/%s && sudo docker build -t pbinkley/docker-swift ." % DOCKER_SWIFT_DIR)
 
 def start_docker_swift(datadir):
