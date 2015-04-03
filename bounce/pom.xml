@@ -127,9 +127,10 @@
                 <configuration>
                     <parallel>methods</parallel>
                     <threadCount>1</threadCount>
-                    <argLine>-Xmx64m</argLine>
+                    <argLine>-Xmx128m</argLine>
+                    <forkCount>0</forkCount>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
-                    <forkedProcessTimeoutInSeconds>1200</forkedProcessTimeoutInSeconds>
+                    <forkedProcessTimeoutInSeconds>300</forkedProcessTimeoutInSeconds>
                     <runOrder>random</runOrder>
                 </configuration>
             </plugin>
