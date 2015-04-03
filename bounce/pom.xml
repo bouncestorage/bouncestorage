@@ -129,7 +129,7 @@
                     <threadCount>1</threadCount>
                     <argLine>-Xmx64m</argLine>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
-                    <forkedProcessTimeoutInSeconds>600</forkedProcessTimeoutInSeconds>
+                    <forkedProcessTimeoutInSeconds>1200</forkedProcessTimeoutInSeconds>
                     <runOrder>random</runOrder>
                 </configuration>
             </plugin>
