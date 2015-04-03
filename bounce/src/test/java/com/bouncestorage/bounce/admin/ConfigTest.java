@@ -9,11 +9,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Properties;
 
+import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
 import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
+import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.collect.ImmutableMap;
 
 import org.jclouds.blobstore.BlobStore;
@@ -142,6 +145,48 @@ public final class ConfigTest {
         assertThat(status.getTotalObjectCount()).isEqualTo(1);
         assertThat(status.getMovedObjectCount()).isEqualTo(0);
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
+    }
+
+    @Test
+    public void testConfigureThreeTiers() throws Exception {
+        Properties p = new Properties();
+        p.put("bounce.backend.0.jclouds.provider", "transient");
+        p.put("bounce.backend.1.jclouds.provider", "transient");
+        p.put("bounce.backend.2.jclouds.provider", "transient");
+        p.put("bounce.backends", "0,1,2");
+
+        new ConfigurationResource(app).updateConfig(p);
+        Map<Object, Object> m = ImmutableMap.builder()
+                .put("bounce.container.0.name", containerName)
+                .put("bounce.container.0.identity", "identity")
+                .put("bounce.container.0.credential", "credential")
+                .put("bounce.container.0.tier.0.backend", "0")
+                .put("bounce.container.0.tier.0.policy", WriteBackPolicy.class.getSimpleName())
+                .put("bounce.container.0.tier.0.copy-delay", Duration.ofHours(0).toString())
+                .put("bounce.container.0.tier.0.evict-delay", Duration.ofHours(1).toString())
+                .put("bounce.container.0.tier.1.backend", "1")
+                .put("bounce.container.0.tier.1.policy", WriteBackPolicy.class.getSimpleName())
+                .put("bounce.container.0.tier.1.copy-delay", Duration.ofHours(0).toString())
+                .put("bounce.container.0.tier.1.evict-delay", Duration.ofHours(1).toString())
+                .put("bounce.container.0.tier.2.backend", "2")
+                .put("bounce.container.0.tier.2.policy", WriteBackPolicy.class.getSimpleName())
+                .put("bounce.container.0.tier.2.copy-delay", Duration.ofHours(0).toString())
+                .put("bounce.container.0.tier.2.evict-delay", Duration.ofHours(1).toString())
+                .put("bounce.containers", "0")
+                .build();
+        p = new Properties();
+        p.putAll(m);
+        new ConfigurationResource(app).updateConfig(p);
+        Map.Entry<String, BlobStore> entry = app.locateBlobStore("identity", containerName, null);
+        assertThat(entry).isNotNull();
+        assertThat(entry.getKey()).isEqualTo("credential");
+        assertThat(entry.getValue()).isInstanceOf(BouncePolicy.class);
+        BouncePolicy policy = (BouncePolicy) entry.getValue();
+        assertThat(policy.getSource()).isInstanceOf(BlobStoreTarget.class);
+        assertThat(policy.getDestination()).isInstanceOf(BouncePolicy.class);
+        policy = (BouncePolicy) policy.getDestination();
+        assertThat(policy.getSource()).isInstanceOf(BlobStoreTarget.class);
+        assertThat(policy.getDestination()).isInstanceOf(BlobStoreTarget.class);
     }
 
     private void setTransientBackend() throws Exception {
