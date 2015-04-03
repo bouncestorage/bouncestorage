@@ -60,13 +60,15 @@ public final class ObjectStoreResource {
             BlobStoreContext context = builder.build(BlobStoreContext.class);
             BlobStore store = context.getBlobStore();
             store.list();
-            Configuration config = app.getConfiguration();
+            BounceConfiguration config = app.getConfiguration();
             int storeIndex = getLastBlobStoreIndex(config);
             String prefix = BounceBlobStore.STORE_PROPERTY + "." + storeIndex + "." + PROPERTIES_PREFIX;
-            config.setProperty(prefix + "provider", objectStore.provider);
-            config.setProperty(prefix + "identity", objectStore.identity);
-            config.setProperty(prefix + "credential", objectStore.credential);
-            config.setProperty(prefix + "nickname", objectStore.nickname);
+            properties = new Properties();
+            properties.setProperty(prefix + "provider", objectStore.provider);
+            properties.setProperty(prefix + "identity", objectStore.identity);
+            properties.setProperty(prefix + "credential", objectStore.credential);
+            properties.setProperty(prefix + "nickname", objectStore.nickname);
+            config.setAll(properties);
             return SUCCESS_RESPONSE;
         } catch (Exception e) {
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
@@ -111,7 +113,7 @@ public final class ObjectStoreResource {
     @Timed
     public String updateObjectStore(@PathParam("id") int id,
                                     ObjectStore objectStore) {
-        Configuration config = app.getConfiguration();
+        BounceConfiguration config = app.getConfiguration();
         ObjectStore current = getStoreById(id, config);
         if (current == null) {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
@@ -135,8 +137,10 @@ public final class ObjectStoreResource {
         }
 
         String prefix = BounceBlobStore.STORE_PROPERTY + "." + current.id + ".";
-        config.setProperty(prefix + "nickname", objectStore.nickname);
-        config.setProperty(prefix + PROPERTIES_PREFIX + "credential", objectStore.credential);
+        Properties properties = new Properties();
+        properties.setProperty(prefix + "nickname", objectStore.nickname);
+        properties.setProperty(prefix + PROPERTIES_PREFIX + "credential", objectStore.credential);
+        config.setAll(properties);
         return "{\"status\":\"success\"}";
     }
 
@@ -157,7 +161,7 @@ public final class ObjectStoreResource {
 
     private int getStoreId(String key) {
         int indexEnd = key.indexOf(".", BounceBlobStore.STORE_PROPERTY.length() + 1);
-        return Integer.decode(key.substring(BounceBlobStore.STORE_PROPERTY.length() + 1, indexEnd));
+        return Integer.parseInt(key.substring(BounceBlobStore.STORE_PROPERTY.length() + 1, indexEnd));
     }
 
     private String getFieldName(String key) {
@@ -191,7 +195,7 @@ public final class ObjectStoreResource {
             int indexStart = key.indexOf(BounceBlobStore.STORE_PROPERTY) + BounceBlobStore.STORE_PROPERTY.length() + 1;
             int indexEnd = key.indexOf(".", indexStart);
             String indexString = key.substring(indexStart, indexEnd);
-            int index = Integer.decode(indexString);
+            int index = Integer.parseInt(indexString);
             if (index >= lastIndex) {
                 lastIndex++;
             }

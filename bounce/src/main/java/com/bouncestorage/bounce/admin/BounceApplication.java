@@ -159,7 +159,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     }
 
     private void addContainerFromConfig(String prefix, String containerName) {
-        logger.info("adding container {} from {}", containerName, prefix);
+        logger.debug("adding container {} from {}", containerName, prefix);
         Configuration c = config.subset(prefix);
         int maxTierID = 3;
         BlobStore lastBlobStore = null;

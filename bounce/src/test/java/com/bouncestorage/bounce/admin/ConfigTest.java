@@ -17,6 +17,8 @@ import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
 import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
+
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 
 import org.jclouds.blobstore.BlobStore;
@@ -128,12 +130,16 @@ public final class ConfigTest {
                 UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName()));
 
         Properties properties = new Properties();
+        String containerPrefix = Joiner.on(".").join(VirtualContainerResource.VIRTUAL_CONTAINER_PREFIX,
+                "0");
+        String cachePrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.CACHE_TIER_PREFIX);
+        String primaryPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.PRIMARY_TIER_PREFIX);
         properties.putAll(ImmutableMap.of(
-                "bounce.container.0.tier.0.backend", "0",
-                "bounce.container.0.tier.0.policy", LastModifiedTimePolicy.class.getSimpleName(),
-                "bounce.container.0.tier.0.evict-delay", Duration.ofHours(1).toString(),
-                "bounce.container.0.tier.1.backend", "1",
-                "bounce.container.0.name", containerName
+                Joiner.on(".").join(cachePrefix, Location.BLOB_STORE_ID_FIELD), "0",
+                Joiner.on(".").join(cachePrefix, "policy"), LastModifiedTimePolicy.class.getSimpleName(),
+                Joiner.on(".").join(cachePrefix, WriteBackPolicy.EVICT_DELAY), Duration.ofHours(1).toString(),
+                Joiner.on(".").join(primaryPrefix, Location.BLOB_STORE_ID_FIELD), "1",
+                Joiner.on(".").join(containerPrefix, VirtualContainer.NAME), containerName
         ));
         properties.setProperty("bounce.containers", "0");
         new ConfigurationResource(app).updateConfig(properties);
@@ -162,16 +168,16 @@ public final class ConfigTest {
                 .put("bounce.container.0.credential", "credential")
                 .put("bounce.container.0.tier.0.backend", "0")
                 .put("bounce.container.0.tier.0.policy", WriteBackPolicy.class.getSimpleName())
-                .put("bounce.container.0.tier.0.copy-delay", Duration.ofHours(0).toString())
-                .put("bounce.container.0.tier.0.evict-delay", Duration.ofHours(1).toString())
+                .put("bounce.container.0.tier.0.copyDelay", Duration.ofHours(0).toString())
+                .put("bounce.container.0.tier.0.evictDelay", Duration.ofHours(1).toString())
                 .put("bounce.container.0.tier.1.backend", "1")
                 .put("bounce.container.0.tier.1.policy", WriteBackPolicy.class.getSimpleName())
-                .put("bounce.container.0.tier.1.copy-delay", Duration.ofHours(0).toString())
-                .put("bounce.container.0.tier.1.evict-delay", Duration.ofHours(1).toString())
+                .put("bounce.container.0.tier.1.copyDelay", Duration.ofHours(0).toString())
+                .put("bounce.container.0.tier.1.evictDelay", Duration.ofHours(1).toString())
                 .put("bounce.container.0.tier.2.backend", "2")
                 .put("bounce.container.0.tier.2.policy", WriteBackPolicy.class.getSimpleName())
-                .put("bounce.container.0.tier.2.copy-delay", Duration.ofHours(0).toString())
-                .put("bounce.container.0.tier.2.evict-delay", Duration.ofHours(1).toString())
+                .put("bounce.container.0.tier.2.copyDelay", Duration.ofHours(0).toString())
+                .put("bounce.container.0.tier.2.evictDelay", Duration.ofHours(1).toString())
                 .put("bounce.containers", "0")
                 .build();
         p = new Properties();
