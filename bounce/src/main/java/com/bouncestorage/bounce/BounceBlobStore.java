@@ -28,6 +28,7 @@ import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.ContainerAccess;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.CopyOptions;
 import org.jclouds.blobstore.options.CreateContainerOptions;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
@@ -195,6 +196,11 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions putOptions) {
         return policy.putBlob(containerName, blob, putOptions);
+    }
+
+    @Override
+    public String copyBlob(String fromContainer, String fromName, String toContainer, String toName, CopyOptions options) {
+        return policy.copyBlob(fromContainer, fromName, toContainer, toName, options);
     }
 
     public BlobMetadata blobMetadataNoFollow(String container, String s) {
