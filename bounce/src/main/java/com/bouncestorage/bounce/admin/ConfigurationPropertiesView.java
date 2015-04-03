@@ -25,6 +25,7 @@ import org.apache.commons.configuration.Configuration;
  * this provides a read only <code>Properties</code> view for a
  * <code>Configuration</code>.
  */
+@SuppressWarnings("serial")
 public final class ConfigurationPropertiesView extends Properties {
     private final Configuration config;
 
@@ -43,6 +44,7 @@ public final class ConfigurationPropertiesView extends Properties {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public synchronized Enumeration<Object> keys() {
         Enumeration<String> e = Iterators.asEnumeration(config.getKeys());
         return (Enumeration<Object>) (Enumeration<?>) e;
@@ -126,7 +128,8 @@ public final class ConfigurationPropertiesView extends Properties {
 
             @Override
             public boolean contains(Object o) {
-                Map.Entry entry = (Map.Entry) o;
+                @SuppressWarnings("unchecked")
+                Map.Entry<Object, Object> entry = (Map.Entry<Object, Object>) o;
                 Object value = ConfigurationPropertiesView.this.get(entry.getKey());
                 return Objects.equals(value, entry.getValue());
             }
@@ -141,7 +144,7 @@ public final class ConfigurationPropertiesView extends Properties {
                     }
 
                     @Override
-                    public Map.Entry next() {
+                    public Map.Entry<Object, Object> next() {
                         String k = keys.next();
                         Object v = ConfigurationPropertiesView.this.get(k);
                         return new AbstractMap.SimpleImmutableEntry<>(k, v);
@@ -155,6 +158,7 @@ public final class ConfigurationPropertiesView extends Properties {
             }
 
             @Override
+            @SuppressWarnings("unchecked")
             public <T> T[] toArray(T[] a) {
                 Class<T> tClass = (Class<T>) a.getClass().getComponentType();
                 Iterator<Map.Entry<Object, Object>> iter = iterator();

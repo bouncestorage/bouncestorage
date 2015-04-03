@@ -75,6 +75,7 @@ public final class BounceService {
         this.clock = clock;
     }
 
+    @SuppressWarnings("serial")
     static class AbortedException extends RuntimeException {
     }
 
