@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
@@ -24,6 +25,7 @@ import java.util.stream.StreamSupport;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -66,6 +68,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private S3Proxy s3Proxy;
     private Map<Integer, BlobStore> providers = new HashMap<>();
     private Map<String, BouncePolicy> virtualContainers = new HashMap<>();
+    private Map<String, Map<String, String>> vContainerCredentials = new HashMap<>();
     private final Pattern providerConfigPattern = Pattern.compile("(bounce.backend.\\d+).jclouds.provider");
     private final Pattern containerConfigPattern = Pattern.compile("(bounce.container.\\d+).name");
     private Clock clock = Clock.systemUTC();
@@ -128,7 +131,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     }
 
     private void addProviderFromConfig(String prefix, String provider) {
-        logger.info("adding provider from {}", prefix);
+        String id = prefix.substring(prefix.lastIndexOf('.')).substring(1);
+        logger.info("adding provider from {} id: {}", prefix, id);
         Configuration c = config.subset(prefix);
         BlobStoreContext context;
         try {
@@ -144,7 +148,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             throw propagate(e);
         }
 
-        addProvider(context.getBlobStore());
+        providers.put(Integer.valueOf(id), context.getBlobStore());
     }
 
     static Optional<BouncePolicy> getBouncePolicyFromName(String name) {
@@ -157,20 +161,39 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private void addContainerFromConfig(String prefix, String containerName) {
         logger.info("adding container {} from {}", containerName, prefix);
         Configuration c = config.subset(prefix);
-        int sourceId = c.getInt("tier.0.backend");
-        int destId = c.getInt("tier.1.backend");
-        BlobStore source = providers.get(sourceId);
-        BlobStore dest = providers.get(destId);
-        String sourceContainerName = c.getString("tier.0.container-name", containerName);
-        String destContainerName = c.getString("tier.1.container-name", containerName);
-        String policyName = c.getString("tier.0.policy");
-        BouncePolicy policy = getBouncePolicyFromName(policyName)
-                .orElseThrow(() -> propagate(new ClassNotFoundException(policyName)));
+        int maxTierID = 3;
+        BlobStore lastBlobStore = null;
+        BouncePolicy lastPolicy = null;
+        for (int i = maxTierID; i >= 0; i--) {
+            String tierPrefix = "tier." + i;
+            if (!c.containsKey(tierPrefix + ".backend")) {
+                continue;
+            }
+            int id = c.getInt(tierPrefix + ".backend");
+            BlobStore store = providers.get(id);
+            String targetContainerName = c.getString(tierPrefix + ".container-name", containerName);
+            if (lastBlobStore == null) {
+                lastBlobStore = new BlobStoreTarget(store, targetContainerName);
+            } else {
+                String policyName = c.getString(tierPrefix + ".policy");
+                BouncePolicy policy = getBouncePolicyFromName(policyName)
+                        .orElseThrow(() -> propagate(new ClassNotFoundException(policyName)));
 
-        policy.init(this, c.subset("tier.0"));
-        policy.setBlobStores(new BlobStoreTarget(source, sourceContainerName),
-                new BlobStoreTarget(dest, destContainerName));
-        virtualContainers.put(containerName, policy);
+                policy.init(this, c.subset(tierPrefix));
+                policy.setBlobStores(new BlobStoreTarget(store, targetContainerName),
+                        lastBlobStore);
+                lastBlobStore = policy;
+                lastPolicy = policy;
+            }
+        }
+        if (lastPolicy == null) {
+            throw new NoSuchElementException("not enough configured tiers");
+        }
+        virtualContainers.put(containerName, lastPolicy);
+        if (c.containsKey("identity")) {
+            vContainerCredentials.put(containerName,
+                    ImmutableMap.of(c.getString("identity"), c.getString("credential")));
+        }
     }
 
     Collection<BouncePolicy> getPolicies() {
@@ -197,17 +220,6 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         return blobStore;
     }
 
-    private Optional<String> getCredentialOfContainer(String container) {
-        // TODO implement
-        return Optional.empty();
-    }
-
-    public void addProvider(BlobStore blobStore) {
-        int nextID = providers.keySet().stream().reduce(Math::max).orElse(-1) + 1;
-        logger.info("allocated provider id: {}", nextID);
-        providers.put(nextID, blobStore);
-    }
-
     @VisibleForTesting
     public Map.Entry<String, BlobStore> locateBlobStore(String identity,
                                                         String container, String blob) {
@@ -218,7 +230,10 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             blobStore = virtualContainers.get(container);
 
             if (blobStore != null) {
-                credential = getCredentialOfContainer(container);
+                Map<String, String> creds = vContainerCredentials.get(container);
+                if (creds != null) {
+                    credential = Optional.ofNullable(creds.get(identity));
+                }
             }
         }
 
