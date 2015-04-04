@@ -195,6 +195,13 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         return providers.values().iterator().next();
     }
 
+    public BlobStore getBlobStore(int providerId) {
+        if (providers == null) {
+            return null;
+        }
+        return providers.get(providerId);
+    }
+
     public BlobStore getBlobStore(String containerName) {
         if (providers.isEmpty()) {
             return null;

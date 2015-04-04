@@ -13,6 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -33,6 +34,8 @@ import org.apache.commons.configuration.Configuration;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.blobstore.domain.PageSet;
+import org.jclouds.blobstore.domain.StorageMetadata;
 
 @Path("/object_store")
 @Produces(MediaType.APPLICATION_JSON)
@@ -84,6 +87,21 @@ public final class ObjectStoreResource {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
         }
         return store;
+    }
+
+    @GET
+    @Path("{id}/container")
+    @Timed
+    public List<Container> getContainerList(@PathParam("id") int providerId) {
+        BlobStore blobStore = app.getBlobStore(providerId);
+        if (blobStore == null) {
+            throw new WebApplicationException(Response.Status.NOT_FOUND);
+        }
+        PageSet<? extends StorageMetadata> pageSet = blobStore.list();
+        List<Container> containerNames = pageSet.stream()
+                .map(sm -> new Container(sm.getName()))
+                .collect(Collectors.toList());
+        return containerNames;
     }
 
     @GET
@@ -290,6 +308,22 @@ public final class ObjectStoreResource {
         public String toString() {
             return "Id: " + id + " Provider: " + provider + " Identity: " + identity + " Credential: " + credential +
                     " Nickname: " + nickname;
+        }
+    }
+
+    private static class Container {
+        private String name;
+
+        Container(String name) {
+            this.name = name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
         }
     }
 }
