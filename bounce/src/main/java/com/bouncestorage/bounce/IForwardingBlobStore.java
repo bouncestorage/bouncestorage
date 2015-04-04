@@ -189,12 +189,19 @@ public interface IForwardingBlobStore extends BlobStore {
         return delegate().countBlobs(mapContainer(container), options);
     }
 
+    // TODO: add other metadata later
     default void updateBlobMetadata(String containerName, String blobName, Map<String, String> userMetadata) {
-        Blob blob = getBlob(containerName, blobName);
-        Map<String, String> allMetadata = new HashMap<>(blob.getMetadata().getUserMetadata());
-        allMetadata.putAll(userMetadata);
-        blob.getMetadata().setUserMetadata(allMetadata);
-        putBlob(containerName, blob);
+        String container = mapContainer(containerName);
+        BlobMetadata meta = delegate().blobMetadata(container, blobName);
+        if (meta != null) {
+            Map<String, String> newMetadata = new HashMap<>();
+            newMetadata.putAll(meta.getUserMetadata());
+            newMetadata.putAll(userMetadata);
+            CopyOptions options = CopyOptions.builder()
+                    .userMetadata(newMetadata)
+                    .build();
+            delegate().copyBlob(container, blobName, container, blobName, options);
+        }
     }
 
     @Override
