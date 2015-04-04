@@ -86,9 +86,9 @@ public final class ConfigTest {
                 "bounce.backend.0.jclouds.provider",
                 "bounce.backend.1.jclouds.provider"
         };
-        assertThat(properties).doesNotContainKeys(blobStores);
+        assertThat(properties).doesNotContainKeys((Object[]) blobStores);
         setTransientBackend();
-        assertThat(properties).containsKeys(blobStores);
+        assertThat(properties).containsKeys((Object[]) blobStores);
     }
 
     @Test
