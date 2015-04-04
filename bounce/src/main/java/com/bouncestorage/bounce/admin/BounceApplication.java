@@ -76,19 +76,6 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     public BounceApplication() {
         this.config = new BounceConfiguration();
         this.configView = new ConfigurationPropertiesView(config);
-
-        config.addConfigurationListener(evt -> {
-            String name = evt.getPropertyName();
-            Matcher m;
-
-            if (!evt.isBeforeUpdate()) {
-                if ((m = providerConfigPattern.matcher(name)).matches()) {
-                    addProviderFromConfig(m.group(1), (String) evt.getPropertyValue());
-                } else if ((m = containerConfigPattern.matcher(name)).matches()) {
-                    addContainerFromConfig(m.group(1), (String) evt.getPropertyValue());
-                }
-            }
-        });
     }
 
     private void startS3Proxy() {
@@ -347,6 +334,22 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         if (s3Proxy != null) {
             s3Proxy.stop();
         }
+    }
+
+    @VisibleForTesting
+    public void registerConfigurationListener() {
+        config.addConfigurationListener(evt -> {
+            String name = evt.getPropertyName();
+            Matcher m;
+
+            if (!evt.isBeforeUpdate()) {
+                if ((m = providerConfigPattern.matcher(name)).matches()) {
+                    addProviderFromConfig(m.group(1), (String) evt.getPropertyValue());
+                } else if ((m = containerConfigPattern.matcher(name)).matches()) {
+                    addContainerFromConfig(m.group(1), (String) evt.getPropertyValue());
+                }
+            }
+        });
     }
 
     @VisibleForTesting

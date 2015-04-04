@@ -49,6 +49,7 @@ public final class ConfigTest {
         }
         app.getConfiguration().setAll(properties);
         app.useRandomPorts();
+        app.registerConfigurationListener();
         bounceService = new BounceService(app);
     }
 
