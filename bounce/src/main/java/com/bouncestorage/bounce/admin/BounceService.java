@@ -75,10 +75,6 @@ public final class BounceService {
         this.clock = clock;
     }
 
-    @SuppressWarnings("serial")
-    static class AbortedException extends RuntimeException {
-    }
-
     class BounceTask implements Runnable {
         private String container;
         private BounceTaskStatus status;
@@ -101,6 +97,10 @@ public final class BounceService {
             StorageMetadata destinationObject = Utils.getNextOrNull(destinationIterator);
             BounceStorageMetadata sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
             while (destinationObject != null || sourceObject != null) {
+                if (status.aborted) {
+                    break;
+                }
+
                 if (destinationObject == null) {
                     reconcileObject(policy, sourceObject, null);
                     sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
