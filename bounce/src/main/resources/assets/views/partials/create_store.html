@@ -44,13 +44,12 @@
         <!-- regions are provider dependent and dynamically populated -->
         </select>
       </div>
-      <div class="btn-group">
-        <button class="btn btn-default" ng-click="actions.submitNewStore()"
+      <div class="row">
+        <button class="btn btn-success" ng-click="actions.submitNewStore()"
           ng-if="edit !== true">Submit</button>
-        <button class="btn btn-danger" ng-click="actions.cancelEdit()"
-          ng-if="edit">Cancel</button>
         <button class="btn btn-success" ng-click="actions.updateStore()"
           ng-if="edit">Edit</button>
+        <button class="btn" ng-click="actions.cancelEdit()">Cancel</button>
       </div>
     </form>
   </div>
