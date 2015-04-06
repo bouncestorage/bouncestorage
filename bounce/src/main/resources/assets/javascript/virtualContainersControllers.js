@@ -63,6 +63,10 @@ virtualContainersControllers.controller('CreateVirtualContainerCtrl', ['$scope',
     });
   };
 
+  $scope.actions.cancel = function() {
+    $location.path("/dashboard");
+  };
+
   $scope.actions.createContainer = function() {
     VirtualContainer.save({
         name: $scope.name,
