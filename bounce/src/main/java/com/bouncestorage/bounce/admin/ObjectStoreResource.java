@@ -157,7 +157,8 @@ public final class ObjectStoreResource {
         String prefix = BounceBlobStore.STORE_PROPERTY + "." + current.id + ".";
         Properties properties = new Properties();
         properties.setProperty(prefix + "nickname", objectStore.nickname);
-        properties.setProperty(prefix + PROPERTIES_PREFIX + "credential", objectStore.credential);
+        properties.setProperty(prefix + PROPERTIES_PREFIX + "credential",
+                objectStore.credential == null ? "" : objectStore.credential);
         config.setAll(properties);
         return "{\"status\":\"success\"}";
     }
