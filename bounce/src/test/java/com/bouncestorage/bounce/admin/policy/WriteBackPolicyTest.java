@@ -57,6 +57,13 @@ public final class WriteBackPolicyTest {
     }
 
     @Test
+    public void testDeleteContainer() {
+        policy.deleteContainer(containerName);
+        assertThat(policy.getSource().containerExists(containerName)).isFalse();
+        assertThat(policy.getDestination().containerExists(containerName)).isFalse();
+    }
+
+    @Test
     public void testMoveObject() throws Exception {
         String blobName = UtilsTest.createRandomBlobName();
         Blob blob = UtilsTest.makeBlob(policy, blobName);

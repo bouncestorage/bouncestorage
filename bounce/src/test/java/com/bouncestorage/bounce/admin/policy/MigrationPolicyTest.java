@@ -58,6 +58,14 @@ public final class MigrationPolicyTest {
             policy.deleteContainer(containerName);
         }
     }
+
+    @Test
+    public void testDeleteContainer() {
+        policy.deleteContainer(containerName);
+        assertThat(policy.getSource().containerExists(containerName)).isFalse();
+        assertThat(policy.getDestination().containerExists(containerName)).isFalse();
+    }
+
     @Test
     public void testListDestinationOnly() throws Exception {
         String[] blobNames = {"abc", "def", "ghi"};

@@ -78,6 +78,12 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
         }
     }
 
+    @Override
+    public void deleteContainer(String containerName) {
+        getSource().deleteContainer(containerName);
+        getDestination().deleteContainer(containerName);
+    }
+
     /**
      * Sanity check that near store and far store are in sync, if they aren't,
      * we need to perform takeover.
