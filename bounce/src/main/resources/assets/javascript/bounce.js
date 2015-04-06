@@ -45,7 +45,7 @@ bounce.config(['$routeProvider', function($routeProvider) {
 }]);
 
 bounce.factory('Container', ['$resource', function($resource) {
-  return $resource('/api/service');
+  return $resource('/api/object_store/:id/container', { id: "@id" });
 }]);
 
 bounce.factory('VirtualContainer', ['$resource', function($resource) {

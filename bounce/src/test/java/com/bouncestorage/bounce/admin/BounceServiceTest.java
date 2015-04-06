@@ -41,6 +41,7 @@ public final class BounceServiceTest {
             app = new BounceApplication();
         }
         app.useRandomPorts();
+        app.registerConfigurationListener();
         bounceService = new BounceService(app);
 
         UtilsTest.createTestProvidersConfig(app.getConfiguration());

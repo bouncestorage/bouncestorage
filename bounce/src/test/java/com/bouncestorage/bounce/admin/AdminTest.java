@@ -44,6 +44,7 @@ public final class AdminTest {
             app = new BounceApplication();
             app.getConfiguration().setAll(properties);
             app.useRandomPorts();
+            app.registerConfigurationListener();
 
             app.run(new String[]{
                     "server", config

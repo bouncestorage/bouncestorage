@@ -55,8 +55,11 @@ virtualContainersControllers.controller('CreateVirtualContainerCtrl', ['$scope',
       return;
     }
 
-    Container.get({}, function(results) {
-      $scope.containers = results.containerNames;
+    Container.query({ id: $scope.store }, function(results) {
+      $scope.containers = [];
+      for (var i = 0; i < results.length; i++) {
+        $scope.containers.push(results[i].name);
+      }
     });
   };
 
@@ -91,9 +94,9 @@ virtualContainersControllers.controller('EditVirtualContainerCtrl', ['$scope',
 
   $scope.actions.updateContainerMap = function(blobStoreId) {
     $scope.containersMap[blobStoreId] = [];
-    Container.get({}, function(results) {
-      for (var i = 0; i < results.containerNames.length; i++) {
-        $scope.containersMap[blobStoreId].push(results.containerNames[i]);
+    Container.query({ id: blobStoreId }, function(results) {
+      for (var i = 0; i < results.length; i++) {
+        $scope.containersMap[blobStoreId].push(results[i].name);
       }
     }); 
   };
