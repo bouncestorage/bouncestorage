@@ -76,7 +76,7 @@ public final class MigrationPolicy extends BouncePolicy {
             return moveObject(container, sourceMeta);
         }
 
-        if (sourceMeta.getETag().equalsIgnoreCase(destinationMeta.getETag())) {
+        if (Utils.eTagsEqual(sourceMeta.getETag(), destinationMeta.getETag())) {
             getSource().removeBlob(container, sourceMeta.getName());
             return BounceResult.REMOVE;
         } else {

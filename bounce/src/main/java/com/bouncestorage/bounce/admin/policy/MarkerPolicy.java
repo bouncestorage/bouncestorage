@@ -99,7 +99,7 @@ public abstract class MarkerPolicy extends BouncePolicy {
                 if (nextIsMarker) {
                     if (BounceLink.isLink(getSource().blobMetadata(s, name))) {
                         meta = new BounceStorageMetadata(farMeta, BounceBlobStore.FAR_ONLY);
-                    } else if (nearMeta.getETag().equals(farMeta.getETag())) {
+                    } else if (Utils.eTagsEqual(nearMeta.getETag(), farMeta.getETag())) {
                         meta = new BounceStorageMetadata(nearMeta, BounceBlobStore.EVERYWHERE);
                     } else {
                         meta = new BounceStorageMetadata(nearMeta, BounceBlobStore.NEAR_ONLY);
@@ -108,7 +108,7 @@ public abstract class MarkerPolicy extends BouncePolicy {
                     meta.hasMarkerBlob(true);
                     contents.put(name, meta);
                 } else {
-                    if (nearMeta.getETag().equals(farMeta.getETag())) {
+                    if (Utils.eTagsEqual(nearMeta.getETag(), farMeta.getETag())) {
                         meta = new BounceStorageMetadata(nearMeta, BounceBlobStore.EVERYWHERE);
                     } else {
                         meta = new BounceStorageMetadata(farMeta, BounceBlobStore.FAR_ONLY);
@@ -153,8 +153,8 @@ public abstract class MarkerPolicy extends BouncePolicy {
             return BounceResult.REMOVE;
         }
 
-        if (sourceMeta != null && destinationMeta != null && !sourceMeta.getETag().equalsIgnoreCase(destinationMeta
-                .getETag())) {
+        if (sourceMeta != null && destinationMeta != null && !Utils.eTagsEqual(sourceMeta.getETag(),
+                destinationMeta.getETag())) {
             getDestination().removeBlob(container, destinationMeta.getName());
             return BounceResult.REMOVE;
         }
@@ -165,19 +165,19 @@ public abstract class MarkerPolicy extends BouncePolicy {
     protected final BounceResult maybeCopyObject(String container, BounceStorageMetadata sourceObject,
             StorageMetadata destinationObject) throws IOException {
         if (sourceObject.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
-            return BouncePolicy.BounceResult.NO_OP;
+            return BounceResult.NO_OP;
         }
         if (sourceObject.getRegions().equals(BounceBlobStore.EVERYWHERE)) {
             BlobMetadata destinationMeta = getDestination().blobMetadata(container, destinationObject.getName());
             BlobMetadata sourceMeta = getSource().blobMetadata(container, sourceObject.getName());
-            if (destinationMeta.getETag().equalsIgnoreCase(sourceMeta.getETag())) {
-                return BouncePolicy.BounceResult.NO_OP;
+            if (Utils.eTagsEqual(destinationMeta.getETag(), sourceMeta.getETag())) {
+                return BounceResult.NO_OP;
             }
         }
 
         // Either the object does not exist in the far store or the ETags are not equal, so we should copy
         Utils.copyBlob(getSource(), getDestination(), container, container, sourceObject.getName());
-        return BouncePolicy.BounceResult.COPY;
+        return BounceResult.COPY;
     }
 
 }
