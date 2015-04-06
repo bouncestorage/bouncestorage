@@ -100,6 +100,8 @@ def setup_code():
     execute("sudo apt-get install -y openjdk-8-jdk git maven fortune cowsay docker.io")
     git_clone(BOUNCE_REPO, BOUNCE_SRC_DIR)
     git_update_submodule(BOUNCE_SRC_DIR)
+    target_dir = os.path.join(os.environ['HOME'], BOUNCE_SRC_DIR)
+    execute("cd %s && mvn install -DskipTests=true" % target_dir)
 
 def setup_swift():
     git_clone(DOCKER_SWIFT_REPO, DOCKER_SWIFT_DIR)
