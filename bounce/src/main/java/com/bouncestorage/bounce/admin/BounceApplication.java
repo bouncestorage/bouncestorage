@@ -81,11 +81,11 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private void startS3Proxy() {
         try {
             if (s3Proxy != null) {
-                s3Proxy.stop();
+                stop();
             }
+            URI endpoint = new URI(config.getString(S3ProxyConstants.PROPERTY_ENDPOINT));
             S3Proxy.Builder builder = S3Proxy.builder()
-                    .endpoint(new URI(config.getString(
-                            S3ProxyConstants.PROPERTY_ENDPOINT)));
+                    .endpoint(endpoint);
 
             String identity = (String) configView.get(
                     S3ProxyConstants.PROPERTY_IDENTITY);
@@ -111,6 +111,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
 
             s3Proxy = builder.build();
             s3Proxy.setBlobStoreLocator((i, c, b) -> locateBlobStore(i, c, b));
+            logger.info("Starting S3Proxy on {}", endpoint);
             s3Proxy.start();
         } catch (Exception e) {
             throw propagate(e);
@@ -312,6 +313,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         environment.jersey().register(new ConfigurationResource(this));
         environment.jersey().register(new ObjectStoreResource(this));
         environment.jersey().register(new VirtualContainerResource(this));
+        environment.jersey().register(new SettingsResource(this));
         if (useRandomPorts) {
             configuration.useRandomPorts();
         }
@@ -339,6 +341,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
 
     public void stop() throws Exception {
         if (s3Proxy != null) {
+            logger.info("Stopping S3Proxy");
             s3Proxy.stop();
         }
     }
@@ -354,6 +357,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                     addProviderFromConfig(m.group(1), (String) evt.getPropertyValue());
                 } else if ((m = containerConfigPattern.matcher(name)).matches()) {
                     addContainerFromConfig(m.group(1), (String) evt.getPropertyValue());
+                } else if (S3ProxyConstants.PROPERTY_ENDPOINT.equals(name)) {
+                    startS3Proxy();
                 }
             }
         });

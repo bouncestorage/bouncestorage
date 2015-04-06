@@ -1,6 +1,7 @@
 var bounce = angular.module('bounce', [
   'ngResource',
   'ngRoute',
+  'settingsControllers',
   'storesControllers',
   'virtualContainersControllers',
   'welcomeControllers'
@@ -35,6 +36,10 @@ bounce.config(['$routeProvider', function($routeProvider) {
       templateUrl: 'views/partials/stores.html',
       controller: 'ViewStoresCtrl'
     }).
+    when('/settings', {
+      templateUrl: 'views/partials/settings.html',
+      controller: 'SettingsCtrl'
+    }).
     when('/welcome', {
       templateUrl: 'views/partials/welcome.html',
       controller: 'WelcomeCtrl'
@@ -59,3 +64,4 @@ bounce.factory('ObjectStore', ['$resource', function($resource) {
     { 'update': { method: 'PUT'}
     });
 }]);
+

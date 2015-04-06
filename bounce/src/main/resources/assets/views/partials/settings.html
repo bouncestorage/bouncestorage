@@ -1,0 +1,26 @@
+<ng-include src="'views/partials/navbar.html'"></ng-include>
+
+<div class="settings main">
+  <h1 class="page-header">Settings</h1>
+  <div class="col-sm-4">
+    <form class="form">
+      <div class="form-group">
+        <label class="control-label">S3 Endpoint IP</label>
+        <input type="text" class="form-control" ng-model="s3Address"
+          placeholder="0.0.0.0">
+      </div>
+      <div class="form-group">
+        <label class="control-label">S3 Port</label>
+        <input type="text" class="form-control" ng-model="s3Port"
+          placeholder="8080">
+      </div>
+      <div class="form-group">
+        <button class="btn btn-success" ng-click="actions.update()">Update</button>
+      </div>
+      <div class="form-group">
+        <p class="text-primary" ng-if="result">{{ result }}</p>
+        <p class="text-danger" ng-if="error">{{ error }}</p>
+      </div>
+    </form>
+  </div>
+</div>
