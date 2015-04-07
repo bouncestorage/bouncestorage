@@ -10,12 +10,14 @@ import java.util.stream.Collectors;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.google.auto.service.AutoService;
 
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.internal.PageSetImpl;
 import org.jclouds.blobstore.options.ListContainerOptions;
 
+@AutoService(BouncePolicy.class)
 public class NoBouncePolicy extends BouncePolicy {
     @Override
     public final PageSet<? extends StorageMetadata> list(String containerName, ListContainerOptions
