@@ -34,13 +34,7 @@ public abstract class MovePolicy extends MarkerPolicy {
         blob.setPayload(pipeIn);
         blob.getMetadata().setContentMetadata(contentMetadata);
 
-        app.executeBackgroundTask(() -> {
-            try {
-                Utils.copyBlob(getSource(), container, blob, tee);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
+        app.executeBackgroundTask(() -> Utils.copyBlob(getSource(), container, blob, tee));
         return blob;
     }
 

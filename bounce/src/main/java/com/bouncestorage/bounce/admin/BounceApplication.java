@@ -19,8 +19,10 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
@@ -74,8 +76,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private final Pattern providerConfigPattern = Pattern.compile("(bounce.backend.\\d+).jclouds.provider");
     private final Pattern containerConfigPattern = Pattern.compile("(bounce.container.\\d+).name");
     private Clock clock = Clock.systemUTC();
-    private ExecutorService backgroundTasks = Executors.newFixedThreadPool(4);
-            //= new ThreadPoolExecutor(4, 4, 0, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+    private ScheduledExecutorService backgroundTasks = Executors.newScheduledThreadPool(4);
 
     public BounceApplication() {
         this.config = new BounceConfiguration();
@@ -393,7 +394,12 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         this.clock = clock;
     }
 
-    public void executeBackgroundTask(Runnable task) {
+    public void executeBackgroundTask(Callable task) {
         backgroundTasks.submit(task);
     }
+
+    public void executeBackgroundTask(Callable task, long delay, TimeUnit unit) {
+        backgroundTasks.schedule(task, delay, unit);
+    }
+
 }

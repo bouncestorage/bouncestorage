@@ -12,8 +12,10 @@ import static com.google.common.base.Throwables.propagate;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 
 import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.google.auto.service.AutoService;
@@ -38,7 +40,14 @@ public class WriteBackPolicy extends MovePolicy {
         if (immediateCopy) {
             // TODO: implement immediate write back
         }
-        return super.putBlob(containerName, blob, options);
+        String etag = super.putBlob(containerName, blob, options);
+        String blobName = blob.getMetadata().getName();
+        if (app != null) {
+            app.executeBackgroundTask(() ->
+                    Utils.copyBlob(getSource(), getDestination(), containerName, containerName, blobName),
+                    copyDelay.getSeconds(), TimeUnit.SECONDS);
+        }
+        return etag;
     }
 
     public void init(BounceApplication app, Configuration config) {
