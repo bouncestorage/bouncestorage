@@ -65,7 +65,7 @@ public abstract class MovePolicy extends MarkerPolicy {
         if (sourceObject.getRegions().equals(BounceBlobStore.EVERYWHERE)) {
             BlobMetadata sourceMetadata = getSource().blobMetadata(container, sourceObject.getName());
             BlobMetadata destinationMetadata = getDestination().blobMetadata(container, destinationObject.getName());
-            if (destinationMetadata.getETag().equalsIgnoreCase(sourceMetadata.getETag())) {
+            if (Utils.eTagsEqual(destinationMetadata.getETag(), sourceMetadata.getETag())) {
                 Utils.createBounceLink(this, sourceMetadata);
                 return BounceResult.LINK;
             }
