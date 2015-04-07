@@ -154,12 +154,12 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         BouncePolicy lastPolicy = null;
         for (int i = maxTierID; i >= 0; i--) {
             String tierPrefix = "tier." + i;
-            if (!c.containsKey(tierPrefix + ".backend")) {
+            if (!c.containsKey(tierPrefix + "." + Location.BLOB_STORE_ID_FIELD)) {
                 continue;
             }
-            int id = c.getInt(tierPrefix + ".backend");
+            int id = c.getInt(tierPrefix + "." + Location.BLOB_STORE_ID_FIELD);
             BlobStore store = providers.get(id);
-            String targetContainerName = c.getString(tierPrefix + ".container-name", containerName);
+            String targetContainerName = c.getString(tierPrefix + "." + Location.CONTAINER_NAME_FIELD, containerName);
             if (lastBlobStore == null) {
                 lastBlobStore = new BlobStoreTarget(store, targetContainerName);
             } else {
