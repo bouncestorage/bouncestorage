@@ -337,6 +337,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         startS3Proxy();
         bounceService = new BounceService(this);
         initFromConfig();
+        registerConfigurationListener();
     }
 
     public void stop() throws Exception {

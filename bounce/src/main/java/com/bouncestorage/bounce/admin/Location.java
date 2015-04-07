@@ -5,6 +5,7 @@
 
 package com.bouncestorage.bounce.admin;
 
+import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import org.apache.commons.lang.builder.HashCodeBuilder;
@@ -15,6 +16,8 @@ public final class Location {
 
     private int blobStoreId = -1;
     private String containerName;
+    private String copyDelay;
+    private String moveDelay;
 
     public void setBlobStoreId(int id) {
         blobStoreId = id;
@@ -35,6 +38,24 @@ public final class Location {
     public void setLocation(Location location) {
         containerName = location.containerName;
         blobStoreId = location.blobStoreId;
+        copyDelay = location.copyDelay;
+        moveDelay = location.moveDelay;
+    }
+
+    public String getCopyDelay() {
+        return copyDelay;
+    }
+
+    public void setCopyDelay(String copyDelay) {
+        this.copyDelay = copyDelay;
+    }
+
+    public String getMoveDelay() {
+        return moveDelay;
+    }
+
+    public void setMoveDelay(String moveDelay) {
+        this.moveDelay = moveDelay;
     }
 
     @Override
@@ -64,6 +85,25 @@ public final class Location {
             setBlobStoreId(Integer.parseInt(value));
         } else if (key.equals(CONTAINER_NAME_FIELD)) {
             setContainerName(value);
+        } else if (key.equals(WriteBackPolicy.COPY_DELAY)) {
+            setCopyDelay(value);
+        } else if (key.equals(WriteBackPolicy.EVICT_DELAY)) {
+            setMoveDelay(value);
         }
+    }
+
+    public boolean permittedChange(Location other) {
+        if (isUnset()) {
+            return true;
+        }
+
+        if (blobStoreId != other.getBlobStoreId()) {
+            return false;
+        }
+        if (!containerName.equals(other.getContainerName())) {
+            return false;
+        }
+
+        return true;
     }
 }

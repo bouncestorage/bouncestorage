@@ -58,7 +58,6 @@ public final class Main {
 
         BounceApplication app = new BounceApplication();
         app.getConfiguration().setAll(properties);
-        app.registerConfigurationListener();
         String webConfig = Main.class.getResource("/bounce.yml").toExternalForm();
         app.run(new String[] {"server", webConfig});
     }

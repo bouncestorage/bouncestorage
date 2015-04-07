@@ -25,6 +25,7 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.base.Joiner;
 
@@ -109,20 +110,32 @@ public final class VirtualContainerResource {
 
         Properties properties = new Properties();
         String prefix = Joiner.on(".").join(VIRTUAL_CONTAINER_PREFIX, id);
-        if (current.getArchiveLocation().isUnset()) {
-            current.setArchiveLocation(container.getArchiveLocation());
+        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.NAME), container.getName());
+        if (current.getOriginLocation().permittedChange(container.getOriginLocation())) {
+            String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX);
+            updateLocationConfig(properties, container.getOriginLocation(), locationPrefix);
+        }
+        if (current.getArchiveLocation().permittedChange(container.getArchiveLocation())) {
+            if (current.getArchiveLocation().isUnset() && !container.getArchiveLocation().isUnset()) {
+                properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
+                        "WriteBackPolicy");
+            }
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.ARCHIVE_TIER_PREFIX);
-            updateLocationConfig(properties, current.getArchiveLocation(), locationPrefix);
+            updateLocationConfig(properties, container.getArchiveLocation(), locationPrefix);
         }
-        if (current.getCacheLocation().isUnset()) {
-            current.setCacheLocation(container.getCacheLocation());
+        if (current.getCacheLocation().permittedChange(container.getCacheLocation())) {
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.CACHE_TIER_PREFIX);
-            updateLocationConfig(properties, current.getCacheLocation(), locationPrefix);
+            if (current.getCacheLocation().isUnset() && !container.getCacheLocation().isUnset()) {
+                properties.setProperty(Joiner.on(".").join(locationPrefix, "policy"), "WriteBackPolicy");
+            }
+            updateLocationConfig(properties, container.getCacheLocation(), locationPrefix);
         }
-        if (current.getMigrationTargetLocation().isUnset()) {
-            current.setMigrationTargetLocation(container.getMigrationTargetLocation());
+        if (current.getMigrationTargetLocation().permittedChange(container.getMigrationTargetLocation())) {
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.MIGRATION_TIER_PREFIX);
-            updateLocationConfig(properties, current.getMigrationTargetLocation(), locationPrefix);
+            if (current.getMigrationTargetLocation().isUnset() && !container.getMigrationTargetLocation().isUnset()) {
+                properties.setProperty(Joiner.on(".").join(locationPrefix, "policy"), "MigrationPolicy");
+            }
+            updateLocationConfig(properties, container.getMigrationTargetLocation(), locationPrefix);
         }
 
         properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.NAME), container.getName());
@@ -132,9 +145,18 @@ public final class VirtualContainerResource {
     }
 
     private void updateLocationConfig(Properties properties, Location location, String prefix) {
+        if (location.isUnset()) {
+            return;
+        }
         properties.setProperty(Joiner.on(".").join(prefix, Location.BLOB_STORE_ID_FIELD),
                 Integer.toString(location.getBlobStoreId()));
         properties.setProperty(Joiner.on(".").join(prefix, Location.CONTAINER_NAME_FIELD), location.getContainerName());
+        if (location.getCopyDelay() != null) {
+            properties.setProperty(Joiner.on(".").join(prefix, WriteBackPolicy.COPY_DELAY), location.getCopyDelay());
+        }
+        if (location.getMoveDelay() != null) {
+            properties.setProperty(Joiner.on(".").join(prefix, WriteBackPolicy.EVICT_DELAY), location.getMoveDelay());
+        }
     }
 
     private VirtualContainer getContainer(int id, Configuration config) {
@@ -188,8 +210,9 @@ public final class VirtualContainerResource {
     }
 
     private void setProperty(VirtualContainer container, String field, String value) {
-        if (field.equalsIgnoreCase(VirtualContainer.NAME)) {
+        if (field.startsWith(VirtualContainer.NAME)) {
             container.setName(value);
+            return;
         }
         Location location = null;
         if (field.startsWith(VirtualContainer.PRIMARY_TIER_PREFIX)) {
