@@ -14,10 +14,7 @@ import java.util.Properties;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.UtilsTest;
-import com.bouncestorage.bounce.admin.policy.LastModifiedTimePolicy;
-import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
-
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 
@@ -103,13 +100,19 @@ public final class ConfigTest {
                 UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName()));
 
         Properties properties = new Properties();
-        properties.putAll(ImmutableMap.of(
-                "bounce.container.0.tier.0.backend", "0",
-                "bounce.container.0.tier.0.policy", MoveEverythingPolicy.class.getSimpleName(),
-                "bounce.container.0.tier.1.backend", "1",
-                "bounce.container.0.name", containerName,
-                "bounce.containers", "0"
-        ));
+        String prefix = VirtualContainerResource.VIRTUAL_CONTAINER_PREFIX + ".0";
+        String tier0prefix = prefix + "." + VirtualContainer.CACHE_TIER_PREFIX;
+        String tier1prefix = prefix + "." + VirtualContainer.PRIMARY_TIER_PREFIX;
+        Map<Object, Object> m = ImmutableMap.builder()
+                .put(prefix + ".name", containerName)
+                .put(tier0prefix + ".backend", "0")
+                .put(tier0prefix + ".policy", WriteBackPolicy.class.getSimpleName())
+                .put(tier0prefix + ".copyDelay", Duration.ofHours(-1).toString())
+                .put(tier0prefix + ".evictDelay", Duration.ofHours(0).toString())
+                .put(tier1prefix + ".backend", "1")
+                .put("bounce.containers", "0")
+                .build();
+        properties.putAll(m);
         new ConfigurationResource(app).updateConfig(properties);
         blobStore = app.getBlobStore(containerName);
         blobStore.createContainerInLocation(null, containerName);
@@ -137,8 +140,11 @@ public final class ConfigTest {
         String primaryPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.PRIMARY_TIER_PREFIX);
         properties.putAll(ImmutableMap.of(
                 Joiner.on(".").join(cachePrefix, Location.BLOB_STORE_ID_FIELD), "0",
-                Joiner.on(".").join(cachePrefix, "policy"), LastModifiedTimePolicy.class.getSimpleName(),
+                Joiner.on(".").join(cachePrefix, "policy"), WriteBackPolicy.class.getSimpleName(),
                 Joiner.on(".").join(cachePrefix, WriteBackPolicy.EVICT_DELAY), Duration.ofHours(1).toString(),
+                Joiner.on(".").join(cachePrefix, WriteBackPolicy.COPY_DELAY), Duration.ofHours(-1).toString()
+        ));
+        properties.putAll(ImmutableMap.of(
                 Joiner.on(".").join(primaryPrefix, Location.BLOB_STORE_ID_FIELD), "1",
                 Joiner.on(".").join(containerPrefix, VirtualContainer.NAME), containerName
         ));

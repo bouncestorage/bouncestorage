@@ -15,7 +15,6 @@ import javax.annotation.Resource;
 import javax.inject.Inject;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.policy.BounceNothingPolicy;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 
@@ -72,8 +71,6 @@ public final class BounceBlobStore implements BlobStore {
     private void initStores(Properties prop1, Properties prop2) {
         this.nearStore = requireNonNull(Utils.storeFromProperties(requireNonNull(prop1)));
         this.farStore = Utils.storeFromProperties(requireNonNull(prop2));
-        policy = new BounceNothingPolicy();
-        policy.setBlobStores(nearStore, farStore);
     }
 
     BlobStore getNearStore() {

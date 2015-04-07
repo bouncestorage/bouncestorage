@@ -8,13 +8,15 @@ package com.bouncestorage.bounce.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.UtilsTest;
-import com.bouncestorage.bounce.admin.policy.MoveEverythingPolicy;
+import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.domain.Blob;
@@ -52,7 +54,9 @@ public final class AdminTest {
         }
 
         UtilsTest.createTestProvidersConfig(app.getConfiguration());
-        UtilsTest.switchPolicyforContainer(app, containerName, MoveEverythingPolicy.class);
+        UtilsTest.switchPolicyforContainer(app, containerName, WriteBackPolicy.class,
+                ImmutableMap.of(WriteBackPolicy.COPY_DELAY, Duration.ofSeconds(-1).toString(),
+                        WriteBackPolicy.EVICT_DELAY, Duration.ofSeconds(0).toString()));
         policy = (BouncePolicy) app.getBlobStore(containerName);
         policy.createContainerInLocation(null, containerName);
     }
