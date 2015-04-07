@@ -172,58 +172,66 @@ public final class Utils {
         }
     }
 
+    public static Blob copyBlob(BlobStore to, String containerNameTo, Blob blobFrom, InputStream is)
+        throws IOException {
+        if (blobFrom == null || BounceLink.isLink(blobFrom.getMetadata())) {
+            return null;
+        }
+        ContentMetadata metadata = blobFrom.getMetadata().getContentMetadata();
+        PayloadBlobBuilder builder = to.blobBuilder(blobFrom.getMetadata().getName())
+                .userMetadata(blobFrom.getMetadata().getUserMetadata())
+                .payload(is);
+
+        String contentDisposition = metadata.getContentDisposition();
+        if (contentDisposition != null) {
+            builder.contentDisposition(contentDisposition);
+        }
+
+        String contentEncoding = metadata.getContentEncoding();
+        if (contentEncoding != null) {
+            builder.contentEncoding(contentEncoding);
+        }
+
+        String contentLanguage = metadata.getContentLanguage();
+        if (contentLanguage != null) {
+            builder.contentLanguage(contentLanguage);
+        }
+
+        HashCode contentMd5 = metadata.getContentMD5AsHashCode();
+        if (contentMd5 != null) {
+            builder.contentMD5(contentMd5);
+        }
+
+        Long contentLength = metadata.getContentLength();
+        if (contentLength != null) {
+            builder.contentLength(metadata.getContentLength());
+        }
+
+        String contentType = metadata.getContentType();
+        if (contentType != null) {
+            builder.contentType(metadata.getContentType());
+        }
+
+        Date expires = metadata.getExpires();
+        if (expires != null) {
+            builder.expires(expires);
+        }
+
+        to.putBlob(containerNameTo, builder.build());
+        return blobFrom;
+    }
+
     // TODO: eventually this should support parallel copies, cancellation, and
     // multi-part uploads
     public static Blob copyBlob(BlobStore from, BlobStore to,
             String containerNameFrom, String containerNameTo, String blobName)
             throws IOException {
         Blob blobFrom = from.getBlob(containerNameFrom, blobName);
-        if (blobFrom == null || BounceLink.isLink(blobFrom.getMetadata())) {
+        if (blobFrom == null) {
             return null;
         }
-        ContentMetadata metadata = blobFrom.getMetadata().getContentMetadata();
         try (InputStream is = blobFrom.getPayload().openStream()) {
-            PayloadBlobBuilder builder = to.blobBuilder(blobName)
-                    .userMetadata(blobFrom.getMetadata().getUserMetadata())
-                    .payload(is);
-
-            String contentDisposition = metadata.getContentDisposition();
-            if (contentDisposition != null) {
-                builder.contentDisposition(contentDisposition);
-            }
-
-            String contentEncoding = metadata.getContentEncoding();
-            if (contentEncoding != null) {
-                builder.contentEncoding(contentEncoding);
-            }
-
-            String contentLanguage = metadata.getContentLanguage();
-            if (contentLanguage != null) {
-                builder.contentLanguage(contentLanguage);
-            }
-
-            HashCode contentMd5 = metadata.getContentMD5AsHashCode();
-            if (contentMd5 != null) {
-                builder.contentMD5(contentMd5);
-            }
-
-            Long contentLength = metadata.getContentLength();
-            if (contentLength != null) {
-                builder.contentLength(metadata.getContentLength());
-            }
-
-            String contentType = metadata.getContentType();
-            if (contentType != null) {
-                builder.contentType(metadata.getContentType());
-            }
-
-            Date expires = metadata.getExpires();
-            if (expires != null) {
-                builder.expires(expires);
-            }
-
-            to.putBlob(containerNameTo, builder.build());
-            return blobFrom;
+            return copyBlob(to, containerNameTo, blobFrom, is);
         }
     }
 
