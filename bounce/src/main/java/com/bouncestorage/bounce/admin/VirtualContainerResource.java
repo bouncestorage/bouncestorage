@@ -133,7 +133,8 @@ public final class VirtualContainerResource {
         if (current.getMigrationTargetLocation().permittedChange(container.getMigrationTargetLocation())) {
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.MIGRATION_TIER_PREFIX);
             if (current.getMigrationTargetLocation().isUnset() && !container.getMigrationTargetLocation().isUnset()) {
-                properties.setProperty(Joiner.on(".").join(locationPrefix, "policy"), "MigrationPolicy");
+                properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
+                        "MigrationPolicy");
             }
             updateLocationConfig(properties, container.getMigrationTargetLocation(), locationPrefix);
         }
