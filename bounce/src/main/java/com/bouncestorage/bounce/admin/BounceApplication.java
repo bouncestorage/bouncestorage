@@ -20,9 +20,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -30,6 +28,7 @@ import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
+import com.bouncestorage.bounce.PausableThreadPoolExecutor;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -78,7 +77,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private final Pattern providerConfigPattern = Pattern.compile("(bounce.backend.\\d+).jclouds.provider");
     private final Pattern containerConfigPattern = Pattern.compile("(bounce.container.\\d+).name");
     private Clock clock = Clock.systemUTC();
-    private ScheduledExecutorService backgroundTasks = Executors.newScheduledThreadPool(4);
+    private PausableThreadPoolExecutor backgroundReconcileTasks = new PausableThreadPoolExecutor(4);
+    private PausableThreadPoolExecutor backgroundTasks = new PausableThreadPoolExecutor(4);
 
     public BounceApplication() {
         this.config = new BounceConfiguration();
@@ -352,8 +352,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             logger.info("Stopping S3Proxy");
             s3Proxy.stop();
         }
-        if (!backgroundTasks.isShutdown()) {
-            backgroundTasks.shutdown();
+        if (!backgroundReconcileTasks.isShutdown()) {
+            backgroundReconcileTasks.shutdown();
         }
     }
 
@@ -384,6 +384,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         return port;
     }
 
+
     static {
         // DropWizard's Application class has a static initializer that forces the filter
         // to be at WARN, this overrides that
@@ -403,13 +404,23 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         return backgroundTasks.submit(task);
     }
 
-    public <T> ScheduledFuture<T> executeBackgroundTask(Callable<T> task, long delay, TimeUnit unit) {
-        return backgroundTasks.schedule(task, delay, unit);
+    public <T> ScheduledFuture<T> executeBackgroundReconcileTask(Callable<T> task, long delay, TimeUnit unit) {
+        return backgroundReconcileTasks.schedule(task, delay, unit);
     }
 
     @VisibleForTesting
     public void drainBackgroundTasks() throws InterruptedException {
-        backgroundTasks.shutdown();
-        backgroundTasks.awaitTermination(60, TimeUnit.SECONDS);
+        backgroundReconcileTasks.shutdown();
+        backgroundReconcileTasks.awaitTermination(60, TimeUnit.SECONDS);
+    }
+
+    @VisibleForTesting
+    public void pauseBackgroundTasks() {
+        backgroundReconcileTasks.pause();
+    }
+
+    @VisibleForTesting
+    public void resumeBackgroundTasks() {
+        backgroundReconcileTasks.resume();
     }
 }

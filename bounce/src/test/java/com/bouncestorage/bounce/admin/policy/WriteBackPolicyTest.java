@@ -39,6 +39,7 @@ public final class WriteBackPolicyTest {
         }
         app.useRandomPorts();
         app.registerConfigurationListener();
+        app.pauseBackgroundTasks();
         bounceService = new BounceService(app);
 
         UtilsTest.createTestProvidersConfig(app.getConfiguration());
@@ -54,6 +55,8 @@ public final class WriteBackPolicyTest {
         if (policy != null) {
             policy.deleteContainer(containerName);
         }
+
+        app.resumeBackgroundTasks();
     }
 
     @Test

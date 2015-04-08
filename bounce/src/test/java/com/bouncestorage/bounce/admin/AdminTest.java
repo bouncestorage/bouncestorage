@@ -47,6 +47,7 @@ public final class AdminTest {
             app.getConfiguration().setAll(properties);
             app.useRandomPorts();
             app.registerConfigurationListener();
+            app.pauseBackgroundTasks();
 
             app.run(new String[]{
                     "server", config

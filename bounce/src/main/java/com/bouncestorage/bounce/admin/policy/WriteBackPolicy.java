@@ -47,9 +47,15 @@ public class WriteBackPolicy extends MovePolicy {
         return etag;
     }
 
+    @Override
+    public void removeBlob(String container, String name) {
+        super.removeBlob(container, name);
+        enqueueReconcile(container, name, 0);
+    }
+
     private void enqueueReconcile(String containerName, String blobName, long delaySecond) {
         if (app != null) {
-            app.executeBackgroundTask(() -> reconcileObject(containerName, blobName),
+            app.executeBackgroundReconcileTask(() -> reconcileObject(containerName, blobName),
                     delaySecond, TimeUnit.SECONDS);
         }
     }
