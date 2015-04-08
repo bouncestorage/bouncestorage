@@ -21,7 +21,9 @@ import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -350,6 +352,9 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             logger.info("Stopping S3Proxy");
             s3Proxy.stop();
         }
+        if (!backgroundTasks.isShutdown()) {
+            backgroundTasks.shutdown();
+        }
     }
 
     @VisibleForTesting
@@ -394,12 +399,17 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         this.clock = clock;
     }
 
-    public void executeBackgroundTask(Callable task) {
-        backgroundTasks.submit(task);
+    public <T> Future<T> executeBackgroundTask(Callable<T> task) {
+        return backgroundTasks.submit(task);
     }
 
-    public void executeBackgroundTask(Callable task, long delay, TimeUnit unit) {
-        backgroundTasks.schedule(task, delay, unit);
+    public <T> ScheduledFuture<T> executeBackgroundTask(Callable<T> task, long delay, TimeUnit unit) {
+        return backgroundTasks.schedule(task, delay, unit);
     }
 
+    @VisibleForTesting
+    public void drainBackgroundTasks() throws InterruptedException {
+        backgroundTasks.shutdown();
+        backgroundTasks.awaitTermination(60, TimeUnit.SECONDS);
+    }
 }
