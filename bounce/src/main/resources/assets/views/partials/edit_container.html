@@ -44,6 +44,16 @@
               </select>
             </div>
           </div>
+          <div class="form-group">
+            <label class="control-label">Copy to the primary store after:</label>
+            <input class="form-control" type="text" ng-model="cacheLocation.copyDelay"
+              placeholder="Delay before copying to the primary store"/>
+          </div>
+          <div class="form-group">
+            <label class="control-label">Move to the primary store after:</label>
+            <input class="form-control" type="text" ng-model="cacheLocation.moveDelay"
+              placeholder="Delay before moving to the primary store"/>
+          </div>
         </div>
       </div>
       <div class="row">
@@ -61,6 +71,16 @@
                 ng-options="container for container in containersMap[archiveLocation.blobStoreId]">
               </select>
             </div>
+          </div>
+          <div class="form-group">
+            <label class="control-label">Copy to the archive after:</label>
+            <input class="form-control" type="text" ng-model="originLocation.copyDelay"
+              placeholder="Delay before copying to the archive"/>
+          </div>
+          <div class="form-group">
+            <label class="control-label">Move to the archive after:</label>
+            <input class="form-control" type="text" ng-model="originLocation.moveDelay"
+              placeholder="Delay before moving to the archive"/>
           </div>
         </div>
       </div>
