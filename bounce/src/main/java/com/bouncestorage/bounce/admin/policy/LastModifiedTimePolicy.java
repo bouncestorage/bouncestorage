@@ -17,9 +17,9 @@ import org.jclouds.blobstore.domain.StorageMetadata;
 @AutoService(BouncePolicy.class)
 public final class LastModifiedTimePolicy extends WriteBackPolicy {
     @Override
-    public void init(BounceApplication bounceApplication, Configuration config) {
+    public void init(BounceApplication app, Configuration config) {
         config.setProperty(COPY_DELAY, Duration.ofSeconds(-1).toString());
-        super.init(bounceApplication, config);
+        super.init(app, config);
     }
 
     public boolean isObjectExpired(StorageMetadata metadata) {

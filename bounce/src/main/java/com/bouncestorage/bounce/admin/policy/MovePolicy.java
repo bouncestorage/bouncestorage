@@ -8,18 +8,42 @@ package com.bouncestorage.bounce.admin.policy;
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 
+import org.apache.commons.io.input.TeeInputStream;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.GetOptions;
+import org.jclouds.io.MutableContentMetadata;
 
 public abstract class MovePolicy extends MarkerPolicy {
+
+    private Blob pipeBlobAndReturn(String container, Blob blob) throws IOException {
+        PipedInputStream pipeIn = new PipedInputStream();
+        PipedOutputStream pipeOut = new PipedOutputStream(pipeIn);
+
+        TeeInputStream tee = new TeeInputStream(blob.getPayload().openStream(), pipeOut, true);
+        MutableContentMetadata contentMetadata = blob.getMetadata().getContentMetadata();
+        blob.setPayload(pipeIn);
+        blob.getMetadata().setContentMetadata(contentMetadata);
+
+        app.executeBackgroundTask(() -> {
+            try {
+                Utils.copyBlob(getSource(), container, blob, tee);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+        return blob;
+    }
+
     @Override
     public Blob getBlob(String container, String blobName, GetOptions options) {
         Blob blob = super.getBlob(container, blobName, options);
@@ -29,12 +53,21 @@ public abstract class MovePolicy extends MarkerPolicy {
         BlobMetadata meta = blob.getMetadata();
         if (BounceLink.isLink(meta)) {
             try {
-                Utils.copyBlob(getDestination(), getSource(), container, container, blobName);
+                if (app != null && options.equals(GetOptions.NONE)) {
+                    blob = getDestination().getBlob(container, blobName, GetOptions.NONE);
+                    return pipeBlobAndReturn(container, blob);
+                } else {
+                    // fallback to the dumb thing and do double streaming
+                    Utils.copyBlob(getDestination(), getSource(), container, container, blobName);
+                    return getSource().getBlob(container, blobName, options);
+                }
             } catch (IOException e) {
-                return blob;
+                e.printStackTrace();
+                return getDestination().getBlob(container, blobName, options);
             }
+        } else {
+            return blob;
         }
-        return getSource().getBlob(container, blobName, options);
     }
 
     @Override

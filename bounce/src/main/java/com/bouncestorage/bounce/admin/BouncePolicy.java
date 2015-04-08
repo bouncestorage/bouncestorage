@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce.admin;
 
+import static java.util.Objects.requireNonNull;
+
 import java.io.IOException;
 import java.util.Optional;
 
@@ -33,11 +35,13 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
     }
 
     protected Logger logger = LoggerFactory.getLogger(getClass());
+    protected BounceApplication app;
 
     private BlobStore sourceBlobStore;
     private BlobStore destinationBlobStore;
 
     public void init(BounceApplication bounceApplication, Configuration config) {
+        this.app = requireNonNull(bounceApplication);
     }
 
     public final void setBlobStores(BlobStore source, BlobStore destination) {

@@ -21,9 +21,9 @@ public final class MoveEverythingPolicy extends WriteBackPolicy {
     }
 
     @Override
-    public void init(BounceApplication bounceApplication, Configuration config) {
+    public void init(BounceApplication app, Configuration config) {
         config.setProperty(EVICT_DELAY, Duration.ofSeconds(0).toString());
         config.setProperty(COPY_DELAY, Duration.ofSeconds(-1).toString());
-        super.init(bounceApplication, config);
+        super.init(app, config);
     }
 }

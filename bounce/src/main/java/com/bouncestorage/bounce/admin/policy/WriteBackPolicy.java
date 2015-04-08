@@ -29,7 +29,6 @@ public class WriteBackPolicy extends MovePolicy {
     public static final String EVICT_DELAY = "evictDelay";
     protected Duration copyDelay;
     protected Duration evictDelay;
-    private BounceApplication app;
     private boolean copy;
     private boolean immediateCopy;
     private boolean evict;
@@ -42,8 +41,8 @@ public class WriteBackPolicy extends MovePolicy {
         return super.putBlob(containerName, blob, options);
     }
 
-    public void init(BounceApplication inApp, Configuration config) {
-        this.app = requireNonNull(inApp);
+    public void init(BounceApplication app, Configuration config) {
+        super.init(app, config);
         this.copyDelay = requireNonNull(Duration.parse(config.getString(COPY_DELAY)));
         this.copy = !copyDelay.isNegative();
         this.immediateCopy = copyDelay.isZero();
