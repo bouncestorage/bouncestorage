@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce;
 
+import static com.google.common.base.Throwables.propagate;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -128,17 +130,19 @@ public final class UtilsTest {
     }
 
     public static void assertEqualBlobs(Blob one, Blob two) throws Exception {
-        try (InputStream is = one.getPayload().openStream();
-             InputStream is2 = two.getPayload().openStream()) {
-            assertThat(is2).hasContentEqualTo(is);
+        if (one != two) {
+            try (InputStream is = one.getPayload().openStream();
+                 InputStream is2 = two.getPayload().openStream()) {
+                assertThat(is2).hasContentEqualTo(is);
+            }
+            // TODO: assert more metadata, including user metadata
+            ContentMetadata metadata = one.getMetadata().getContentMetadata();
+            ContentMetadata metadata2 = two.getMetadata().getContentMetadata();
+            assertThat(metadata2.getContentMD5AsHashCode()).isEqualTo(
+                    metadata.getContentMD5AsHashCode());
+            assertThat(metadata2.getContentType()).isEqualTo(
+                    metadata.getContentType());
         }
-        // TODO: assert more metadata, including user metadata
-        ContentMetadata metadata = one.getMetadata().getContentMetadata();
-        ContentMetadata metadata2 = two.getMetadata().getContentMetadata();
-        assertThat(metadata2.getContentMD5AsHashCode()).isEqualTo(
-                metadata.getContentMD5AsHashCode());
-        assertThat(metadata2.getContentType()).isEqualTo(
-                metadata.getContentType());
     }
 
     @Before
@@ -269,13 +273,17 @@ public final class UtilsTest {
     }
 
     public static Blob makeBlob(BlobStore blobStore, String blobName,
-                                ByteSource byteSource) throws IOException {
-        return blobStore.blobBuilder(blobName)
-                .payload(byteSource)
-                .contentLength(byteSource.size())
-                .contentType(MediaType.OCTET_STREAM)
-                .contentMD5(byteSource.hash(Hashing.md5()))
-                .build();
+                                ByteSource byteSource) {
+        try {
+            return blobStore.blobBuilder(blobName)
+                    .payload(byteSource)
+                    .contentLength(byteSource.size())
+                    .contentType(MediaType.OCTET_STREAM)
+                    .contentMD5(byteSource.hash(Hashing.md5()))
+                    .build();
+        } catch (IOException e) {
+            throw propagate(e);
+        }
     }
 
     public static Blob makeBlob(BlobStore blobStore, String blobName) throws IOException {
