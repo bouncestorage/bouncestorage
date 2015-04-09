@@ -1,10 +1,11 @@
 var virtualContainersControllers = angular.module('virtualContainersControllers', ['bounce']);
 
-virtualContainersControllers.controller('ViewContainersCtrl', ['$scope', '$location',
-    'VirtualContainer', 'ObjectStore',
-    function ($scope, $location, VirtualContainer, ObjectStore) {
+virtualContainersControllers.controller('ViewContainersCtrl', ['$scope', '$location', '$interval',
+    'VirtualContainer', 'ObjectStore', 'BounceService',
+    function ($scope, $location, $interval, VirtualContainer, ObjectStore, BounceService) {
   $scope.actions = {};
   $scope.objectStoreMap = {};
+  $scope.refreshBounce = null;
   VirtualContainer.query(function(results) {
     $scope.containers = results;
   });
@@ -30,6 +31,47 @@ virtualContainersControllers.controller('ViewContainersCtrl', ['$scope', '$locat
   $scope.actions.addContainer = function() {
     $location.path("/create_container");
   };
+
+  var refreshBounceState = function() {
+    var $allBouncing = $('.bouncing');
+    if ($allBouncing.length == 0) {
+      $interval.cancel($scope.refreshBounce);
+      $scope.refreshBounce = null;
+      return;
+    }
+    for (var i = 0; i < $allBouncing.length; i++) {
+      var $button = $allBouncing[i];
+      var name = $button.id.substring("bounce-btn-".length);
+      BounceService.get({ name: name }, function(result) {
+        if (result.endTime !== null) {
+          $('#bounce-btn-' + name).removeClass('disabled').removeClass('bouncing').html('Bounce');
+        }
+      }, function(error) {
+        console.log(error);
+      });
+    }
+  };
+
+  $scope.actions.bounce = function(container) {
+    var $bounceBtn = $('#bounce-btn-' + container.name);
+    $bounceBtn.addClass('disabled');
+    BounceService.save({ name: container.name }, function(result) {
+      $bounceBtn.html('Bouncing...');
+      $bounceBtn.addClass('bouncing');
+      if ($scope.refreshBounce === null) {
+        $scope.refreshBounce = $interval(refreshBounceState, 1000);
+      }
+    },
+    function(result) {
+      $bounceBtn.removeClass('disabled');
+    });
+  };
+
+  $scope.$on('$locationChangeStart', function() {
+    if ($scope.refreshBounce !== null) {
+      $interval.cancel($scope.refreshBounce);
+    }
+  });
 
 }]);
 

@@ -15,6 +15,7 @@
           <th>Cache</th>
           <th>Archive</th>
           <th>Migration target</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -28,6 +29,10 @@
           <td>{{describeLocation(container.cacheLocation)}}</td>
           <td>{{describeLocation(container.archiveLocation)}}</td>
           <td>{{describeLocation(container.migrationTargetLocation)}}</td>
+          <td>
+            <button class="btn btn-default" id="bounce-btn-{{container.name}}"
+              ng-click="actions.bounce(container)">Bounce</button>
+          </td>
         </tr>
       </tbody>
     </table>
