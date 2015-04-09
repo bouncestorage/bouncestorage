@@ -19,13 +19,16 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
+import com.bouncestorage.bounce.PausableThreadPoolExecutor;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -74,8 +77,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private final Pattern providerConfigPattern = Pattern.compile("(bounce.backend.\\d+).jclouds.provider");
     private final Pattern containerConfigPattern = Pattern.compile("(bounce.container.\\d+).name");
     private Clock clock = Clock.systemUTC();
-    private ExecutorService backgroundTasks = Executors.newFixedThreadPool(4);
-            //= new ThreadPoolExecutor(4, 4, 0, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+    private PausableThreadPoolExecutor backgroundReconcileTasks = new PausableThreadPoolExecutor(4);
+    private PausableThreadPoolExecutor backgroundTasks = new PausableThreadPoolExecutor(4);
 
     public BounceApplication() {
         this.config = new BounceConfiguration();
@@ -349,6 +352,9 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             logger.info("Stopping S3Proxy");
             s3Proxy.stop();
         }
+        if (!backgroundReconcileTasks.isShutdown()) {
+            backgroundReconcileTasks.shutdown();
+        }
     }
 
     @VisibleForTesting
@@ -378,6 +384,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         return port;
     }
 
+
     static {
         // DropWizard's Application class has a static initializer that forces the filter
         // to be at WARN, this overrides that
@@ -393,7 +400,27 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         this.clock = clock;
     }
 
-    public void executeBackgroundTask(Runnable task) {
-        backgroundTasks.submit(task);
+    public <T> Future<T> executeBackgroundTask(Callable<T> task) {
+        return backgroundTasks.submit(task);
+    }
+
+    public <T> ScheduledFuture<T> executeBackgroundReconcileTask(Callable<T> task, long delay, TimeUnit unit) {
+        return backgroundReconcileTasks.schedule(task, delay, unit);
+    }
+
+    @VisibleForTesting
+    public void drainBackgroundTasks() throws InterruptedException {
+        backgroundReconcileTasks.shutdown();
+        backgroundReconcileTasks.awaitTermination(60, TimeUnit.SECONDS);
+    }
+
+    @VisibleForTesting
+    public void pauseBackgroundTasks() {
+        backgroundReconcileTasks.pause();
+    }
+
+    @VisibleForTesting
+    public void resumeBackgroundTasks() {
+        backgroundReconcileTasks.resume();
     }
 }

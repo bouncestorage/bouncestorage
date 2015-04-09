@@ -12,14 +12,20 @@ import static com.google.common.base.Throwables.propagate;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
+import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.google.auto.service.AutoService;
 
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.PutOptions;
 
@@ -35,10 +41,23 @@ public class WriteBackPolicy extends MovePolicy {
 
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions options) {
-        if (immediateCopy) {
-            // TODO: implement immediate write back
+        String etag = super.putBlob(containerName, blob, options);
+        String blobName = blob.getMetadata().getName();
+        enqueueReconcile(containerName, blobName, copyDelay.getSeconds());
+        return etag;
+    }
+
+    @Override
+    public void removeBlob(String container, String name) {
+        super.removeBlob(container, name);
+        enqueueReconcile(container, name, 0);
+    }
+
+    private void enqueueReconcile(String containerName, String blobName, long delaySecond) {
+        if (app != null) {
+            app.executeBackgroundReconcileTask(() -> reconcileObject(containerName, blobName),
+                    delaySecond, TimeUnit.SECONDS);
         }
-        return super.putBlob(containerName, blob, options);
     }
 
     public void init(BounceApplication app, Configuration config) {
@@ -48,6 +67,43 @@ public class WriteBackPolicy extends MovePolicy {
         this.immediateCopy = copyDelay.isZero();
         this.evictDelay = requireNonNull(Duration.parse(config.getString(EVICT_DELAY)));
         this.evict = !evictDelay.isNegative();
+    }
+
+    private BounceResult reconcileObject(String container, String blob)
+            throws InterruptedException, ExecutionException {
+        BlobMetadata sourceMeta = getSource().blobMetadata(container, blob);
+        BlobMetadata sourceMarkerMeta = getSource().blobMetadata(container, blob + MarkerPolicy.LOG_MARKER_SUFFIX);
+        BlobMetadata destMeta = getDestination().blobMetadata(container, blob);
+
+        BounceStorageMetadata meta;
+        if (sourceMeta != null) {
+            if (destMeta != null) {
+                if (sourceMarkerMeta != null) {
+                    if (BounceLink.isLink(sourceMeta)) {
+                        meta = new BounceStorageMetadata(destMeta, BounceBlobStore.FAR_ONLY);
+                    } else if (Utils.eTagsEqual(sourceMeta.getETag(), destMeta.getETag())) {
+                        meta = new BounceStorageMetadata(sourceMeta, BounceBlobStore.EVERYWHERE);
+                    } else {
+                        meta = new BounceStorageMetadata(sourceMeta, BounceBlobStore.NEAR_ONLY);
+                    }
+                } else {
+                    if (Utils.eTagsEqual(sourceMeta.getETag(), destMeta.getETag())) {
+                        meta = new BounceStorageMetadata(sourceMeta, BounceBlobStore.EVERYWHERE);
+                    } else {
+                        meta = new BounceStorageMetadata(destMeta, BounceBlobStore.FAR_ONLY);
+                    }
+                }
+            } else {
+                meta = new BounceStorageMetadata(sourceMeta, BounceBlobStore.NEAR_ONLY);
+            }
+
+            return reconcileObject(container, meta, destMeta);
+        } else {
+            if (sourceMarkerMeta != null) {
+                getSource().removeBlob(container, blob + MarkerPolicy.LOG_MARKER_SUFFIX);
+            }
+            return reconcileObject(container, null, destMeta);
+        }
     }
 
     @Override

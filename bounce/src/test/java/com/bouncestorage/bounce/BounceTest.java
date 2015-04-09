@@ -96,7 +96,7 @@ public final class BounceTest {
         ByteSource byteSource = ByteSource.wrap(new byte[1]);
         Blob blob = UtilsTest.makeBlob(policy, blobName, byteSource);
         ContentMetadata metadata = blob.getMetadata().getContentMetadata();
-        policy.putBlob(containerName, blob);
+        policy.getSource().putBlob(containerName, blob);
         BlobMetadata meta1 = policy.blobMetadata(containerName, blobName);
 
         Utils.copyBlobAndCreateBounceLink(nearBlobStore, farBlobStore,
@@ -162,7 +162,7 @@ public final class BounceTest {
         String blobName = UtilsTest.createRandomBlobName();
         Blob blob = UtilsTest.makeBlob(policy, blobName);
         blob.getMetadata().setUserMetadata(ImmutableMap.of("foo", "1"));
-        policy.putBlob(containerName, blob);
+        policy.getSource().putBlob(containerName, blob);
         assertThat(policy.blobMetadata(containerName, blobName).getUserMetadata())
                 .containsKey("foo")
                 .doesNotContainKey("bar");

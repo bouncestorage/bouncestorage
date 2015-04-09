@@ -59,6 +59,13 @@ public final class UtilsTest {
         switchPolicyforContainer(app, container, policy, ImmutableMap.of());
     }
 
+    public static void useWriteBackPolicyForContainer(BounceApplication app, String containerName,
+                                                      Duration copyDuration, Duration evictDuration) {
+        switchPolicyforContainer(app, containerName, WriteBackPolicy.class,
+                ImmutableMap.of(WriteBackPolicy.COPY_DELAY, copyDuration.toString(),
+                        WriteBackPolicy.EVICT_DELAY, evictDuration.toString()));
+    }
+
     public static void switchPolicyforContainer(BounceApplication app, String container,
             Class<? extends BouncePolicy> policy, Map<String, String> policyConfig) {
         BounceConfiguration config = app.getConfiguration();
