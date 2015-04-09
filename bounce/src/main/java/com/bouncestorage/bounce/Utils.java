@@ -19,7 +19,7 @@ import java.util.Optional;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.policy.MarkerPolicy;
+import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.PeekingIterator;
 import com.google.common.hash.HashCode;
@@ -94,7 +94,7 @@ public final class Utils {
         BounceLink link = new BounceLink(Optional.of(blobMetadata));
         blobStore.putBlob(blobMetadata.getContainer(), link.toBlob(blobStore));
         blobStore.removeBlob(blobMetadata.getContainer(), blobMetadata.getName() +
-                MarkerPolicy.LOG_MARKER_SUFFIX);
+                WriteBackPolicy.LOG_MARKER_SUFFIX);
         return BouncePolicy.BounceResult.LINK;
     }
 
