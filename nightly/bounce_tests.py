@@ -255,6 +255,7 @@ def main():
     if ec2:
         log.close()
         notify_failure(creds, exception, traceback.format_exc()) if exception else notify_success(creds)
+        execute("sudo poweroff")
 
 if __name__ == '__main__':
     main()
