@@ -8,20 +8,30 @@ package com.bouncestorage.bounce.admin.policy;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
 
 import com.bouncestorage.bounce.BounceLink;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
+import org.jclouds.blobstore.domain.StorageMetadata;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class WriteBackPolicyTest {
     String containerName;
@@ -29,6 +39,7 @@ public final class WriteBackPolicyTest {
     BouncePolicy policy;
     BounceService bounceService;
     Duration duration = Duration.ofHours(1);
+    Logger logger = LoggerFactory.getLogger(WriteBackPolicyTest.class);
 
     @Before
     public void setUp() throws Exception {
@@ -217,4 +228,80 @@ public final class WriteBackPolicyTest {
         UtilsTest.assertEqualBlobs(farBlob, blobBar);
     }
 
+    @Test
+    public void testRandomOperations() throws Exception {
+        BlobStore reference = UtilsTest.createTransientBlobStore();
+        reference.createContainerInLocation(null, containerName);
+        final int baseNumTest = 100;
+        Random r = new Random();
+        if (System.getProperty("TEST_SEED") != null) {
+            r.setSeed(Long.valueOf(System.getProperty("TEST_SEED")));
+        } else {
+            long seed = new Random().nextLong();
+            logger.info("seed: {}", seed);
+            r.setSeed(seed);
+        }
+
+        int objectCount = baseNumTest + r.nextInt(baseNumTest);
+        ArrayList<String> blobNames = new ArrayList<>(objectCount);
+        for (int i = 0; i < objectCount; i++) {
+            blobNames.add("blob-" + r.nextInt(Integer.MAX_VALUE));
+        }
+
+        List<BlobStore> blobStores = ImmutableList.of(reference, policy);
+        int numBlobsInStore = 0;
+
+        int opsCount = baseNumTest + r.nextInt(baseNumTest);
+        for (int i = 0; i < opsCount; i++) {
+            String blobName = blobNames.get(r.nextInt(blobNames.size()));
+            int op = r.nextInt(3);
+            if (op == 0) {
+                // PUT
+                int blobLen = 1000 + r.nextInt(1000);
+                blobStores.forEach(b -> {
+                    Blob blob = UtilsTest.makeBlob(b, blobName, ByteSource.wrap(new byte[blobLen]));
+                    b.putBlob(containerName, blob);
+                });
+                numBlobsInStore++;
+            } else if (op == 1) {
+                // GET
+                Blob one = reference.getBlob(containerName, blobName);
+                Blob two = policy.getBlob(containerName, blobName);
+                UtilsTest.assertEqualBlobs(one, two);
+            } else if (op == 2) {
+                // DELETE
+                blobStores.forEach(b -> b.removeBlob(containerName, blobName));
+            }
+        }
+
+        assertEqualBlobStores(reference, policy);
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getTotalObjectCount()).isLessThanOrEqualTo(numBlobsInStore);
+        numBlobsInStore = (int) status.getTotalObjectCount();
+        assertThat(status.getCopiedObjectCount()).isEqualTo(numBlobsInStore);
+        assertEqualBlobStores(reference, policy);
+
+        UtilsTest.advanceServiceClock(app, duration.plusSeconds(1));
+        status = bounceService.bounce(containerName);
+        status.future().get();
+        assertThat(status.getTotalObjectCount()).isEqualTo(numBlobsInStore);
+        assertThat(status.getLinkedObjectCount()).isEqualTo(numBlobsInStore);
+    }
+
+    private void assertEqualBlobStores(BlobStore one, BlobStore two) throws Exception {
+        Iterator<StorageMetadata> iterFromOne = Utils.crawlBlobStore(one, containerName).iterator();
+        Iterator<StorageMetadata> iterFromTwo = Utils.crawlBlobStore(two, containerName).iterator();
+
+        while (iterFromOne.hasNext() && iterFromTwo.hasNext()) {
+            StorageMetadata refMeta = iterFromOne.next();
+            StorageMetadata policyMeta = iterFromTwo.next();
+            assertThat(Utils.equalsOtherThanTime(refMeta, policyMeta)).isTrue();
+            Blob blobOne = one.getBlob(containerName, refMeta.getName());
+            Blob blobTwo = two.getBlob(containerName, refMeta.getName());
+            UtilsTest.assertEqualBlobs(blobOne, blobTwo);
+        }
+
+        assertThat(iterFromOne.hasNext()).isEqualTo(iterFromTwo.hasNext());
+    }
 }
