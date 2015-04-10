@@ -33,13 +33,13 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class WriteBackPolicyTest {
+public class WriteBackPolicyTest {
     String containerName;
     BounceApplication app;
     BouncePolicy policy;
     BounceService bounceService;
     Duration duration = Duration.ofHours(1);
-    Logger logger = LoggerFactory.getLogger(WriteBackPolicyTest.class);
+    Logger logger;
 
     @Before
     public void setUp() throws Exception {
@@ -59,6 +59,9 @@ public final class WriteBackPolicyTest {
                         WriteBackPolicy.COPY_DELAY, Duration.ofSeconds(0).toString()));
         policy = (BouncePolicy) app.getBlobStore(containerName);
         policy.createContainerInLocation(null, containerName);
+
+        // need to initialize logger after dropwizard application init
+        logger = LoggerFactory.getLogger(WriteBackPolicyTest.class);
     }
 
     @After
