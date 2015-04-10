@@ -38,6 +38,7 @@ import org.jclouds.providers.ProviderMetadata;
 
 public final class BounceBlobStore implements BlobStore {
 
+    public static final String STORES_LIST = "bounce.backends";
     public static final String STORE_PROPERTY = "bounce.backend";
     public static final String STORE_PROPERTY_1 = STORE_PROPERTY + ".1";
     public static final String STORE_PROPERTY_2 = STORE_PROPERTY + ".2";

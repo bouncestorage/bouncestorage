@@ -99,14 +99,14 @@ public final class AdminTest {
                 new ContainerStats(ImmutableList.of(blobName), 0));
 
         BounceBlobsResource bounceBlobsResource = new BounceBlobsResource(app);
-        bounceBlobsResource.bounceBlobs(containerName, Optional.of(Boolean.TRUE), Optional.absent());
+        bounceBlobsResource.bounceBlobs(new BounceBlobsResource.BounceServiceRequest(Optional.of(containerName),
+                Optional.of(true), Optional.absent()));
 
         stats = containerResource.getContainerStats(containerName);
         assertThat(stats).isEqualToComparingFieldByField(
                 new ContainerStats(ImmutableList.of(blobName), 1));
 
-        Collection<BounceService.BounceTaskStatus> res =
-                bounceBlobsResource.status(Optional.absent());
+        Collection<BounceService.BounceTaskStatus> res = bounceBlobsResource.status();
         assertThat(res).hasSize(1);
         BounceService.BounceTaskStatus status = res.iterator().next();
         assertThat(status.getMovedObjectCount()).isEqualTo(1);
@@ -126,10 +126,12 @@ public final class AdminTest {
         policy.putBlob(containerName, blob);
 
         BounceBlobsResource bounceBlobsResource = new BounceBlobsResource(app);
-        BounceService.BounceTaskStatus status = bounceBlobsResource.bounceBlobs(containerName, Optional.absent(), Optional.absent());
+        BounceService.BounceTaskStatus status = bounceBlobsResource.bounceBlobs(new BounceBlobsResource
+                .BounceServiceRequest(Optional.of(containerName), Optional.absent(), Optional.absent()));
         assertThat(status.aborted).isFalse();
 
-        status = bounceBlobsResource.bounceBlobs(containerName, Optional.absent(), Optional.of(true));
+        status = bounceBlobsResource.bounceBlobs(new BounceBlobsResource.BounceServiceRequest(
+                Optional.of(containerName), Optional.absent(), Optional.of(true)));
         assertThat(status.aborted).isTrue();
     }
 }

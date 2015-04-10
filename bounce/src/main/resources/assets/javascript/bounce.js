@@ -65,3 +65,6 @@ bounce.factory('ObjectStore', ['$resource', function($resource) {
     });
 }]);
 
+bounce.factory('BounceService', ['$resource', function($resource) {
+  return $resource('/api/bounce/:name', { name: "@name" });
+}]);

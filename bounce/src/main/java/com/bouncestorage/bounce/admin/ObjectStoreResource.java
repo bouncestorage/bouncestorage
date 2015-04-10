@@ -71,6 +71,8 @@ public final class ObjectStoreResource {
             properties.setProperty(prefix + "identity", objectStore.identity);
             properties.setProperty(prefix + "credential", objectStore.credential);
             properties.setProperty(prefix + "nickname", objectStore.nickname);
+            String backendsList = config.getString(BounceBlobStore.STORES_LIST);
+            properties.setProperty(BounceBlobStore.STORES_LIST, backendsList + "," + storeIndex);
             config.setAll(properties);
             return SUCCESS_RESPONSE;
         } catch (Exception e) {

@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
+import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.PausableThreadPoolExecutor;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -240,10 +241,10 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         }
 
         if (blobStore == null) {
-            List<Object> backendIDs = config.getList("bounce.backends");
+            List<Object> backendIDs = config.getList(BounceBlobStore.STORES_LIST);
             logger.info("keys: {}", backendIDs);
             for (Object id : backendIDs) {
-                Configuration c = config.subset("bounce.backend." + id);
+                Configuration c = config.subset(BounceBlobStore.STORE_PROPERTY + "." + id);
                 if (identity.equals(c.getString(Constants.PROPERTY_IDENTITY))) {
                     credential = Optional.of(c.getString(Constants.PROPERTY_CREDENTIAL));
                     blobStore = providers.get(Integer.valueOf(id.toString()));
