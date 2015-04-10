@@ -168,7 +168,13 @@ public class WriteBackPolicy extends BouncePolicy {
         blob.setPayload(pipeIn);
         blob.getMetadata().setContentMetadata(contentMetadata);
 
-        app.executeBackgroundTask(() -> Utils.copyBlob(getSource(), container, blob, tee));
+        app.executeBackgroundTask(() -> {
+            try {
+                return Utils.copyBlob(getSource(), container, blob, tee);
+            } finally {
+                tee.close();
+            }
+        });
         return blob;
     }
 
