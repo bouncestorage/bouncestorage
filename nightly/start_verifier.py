@@ -1,3 +1,4 @@
+import argparse
 import boto.ec2
 import json
 import urllib
@@ -20,18 +21,29 @@ def get_aws_creds():
     props = json.load(urllib.urlopen(META_URL))
     return Creds(props['AccessKeyId'], props['SecretAccessKey'], props['Token'])
 
-def start_instance(name, creds):
+def ensure_instance_state(name, creds, stop=False):
     conn = boto.ec2.connect_to_region(REGION, aws_access_key_id=creds.key,
             aws_secret_access_key=creds.secret, security_token=creds.token)
     instances = conn.get_only_instances(filters={"tag:Name" : name})
     if not instances:
         raise RuntimeError("Instance not found!")
     instance = instances[0]
-    conn.start_instances([instance.id])
+    if stop:
+        conn.stop_instances(instance_ids=[instance.id])
+    else:
+        conn.start_instances([instance.id])
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Manage the bounce verifier')
+    parser.add_argument('--stop', dest='stop', action='store_true',
+        help='stop the instance')
+    args = parser.parse_args()
+    return args
 
 def main():
+    args = parse_args()
     creds = get_aws_creds()
-    start_instance(VERIFIER_INSTANCE, creds)
+    ensure_instance_state(VERIFIER_INSTANCE, creds, stop=args.stop)
 
 if __name__ == "__main__":
     main()
