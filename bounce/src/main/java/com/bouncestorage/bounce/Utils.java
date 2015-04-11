@@ -205,6 +205,8 @@ public final class Utils {
         Long contentLength = metadata.getContentLength();
         if (contentLength != null) {
             builder.contentLength(metadata.getContentLength());
+        } else {
+            throw new UnsupportedOperationException("S3 doesn't allow NULL content length");
         }
 
         String contentType = metadata.getContentType();
