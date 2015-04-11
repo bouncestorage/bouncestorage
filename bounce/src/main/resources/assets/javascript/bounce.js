@@ -32,7 +32,7 @@ bounce.config(['$routeProvider', function($routeProvider) {
       templateUrl: 'views/partials/edit_container.html',
       controller: 'EditVirtualContainerCtrl'
     }).
-    when('/stores', {
+    when('/stores/:id?', {
       templateUrl: 'views/partials/stores.html',
       controller: 'ViewStoresCtrl'
     }).

@@ -1,29 +1,41 @@
 <ng-include src="'views/partials/navbar.html'"></ng-include>
 
 <div class="container main">
-  <h1 class="page-header">Object Stores</h1>
+  <h1 class="page-header">{{store.nickname}}</h1>
+  <p class="lead">
+  Provider: {{store.provider}}
+  </p>
+  <p>
+    <button class="btn btn-default" ng-click="actions.editStore(store)">
+      <span class="glyphicon glyphicon-edit"></span> Edit {{store.nickname}} store
+    </button>
+  </p>
 
   <div class="col-sm-6 table-responsive">
-    <button class="btn btn-primary" ng-click="actions.addStore()">
-      <span class="glyphicon glyphicon-plus"></span> Add an object store
-    </button>
     <table class="table table-hover">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Provider</th>
-          <th>Identity</th>
+          <th>Container</th>
+          <th>Status</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
-        <tr ng-repeat="store in stores">
+        <tr ng-repeat="container in containers">
           <td>
-            <a href="" ng-click="actions.editStore(store)" class="icon">
-              <span class="glyphicon glyphicon-edit"></span></a>
-            {{store.nickname}}
+            {{container.name}}
           </td>
-          <td>{{store.provider}}</td>
-          <td>{{store.identity}}</td>
+          <td><i>{{interpretStatus(container.status)}}</i></td>
+          <td>
+            <button class="btn btn-success" ng-click="actions.enhanceContainer(container)"
+                ng-if="container.status === 'UNCONFIGURED'">
+              enhance!
+            </button>
+            <button class="btn btn-default" ng-click="actions.enhanceContainer(container)"
+                ng-if="container.status === 'CONFIGURED'">
+              <span class="glyphicon glyphicon-edit"></span> edit
+            </button>
+          </td>
         </tr>
       </tbody>
     </table>

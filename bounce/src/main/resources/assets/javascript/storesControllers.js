@@ -6,6 +6,10 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
     $scope.actions = {};
     $scope.provider = "none";
 
+    ObjectStore.query(function(results) {
+      $scope.stores = results;
+    });
+
     if (typeof($routeParams.objectStoreId) === "string") {
       $scope.edit = true;
       ObjectStore.get({ id:$routeParams.objectStoreId },
@@ -62,12 +66,35 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
     };
 }]);
 
+function findStore(stores, id) {
+  for (var i = 0; i < id; i++) {
+    if (stores[i].id == id) {
+      return stores[i];
+    }
+  }
+  return undefined;
+}
+
 storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
-  '$timeout', 'ObjectStore',
-  function ($scope, $location, $timeout, ObjectStore) {
+  '$timeout', '$routeParams', 'ObjectStore', 'Container',
+  function ($scope, $location, $timeout, $routeParams, ObjectStore, Container) {
     $scope.actions = {};
     ObjectStore.query(function(results) {
       $scope.stores = results;
+      if ($routeParams.id !== null) {
+        $scope.store = findStore($scope.stores, $routeParams.id);
+        if ($scope.store === undefined) {
+          $scope.store = $scope.stores[0];
+        }
+      } else {
+        $scope.store = $scope.stores[0];
+      }
+
+      if ($scope.store !== undefined) {
+        Container.query({ id: $scope.store.id }, function(results) {
+          $scope.containers = results;
+        });
+      }
     });
 
     $scope.actions.addStore = function() {
@@ -76,5 +103,14 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
 
     $scope.actions.editStore = function(store) {
       $location.path("/edit_store/" + store.id);
+    };
+
+    $scope.interpretStatus = function(containerStatus) {
+      if (containerStatus === 'UNCONFIGURED') {
+        return 'passthrough';
+      }
+      if (containerStatus === 'CONFIGURED') {
+        return 'enhanced';
+      }
     };
 }]);
