@@ -80,17 +80,9 @@ public final class VirtualContainerResource {
     @Timed
     @Consumes(MediaType.APPLICATION_JSON)
     public String createContainer(VirtualContainer container) {
-        int nextIndex = getNextContainerId();
+        container.setId(getNextContainerId());
         BounceConfiguration config = app.getConfiguration();
-        String prefix = VIRTUAL_CONTAINER_PREFIX + "." + nextIndex;
-        Properties properties = new Properties();
-        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.NAME), container.getName());
-        Location origin = container.getOriginLocation();
-        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX,
-                Location.BLOB_STORE_ID_FIELD), Integer.toString(origin.getBlobStoreId()));
-        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX,
-                Location.CONTAINER_NAME_FIELD), origin.getContainerName());
-        config.setAll(properties);
+        config.setAll(generatePropertiesFromRequest(container, null));
         return "{\"status\":\"success\"}";
     }
 
@@ -107,42 +99,48 @@ public final class VirtualContainerResource {
         if (!current.getOriginLocation().equals(container.getOriginLocation())) {
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
         }
+        config.setAll(generatePropertiesFromRequest(container, current));
 
+        return "{\"status\":\"success\"}";
+    }
+
+    private Properties generatePropertiesFromRequest(VirtualContainer request, VirtualContainer current) {
         Properties properties = new Properties();
-        String prefix = Joiner.on(".").join(VIRTUAL_CONTAINER_PREFIX, id);
-        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.NAME), container.getName());
-        if (current.getOriginLocation().permittedChange(container.getOriginLocation())) {
+        String prefix = Joiner.on(".").join(VIRTUAL_CONTAINER_PREFIX, request.getId());
+        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.NAME), request.getName());
+        if (current == null || current.getOriginLocation().permittedChange(request.getOriginLocation())) {
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX);
-            updateLocationConfig(properties, container.getOriginLocation(), locationPrefix);
+            updateLocationConfig(properties, request.getOriginLocation(), locationPrefix);
         }
-        if (current.getArchiveLocation().permittedChange(container.getArchiveLocation())) {
-            if (current.getArchiveLocation().isUnset() && !container.getArchiveLocation().isUnset()) {
+        if (current == null || current.getArchiveLocation().permittedChange(request.getArchiveLocation())) {
+            if (current == null || (current.getArchiveLocation().isUnset() &&
+                    !request.getArchiveLocation().isUnset())) {
                 properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
                         "WriteBackPolicy");
             }
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.ARCHIVE_TIER_PREFIX);
-            updateLocationConfig(properties, container.getArchiveLocation(), locationPrefix);
+            updateLocationConfig(properties, request.getArchiveLocation(), locationPrefix);
         }
-        if (current.getCacheLocation().permittedChange(container.getCacheLocation())) {
+        if (current == null || current.getCacheLocation().permittedChange(request.getCacheLocation())) {
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.CACHE_TIER_PREFIX);
-            if (current.getCacheLocation().isUnset() && !container.getCacheLocation().isUnset()) {
+            if (current == null || (current.getCacheLocation().isUnset() && !request.getCacheLocation().isUnset())) {
                 properties.setProperty(Joiner.on(".").join(locationPrefix, "policy"), "WriteBackPolicy");
             }
-            updateLocationConfig(properties, container.getCacheLocation(), locationPrefix);
+            updateLocationConfig(properties, request.getCacheLocation(), locationPrefix);
         }
-        if (current.getMigrationTargetLocation().permittedChange(container.getMigrationTargetLocation())) {
+        if (current == null || current.getMigrationTargetLocation().permittedChange(
+                request.getMigrationTargetLocation())) {
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.MIGRATION_TIER_PREFIX);
-            if (current.getMigrationTargetLocation().isUnset() && !container.getMigrationTargetLocation().isUnset()) {
+            if (current == null || (current.getMigrationTargetLocation().isUnset() &&
+                    !request.getMigrationTargetLocation().isUnset())) {
                 properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
                         "MigrationPolicy");
             }
-            updateLocationConfig(properties, container.getMigrationTargetLocation(), locationPrefix);
+            updateLocationConfig(properties, request.getMigrationTargetLocation(), locationPrefix);
         }
 
-        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.NAME), container.getName());
-        config.setAll(properties);
-
-        return "{\"status\":\"success\"}";
+        properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.NAME), request.getName());
+        return properties;
     }
 
     private void updateLocationConfig(Properties properties, Location location, String prefix) {
@@ -167,6 +165,7 @@ public final class VirtualContainerResource {
             String key = keyIterator.next();
             if (result == null) {
                 result = new VirtualContainer();
+                result.setId(id);
             }
             setProperty(result, getFieldName(key), config.getString(key));
         }
@@ -175,7 +174,11 @@ public final class VirtualContainerResource {
 
     private int getContainerId(String key) {
         int indexStart = VIRTUAL_CONTAINER_PREFIX.length() + 1;
-        String indexString = key.substring(indexStart, key.indexOf(".", indexStart));
+        int indexEnd = key.indexOf(".", indexStart);
+        if (indexEnd < 0) {
+            return -1;
+        }
+        String indexString = key.substring(indexStart, indexEnd);
         return Integer.parseInt(indexString);
     }
 
@@ -189,7 +192,7 @@ public final class VirtualContainerResource {
                 continue;
             }
             int containerId = getContainerId(key);
-            if (containerId >= nextIndex) {
+            if (containerId > 0 && containerId >= nextIndex) {
                 nextIndex = containerId + 1;
             }
         }
