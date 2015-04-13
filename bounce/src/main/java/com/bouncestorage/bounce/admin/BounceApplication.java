@@ -31,6 +31,7 @@ import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.PausableThreadPoolExecutor;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
@@ -53,6 +54,7 @@ import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,6 +140,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                 builder.credentials(identity, c.getString(Constants.PROPERTY_CREDENTIAL));
             }
             context = builder.overrides(new ConfigurationPropertiesView(c))
+                    .modules(ImmutableList.of(new SLF4JLoggingModule()))
                     .build(BlobStoreContext.class);
         } catch (CreationException e) {
             e.printStackTrace();

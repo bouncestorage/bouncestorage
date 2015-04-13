@@ -45,7 +45,7 @@ import org.jclouds.io.MutableContentMetadata;
 public class WriteBackPolicy extends BouncePolicy {
     public static final String COPY_DELAY = "copyDelay";
     public static final String EVICT_DELAY = "evictDelay";
-    public static final String LOG_MARKER_SUFFIX = "\u0001log";
+    public static final String LOG_MARKER_SUFFIX = " bounce!log";
     protected Duration copyDelay;
     protected Duration evictDelay;
     private boolean copy;
@@ -62,7 +62,10 @@ public class WriteBackPolicy extends BouncePolicy {
 
     private void putMarkerBlob(String containerName, String key) {
         getSource().putBlob(containerName,
-                getSource().blobBuilder(key + LOG_MARKER_SUFFIX).payload(ByteSource.empty()).build());
+                getSource().blobBuilder(key + LOG_MARKER_SUFFIX)
+                        .payload(ByteSource.empty())
+                        .contentLength(0)
+                        .build());
     }
 
     @Override

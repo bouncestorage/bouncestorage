@@ -134,6 +134,7 @@ public final class BounceService {
             try {
                 adjustCount(policy.reconcileObject(container, source, destination));
             } catch (Throwable e) {
+                e.printStackTrace();
                 logger.error("Failed to reconcile object {}, {} in {}: {}", source, destination, container,
                         e.getMessage());
                 status.errorObjectCount.getAndIncrement();
