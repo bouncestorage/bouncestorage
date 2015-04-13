@@ -1,16 +1,16 @@
 var storesControllers = angular.module('storesControllers', ['bounce']);
 
 storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
-  '$timeout', '$routeParams', 'ObjectStore',
-  function ($scope, $location, $timeout, $routeParams, ObjectStore) {
+  '$routeParams', 'ObjectStore',
+  function ($scope, $location, $routeParams, ObjectStore) {
     $scope.actions = {};
-    $scope.provider = "none";
+    $scope.provider = 'none';
 
     ObjectStore.query(function(results) {
       $scope.stores = results;
     });
 
-    if (typeof($routeParams.objectStoreId) === "string") {
+    if (typeof($routeParams.objectStoreId) === 'string') {
       $scope.edit = true;
       ObjectStore.get({ id:$routeParams.objectStoreId },
         function(result) {
@@ -33,9 +33,9 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
           endpoint: $scope.endpoint
         }, function (res) {
           if ($routeParams.welcomeUrl === 'welcome') {
-            $location.path("/dashboard");
+            $location.path('/dashboard');
           } else {
-            $location.path("/stores");
+            $location.path('/stores');
           }
         });
     };
@@ -50,9 +50,9 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
         region: $scope.region,
         endpoint: $scope.endpoint
       }, function(res) {
-        $location.path("/stores");
+        $location.path('/stores');
       }, function(error) {
-        console.log("Error: " + error);
+        console.log('Error: ' + error);
       });
     };
 
@@ -62,7 +62,7 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
     };
 
     $scope.actions.cancelEdit = function() {
-      $location.path("/stores");
+      $location.path('/stores');
     };
 }]);
 
@@ -75,10 +75,80 @@ function findStore(stores, id) {
   return undefined;
 }
 
+function createNewVirtualContainer(store, container) {
+  return { cacheLocation: { blobStoreId: -1,
+                            containerName: '',
+                            copyDelay: '',
+                            moveDelay: ''
+                          },
+           originLocation: { blobStoreId: store.id,
+                             containerName: container.name,
+                             copyDelay: '',
+                             moveDelay: ''
+                           },
+           archiveLocation: { blobStoreId: -1,
+                              containerName: '',
+                              copyDelay: '',
+                              moveDelay: ''
+                            },
+           migrationTargetLocation: { blobStoreId: -1,
+                                      containerName: '',
+                                      copyDelay: '',
+                                      moveDelay: ''
+                                    },
+           name: container.name,
+         };
+}
+
+function extractLocations(vContainer) {
+  return [{ name: 'a cache',
+            edit_name: 'cache',
+            object: vContainer.cacheLocation
+          },
+          { name: 'an archive',
+            edit_name: 'archive',
+            object: vContainer.archiveLocation
+          },
+          { name: 'a migration target',
+            edit_name: 'migration',
+            object: vContainer.migrationTargetLocation
+          }];
+}
+
+function setArchiveDuration(vContainer, toPrimary) {
+  // HACK: We need to copy the copyDelay and moveDelay settings from the
+  // archive location to the origin location (or vice versa) to present these
+  // settings correctly on edits (and to save the edits correctly).
+  var archive = vContainer.archiveLocation;
+  if (archive.blobStoreId !== -1) {
+    var primary = vContainer.originLocation;
+    if (toPrimary) {
+      primary.moveDelay = archive.moveDelay;
+      primary.copyDelay = archive.copyDelay;
+      archive.moveDelay = '';
+      archive.copyDelay = '';
+    } else {
+      archive.moveDelay = primary.moveDelay;
+      archive.copyDelay = primary.copyDelay;
+    }
+  }
+  return;
+}
+
 storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
-  '$timeout', '$routeParams', 'ObjectStore', 'Container',
-  function ($scope, $location, $timeout, $routeParams, ObjectStore, Container) {
+  '$routeParams', 'ObjectStore', 'Container', 'VirtualContainer',
+  function ($scope, $location, $routeParams, ObjectStore, Container,
+      VirtualContainer) {
     $scope.actions = {};
+    $scope.locations = [];
+    $scope.containersMap = {};
+
+    $scope.refreshContainersMap = function() {
+      for (var i = 0; i < $scope.stores.length; i++) {
+        $scope.updateContainerMap($scope.stores[i].id);
+      }
+    };
+
     ObjectStore.query(function(results) {
       $scope.stores = results;
       if ($routeParams.id !== null) {
@@ -89,20 +159,98 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       } else {
         $scope.store = $scope.stores[0];
       }
-
-      if ($scope.store !== undefined) {
-        Container.query({ id: $scope.store.id }, function(results) {
-          $scope.containers = results;
-        });
-      }
+      $scope.refreshContainersMap();
     });
 
-    $scope.actions.addStore = function() {
-      $location.path("/create_store/false");
+    $scope.updateContainerMap = function(blobStoreId) {
+      $scope.containersMap[blobStoreId] = [];
+      Container.query({ id: blobStoreId }, function(results) {
+        for (var i = 0; i < results.length; i++) {
+          $scope.containersMap[blobStoreId].push(results[i]);
+        }
+        if (blobStoreId === $scope.store.id) {
+          $scope.containers = $scope.containersMap[$scope.store.id].filter(
+            function(container) {
+              return container.status !== 'INUSE';
+            });
+        }
+      });
+    };
+
+    $scope.getContainersForPrompt = function() {
+      if ($scope.editLocation === null || $scope.editLocation === undefined) {
+        return [];
+      }
+      var editLocation = $scope.editLocation.object;
+      var blobStoreId = editLocation.blobStoreId;
+      if (!(blobStoreId in $scope.containers)) {
+        return [];
+      }
+      return $scope.containersMap[blobStoreId].filter(
+        function(container) {
+          return (container.status === 'UNCONFIGURED' &&
+                  container.name !== $scope.enhanceContainer.name) ||
+                 (container.status === 'INUSE' &&
+                  container.name === editLocation.containerName);
+        });
+    };
+
+    $scope.actions.enhanceContainer = function(container) {
+      console.log(container);
+      if (container.status === 'UNCONFIGURED') {
+        var vContainer = createNewVirtualContainer($scope.store, container);
+        $scope.locations = extractLocations(vContainer);
+        $scope.enhanceContainer = vContainer;
+        $('#configureContainerModal').modal('show');
+        return;
+      }
+
+      VirtualContainer.get({ id: container.virtualContainerId },
+                           function(vContainer) {
+                             $scope.enhanceContainer = vContainer;
+                             console.log($scope.enhanceContainer);
+                             setArchiveDuration(vContainer, false);
+                             $scope.locations = extractLocations(vContainer);
+                             $('#configureContainerModal').modal('show');
+                           }
+                          );
+      return;
+    };
+
+    $scope.actions.prompt = function(locationObject) {
+      $scope.editLocation = locationObject;
+      $('#configureTierModal').modal('show');
+    };
+
+    $scope.actions.saveContainer = function() {
+      setArchiveDuration($scope.enhanceContainer, true);
+      console.log($scope.enhanceContainer);
+      if (typeof($scope.enhanceContainer.id) === 'undefined') {
+        VirtualContainer.save($scope.enhanceContainer,
+        function(result) {
+          console.log('Saved container: ' + result.status);
+          $scope.refreshContainersMap();
+        },
+        function(error) {
+          console.log('Error: ' + error);
+        });
+      } else {
+        VirtualContainer.update($scope.enhanceContainer,
+        function(success) {
+          console.log('Updated container: ' + success.status);
+          $scope.refreshContainersMap();
+        },
+        function(error) {
+          console.log('Error occurred during the update: ' + error);
+        });
+      }
+      $('#configureContainerModal').modal('hide');
+      $scope.enhanceContainer = null;
+      $scope.editLocation = null;
     };
 
     $scope.actions.editStore = function(store) {
-      $location.path("/edit_store/" + store.id);
+      $location.path('/edit_store/' + store.id);
     };
 
     $scope.interpretStatus = function(containerStatus) {
