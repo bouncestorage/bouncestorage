@@ -73,7 +73,7 @@ public final class AdminTest {
     public void testServiceResource() throws Exception {
         ServiceStats stats = new ServiceResource(app).getServiceStats();
 
-        assertThat(stats.getContainerNames()).containsOnly(containerName);
+        assertThat(stats.getContainerNames()).contains(containerName);
     }
 
     @Test
