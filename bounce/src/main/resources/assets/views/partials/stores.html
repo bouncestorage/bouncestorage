@@ -17,7 +17,8 @@
         <tr>
           <th>Container</th>
           <th>Status</th>
-          <th></th>
+          <th><!-- enhance/edit button --></th>
+          <th><!-- bounce button --></th>
         </tr>
       </thead>
       <tbody>
@@ -34,6 +35,12 @@
             <button class="btn btn-default" ng-click="actions.enhanceContainer(container)"
                 ng-if="container.status === 'CONFIGURED'">
               <span class="glyphicon glyphicon-edit"></span> edit
+            </button>
+          </td>
+          <td>
+            <button class="btn btn-primary" id="bounce-btn-{{container.name}}"
+                ng-click="actions.bounce(container)" ng-if="container.status === 'CONFIGURED'">
+              bounce!
             </button>
           </td>
         </tr>

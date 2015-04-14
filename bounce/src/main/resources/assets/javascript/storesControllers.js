@@ -136,12 +136,13 @@ function setArchiveDuration(vContainer, toPrimary) {
 }
 
 storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
-  '$routeParams', 'ObjectStore', 'Container', 'VirtualContainer',
-  function ($scope, $location, $routeParams, ObjectStore, Container,
-      VirtualContainer) {
+  '$interval', '$routeParams', 'ObjectStore', 'Container', 'VirtualContainer',
+  'BounceService', function ($scope, $location, $interval, $routeParams,
+      ObjectStore, Container, VirtualContainer, BounceService) {
     $scope.actions = {};
     $scope.locations = [];
     $scope.containersMap = {};
+    $scope.refreshBounce = null;
 
     $scope.refreshContainersMap = function() {
       for (var i = 0; i < $scope.stores.length; i++) {
@@ -261,4 +262,46 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
         return 'enhanced';
       }
     };
+
+    $scope.actions.bounce = function(container) {
+      var $bounceBtn = $('#bounce-btn-' + container.name);
+      $bounceBtn.addClass('disabled');
+      BounceService.save({ name: container.name }, function(result) {
+        $bounceBtn.html('Bouncing...');
+        $bounceBtn.addClass('bouncing');
+        if ($scope.refreshBounce === null) {
+          $scope.refreshBounce = $interval(refreshBounceState, 1000);
+        }
+      },
+      function(error) {
+        console.log(error);
+        $bounceBtn.removeClass('disabled');
+      });
+    };
+
+    var refreshBounceState = function() {
+      var $allBouncing = $('.bouncing');
+      if ($allBouncing.length == 0) {
+        $interval.cancel($scope.refreshBounce);
+        $scope.refreshBounce = null;
+        return;
+      }
+      for (var i = 0; i < $allBouncing.length; i++) {
+        var $button = $allBouncing[i];
+        var name = $button.id.substring("bounce-btn-".length);
+        BounceService.get({ name: name }, function(result) {
+          if (result.endTime !== null) {
+            $('#bounce-btn-' + name).removeClass('disabled').removeClass('bouncing').html('bounce!');
+          }
+        }, function(error) {
+          console.log(error);
+        });
+      }
+    };
+
+    $scope.$on('$locationChangeStart', function() {
+      if ($scope.refreshBounce !== null) {
+        $interval.cancel($scope.refreshBounce);
+      }
+    });
 }]);
