@@ -32,11 +32,7 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
           region: $scope.region,
           endpoint: $scope.endpoint
         }, function (res) {
-          if ($routeParams.welcomeUrl === 'welcome') {
-            $location.path('/dashboard');
-          } else {
-            $location.path('/stores');
-          }
+          $location.path('/stores');
         });
     };
 
