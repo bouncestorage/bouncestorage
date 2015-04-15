@@ -13,6 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
@@ -100,10 +101,37 @@ public final class ObjectStoreResource {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
         }
         PageSet<? extends StorageMetadata> pageSet = blobStore.list();
-        List<Container> containerNames = pageSet.stream()
-                .map(sm -> new Container(sm.getName()))
+        List<VirtualContainer> vContainers = new VirtualContainerResource(app).getContainers();
+        Map<String, ContainerMapEntry> containerMap = new TreeMap<>();
+        for (VirtualContainer container : vContainers) {
+            Location[] locations = {container.getCacheLocation(), container.getArchiveLocation(), container
+                    .getMigrationTargetLocation()};
+            for (Location location : locations) {
+                if (location != null && location.getBlobStoreId() == providerId) {
+                    ContainerMapEntry entry = new ContainerMapEntry();
+                    entry.status = Container.ContainerStatus.INUSE;
+                    entry.virtualContainerId = container.getId();
+                    containerMap.put(location.getContainerName(), entry);
+                }
+            }
+            if (container.getOriginLocation().getBlobStoreId() == providerId) {
+                ContainerMapEntry entry = new ContainerMapEntry();
+                entry.status = Container.ContainerStatus.CONFIGURED;
+                entry.virtualContainerId = container.getId();
+                containerMap.put(container.getOriginLocation().getContainerName(), entry);
+            }
+        }
+        return pageSet.stream()
+                .map(sm -> {
+                    Container container = new Container(sm.getName());
+                    if (containerMap.containsKey(container.getName())) {
+                        ContainerMapEntry entry = containerMap.get(container.getName());
+                        container.setStatus(entry.status);
+                        container.setVirtualContainerId(entry.virtualContainerId);
+                    }
+                    return container;
+                })
                 .collect(Collectors.toList());
-        return containerNames;
     }
 
     @GET
@@ -314,11 +342,22 @@ public final class ObjectStoreResource {
         }
     }
 
+    private static class ContainerMapEntry {
+        private int virtualContainerId;
+        private Container.ContainerStatus status;
+    }
+
     private static class Container {
+        enum ContainerStatus { UNCONFIGURED, CONFIGURED, INUSE };
+
         private String name;
+        private ContainerStatus status;
+        private int virtualContainerId;
 
         Container(String name) {
             this.name = name;
+            virtualContainerId = -1;
+            status = ContainerStatus.UNCONFIGURED;
         }
 
         public void setName(String name) {
@@ -327,6 +366,22 @@ public final class ObjectStoreResource {
 
         public String getName() {
             return name;
+        }
+
+        public void setStatus(ContainerStatus status) {
+            this.status = status;
+        }
+
+        public ContainerStatus getStatus() {
+            return status;
+        }
+
+        public int getVirtualContainerId() {
+            return virtualContainerId;
+        }
+
+        public void setVirtualContainerId(int virtualContainerId) {
+            this.virtualContainerId = virtualContainerId;
         }
     }
 }

@@ -1,31 +1,128 @@
 <ng-include src="'views/partials/navbar.html'"></ng-include>
 
 <div class="container main">
-  <h1 class="page-header">Object Stores</h1>
+  <h1 class="page-header">{{store.nickname}}</h1>
+  <p class="lead">
+  Provider: {{store.provider}}
+  </p>
+  <p>
+    <button class="btn btn-default" ng-click="actions.editStore(store)">
+      <span class="glyphicon glyphicon-edit"></span> Edit {{store.nickname}} store
+    </button>
+  </p>
 
   <div class="col-sm-6 table-responsive">
-    <button class="btn btn-primary" ng-click="actions.addStore()">
-      <span class="glyphicon glyphicon-plus"></span> Add an object store
-    </button>
     <table class="table table-hover">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Provider</th>
-          <th>Identity</th>
+          <th>Container</th>
+          <th>Status</th>
+          <th><!-- enhance/edit button --></th>
+          <th><!-- bounce button --></th>
         </tr>
       </thead>
       <tbody>
-        <tr ng-repeat="store in stores">
+        <tr ng-repeat="container in containers">
           <td>
-            <a href="" ng-click="actions.editStore(store)" class="icon">
-              <span class="glyphicon glyphicon-edit"></span></a>
-            {{store.nickname}}
+            {{container.name}}
           </td>
-          <td>{{store.provider}}</td>
-          <td>{{store.identity}}</td>
+          <td><i>{{interpretStatus(container.status)}}</i></td>
+          <td>
+            <button class="btn btn-success" ng-click="actions.enhanceContainer(container)"
+                ng-if="container.status === 'UNCONFIGURED'">
+              enhance!
+            </button>
+            <button class="btn btn-default" ng-click="actions.enhanceContainer(container)"
+                ng-if="container.status === 'CONFIGURED'">
+              <span class="glyphicon glyphicon-edit"></span> edit
+            </button>
+          </td>
+          <td>
+            <button class="btn btn-primary" id="bounce-btn-{{container.name}}"
+                ng-click="actions.bounce(container)" ng-if="container.status === 'CONFIGURED'">
+              bounce!
+            </button>
+          </td>
         </tr>
       </tbody>
     </table>
+  </div>
+</div>
+
+<!-- Edit container modal prompt -->
+<div class="modal fade" id="configureContainerModal" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        <h4 class="modal-title">Configure {{enhanceContainer.name}}</h4>
+      </div>
+      <div class="modal-body">
+        <div class="container-fluid">
+          <div class="row" ng-repeat="location in locations">
+            <p>
+              <div ng-if="location.object.blobStoreId === -1" class="col-sm-6">
+                <button class="btn btn-default" ng-click="actions.prompt(location)">
+                  Add {{location.name}}
+                </button>
+              </div>
+              <div ng-if="location.object.blobStoreId !== -1" class="col-sm-6">
+                <button class="btn btn-default" ng-click="actions.prompt(location)">
+                  Edit {{location.edit_name}} settings
+                </button>
+              </div>
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" ng-click="actions.saveContainer()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Enter settings for the policy tier -->
+<div class="modal fade" id="configureTierModal" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        <h4 class="modal-title">Edit {{editLocation.edit_name}} settings</h4>
+      </div>
+      <div class="modal-body">
+        <div class="container-fluid">
+          <form class="form">
+            <div class="form-group">
+              <label class="control-label">Cache container</label>
+              <div class="form-inline">
+                <select class="form-control" ng-model="editLocation.object.blobStoreId"
+                    ng-options="store.id as store.nickname for store in stores">
+                  <option value="">Select object store&hellip;</option>
+                </select>
+                <select class="form-control" ng-model="editLocation.object.containerName"
+                    ng-options="container.name as container.name for container in getContainersForPrompt()">
+                  <option value="">Select container&hellip;</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="control-label">Copy to {{enhanceContainer.name}} after:</label>
+              <input class="form-control" type="text" ng-model="editLocation.object.copyDelay"
+                placeholder="Delay before copying to the primary store"/>
+            </div>
+            <div class="form-group">
+              <label class="control-label">Move to {{enhanceContainer.name}} after:</label>
+              <input class="form-control" type="text" ng-model="editLocation.object.moveDelay"
+                placeholder="Delay before moving to the primary store"/>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
   </div>
 </div>

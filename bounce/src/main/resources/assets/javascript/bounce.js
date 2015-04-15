@@ -3,7 +3,6 @@ var bounce = angular.module('bounce', [
   'ngRoute',
   'settingsControllers',
   'storesControllers',
-  'virtualContainersControllers',
   'welcomeControllers'
 ]);
 
@@ -13,26 +12,17 @@ bounce.config(['$locationProvider', function($locationProvider) {
 
 bounce.config(['$routeProvider', function($routeProvider) {
   $routeProvider.
-    when('/create_container', {
-      templateUrl: 'views/partials/create_container.html',
-      controller: 'CreateVirtualContainerCtrl'
-    }).
-    when('/create_store/:welcomeUrl/:objectStoreId?', {
+    when('/create_store/:objectStoreId?', {
       templateUrl: 'views/partials/create_store.html',
       controller: 'CreateStoreCtrl'
     }).
     when('/dashboard', {
-      templateUrl: 'views/partials/dashboard.html',
-      controller: 'ViewContainersCtrl'
+      redirectTo: '/stores'
     }).
     when('/edit_store/:objectStore', {
-      redirectTo: '/create_store/false/:objectStore'
+      redirectTo: '/create_store/:objectStore'
     }).
-    when('/edit_container/:containerId', {
-      templateUrl: 'views/partials/edit_container.html',
-      controller: 'EditVirtualContainerCtrl'
-    }).
-    when('/stores', {
+    when('/stores/:id?', {
       templateUrl: 'views/partials/stores.html',
       controller: 'ViewStoresCtrl'
     }).
