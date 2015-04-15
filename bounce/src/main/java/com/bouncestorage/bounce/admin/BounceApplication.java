@@ -82,10 +82,12 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private Clock clock = Clock.systemUTC();
     private PausableThreadPoolExecutor backgroundReconcileTasks = new PausableThreadPoolExecutor(4);
     private PausableThreadPoolExecutor backgroundTasks = new PausableThreadPoolExecutor(4);
+    private BounceStats bounceStats;
 
     public BounceApplication() {
         this.config = new BounceConfiguration();
         this.configView = new ConfigurationPropertiesView(config);
+        bounceStats = new BounceStats();
     }
 
     private void startS3Proxy() {
@@ -226,6 +228,10 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         return blobStore;
     }
 
+    public BounceStats getBounceStats() {
+        return bounceStats;
+    }
+
     @VisibleForTesting
     public Map.Entry<String, BlobStore> locateBlobStore(String identity,
                                                         String container, String blob) {
@@ -348,6 +354,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         startS3Proxy();
         bounceService = new BounceService(this);
         initFromConfig();
+        bounceStats.start();
         registerConfigurationListener();
     }
 
@@ -359,6 +366,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         if (!backgroundReconcileTasks.isShutdown()) {
             backgroundReconcileTasks.shutdown();
         }
+        bounceStats.shutdown();
     }
 
     @VisibleForTesting
