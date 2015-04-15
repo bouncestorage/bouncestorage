@@ -14,7 +14,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Queue;
 import java.util.stream.Collectors;
+
+import javax.ws.rs.HttpMethod;
 
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
@@ -205,6 +208,26 @@ public final class MigrationPolicyTest {
         for (int i = 0; i < blobs.length; i++) {
             assertThat(results.get(i)).isEqualTo(blobs[i]);
         }
+    }
+    @Test
+    public void testLoggingPutGet() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        Blob blob = UtilsTest.makeBlob(policy, blobName);
+        policy.putBlob(containerName, blob);
+        Blob getBlob = policy.getBlob(containerName, blobName);
+        UtilsTest.assertEqualBlobs(getBlob, blob);
+        Queue<Object[]> q = app.getBounceStats().getOpsQueue();
+        assertThat(q).hasSize(2);
+        Object[] putOp = q.remove();
+        Object[] getOp = q.remove();
+        assertThat(putOp[1]).isEqualTo(HttpMethod.PUT);
+        assertThat(putOp[2]).isEqualTo(containerName + "-dest");
+        assertThat(putOp[3]).isEqualTo(blobName);
+        assertThat(putOp[4]).isEqualTo(getBlob.getMetadata().getSize());
+        assertThat(getOp[1]).isEqualTo(HttpMethod.GET);
+        assertThat(getOp[2]).isEqualTo(containerName + "-dest");
+        assertThat(getOp[3]).isEqualTo(blobName);
+        assertThat(getOp[4]).isEqualTo(getBlob.getMetadata().getSize());
     }
 
     private void verifyList(String[] expectedNames) throws Exception {

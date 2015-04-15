@@ -149,7 +149,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             throw propagate(e);
         }
 
-        providers.put(Integer.valueOf(id), context.getBlobStore());
+        providers.put(Integer.valueOf(id), new LoggingBlobStore(context.getBlobStore(), this));
     }
 
     static Optional<BouncePolicy> getBouncePolicyFromName(String name) {
