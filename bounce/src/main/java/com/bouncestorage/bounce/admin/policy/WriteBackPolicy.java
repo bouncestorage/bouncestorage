@@ -40,6 +40,7 @@ import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.io.MutableContentMetadata;
+import org.jclouds.io.Payload;
 
 @AutoService(BouncePolicy.class)
 public class WriteBackPolicy extends BouncePolicy {
@@ -166,9 +167,10 @@ public class WriteBackPolicy extends BouncePolicy {
         PipedInputStream pipeIn = new PipedInputStream();
         PipedOutputStream pipeOut = new PipedOutputStream(pipeIn);
 
-        TeeInputStream tee = new TeeInputStream(blob.getPayload().openStream(), pipeOut, true);
+        Payload blobPayload = blob.getPayload();
         MutableContentMetadata contentMetadata = blob.getMetadata().getContentMetadata();
         blob.setPayload(pipeIn);
+        TeeInputStream tee = new TeeInputStream(blobPayload.openStream(), pipeOut, true);
         blob.getMetadata().setContentMetadata(contentMetadata);
 
         app.executeBackgroundTask(() -> {
