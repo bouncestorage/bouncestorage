@@ -5,6 +5,7 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import static com.bouncestorage.bounce.UtilsTest.assertStatus;
 import static com.google.common.base.Throwables.propagate;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -121,7 +122,7 @@ public final class MigrationPolicyTest {
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
 
-        assertThat(status.getMovedObjectCount()).isEqualTo(blobs.length);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(blobs.length);
         verifyList(blobs);
     }
 
@@ -140,7 +141,7 @@ public final class MigrationPolicyTest {
 
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getRemovedObjectCount()).isEqualTo(blobs.length);
+        assertStatus(status, status::getRemovedObjectCount).isEqualTo(blobs.length);
         verifyList(blobs);
     }
 
@@ -150,11 +151,11 @@ public final class MigrationPolicyTest {
         putBlobs(blobs);
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getCopiedObjectCount()).isEqualTo(0);
-        assertThat(status.getRemovedObjectCount()).isEqualTo(0);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
-        assertThat(status.getMovedObjectCount()).isEqualTo(0);
-        assertThat(status.getLinkedObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getCopiedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getRemovedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getLinkedObjectCount).isEqualTo(0);
     }
 
     @Test

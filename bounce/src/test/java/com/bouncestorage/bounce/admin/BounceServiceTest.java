@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce.admin;
 
+import static com.bouncestorage.bounce.UtilsTest.assertStatus;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
@@ -60,9 +62,9 @@ public final class BounceServiceTest {
                 UtilsTest.makeBlob(policy, UtilsTest.createRandomBlobName()));
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getMovedObjectCount()).isEqualTo(0);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
     }
 
     @Test
@@ -74,9 +76,9 @@ public final class BounceServiceTest {
         Blob blob = policy.getBlob(containerName, blobName);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getMovedObjectCount()).isEqualTo(1);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
         UtilsTest.assertEqualBlobs(blob, policy.getBlob(containerName, blobName));
     }
 
@@ -89,15 +91,15 @@ public final class BounceServiceTest {
         Blob blob = policy.getBlob(containerName, blobName);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getMovedObjectCount()).isEqualTo(1);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
 
         status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getMovedObjectCount()).isEqualTo(0);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
         UtilsTest.assertEqualBlobs(blob, policy.getBlob(containerName, blobName));
     }
 
@@ -110,16 +112,16 @@ public final class BounceServiceTest {
 
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getMovedObjectCount()).isEqualTo(0);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
 
         UtilsTest.advanceServiceClock(app, Duration.ofHours(2));
         status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getMovedObjectCount()).isEqualTo(1);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
     }
 
     @Test
@@ -134,8 +136,8 @@ public final class BounceServiceTest {
         policy.putBlob(containerName, blob);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getCopiedObjectCount()).isEqualTo(1);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getCopiedObjectCount).isEqualTo(1);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
         checkCopiedBlob(blob.getMetadata().getName());
     }
 
@@ -152,11 +154,11 @@ public final class BounceServiceTest {
         policy.putBlob(containerName, blob);
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getCopiedObjectCount()).isEqualTo(1);
+        assertStatus(status, status::getCopiedObjectCount).isEqualTo(1);
         status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getCopiedObjectCount()).isEqualTo(0);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getCopiedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
         checkCopiedBlob(blob.getMetadata().getName());
     }
 
@@ -176,7 +178,7 @@ public final class BounceServiceTest {
 
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getCopiedObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getCopiedObjectCount).isEqualTo(0);
     }
 
     @Test
@@ -190,8 +192,8 @@ public final class BounceServiceTest {
 
         BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getMovedObjectCount()).isEqualTo(0);
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
         BlobMetadata nearBlob = policy.getSource().blobMetadata(containerName, blob.getMetadata().getName());
         assertThat(BounceLink.isLink(nearBlob)).isTrue();
     }

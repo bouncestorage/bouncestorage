@@ -18,14 +18,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
+import java.util.function.LongSupplier;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceConfiguration;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.admin.BounceService;
 import com.bouncestorage.bounce.admin.Location;
 import com.bouncestorage.bounce.admin.VirtualContainer;
 import com.bouncestorage.bounce.admin.VirtualContainerResource;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -36,6 +39,7 @@ import com.google.common.net.MediaType;
 import com.google.inject.Module;
 
 import org.apache.commons.configuration.Configuration;
+import org.assertj.core.api.AbstractLongAssert;
 import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
@@ -143,6 +147,18 @@ public final class UtilsTest {
             assertThat(metadata2.getContentType()).isEqualTo(
                     metadata.getContentType());
         }
+    }
+
+    public static AbstractLongAssert assertStatus(BounceService.BounceTaskStatus status, LongSupplier supplier)
+            throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        class LongAssert extends AbstractLongAssert<LongAssert> {
+            LongAssert(Long actual) {
+                super(actual, LongAssert.class);
+            }
+        }
+        return new LongAssert(supplier.getAsLong())
+                .as(mapper.writeValueAsString(status));
     }
 
     @Before

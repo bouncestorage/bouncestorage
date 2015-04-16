@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce.admin;
 
+import static com.bouncestorage.bounce.UtilsTest.assertStatus;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
@@ -119,9 +121,9 @@ public final class ConfigTest {
 
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getMovedObjectCount()).isEqualTo(1);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
     }
 
     @Test
@@ -155,9 +157,9 @@ public final class ConfigTest {
 
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
-        assertThat(status.getMovedObjectCount()).isEqualTo(0);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
     }
 
     @Test
