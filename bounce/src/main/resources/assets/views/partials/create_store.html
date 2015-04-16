@@ -10,37 +10,36 @@
       </div>
       <div class="form-group">
         <label class="control-label">Object store type</label>
-        <select class="form-control" ng-model="provider"
-            ng-change="actions.updatePrompts()" ng-disabled="edit">
-          <option value="none">Select a storage type...</option>
-          <option value="aws-s3">AWS S3</option>
-          <option value="swift">OpenStack Swift</option>
-          <option value="google">Google Cloud Storage</option>
-          <option value="azure">Azure</option>
-          <option value="filesystem">Local filesystem (debugging only)</option>
-          <option value="transient">In-memory store (debugging only)</option>
+        <select class="form-control" ng-model="provider" ng-disabled="edit"
+            ng-options="provider.name for provider in providers">
+          <option value="">Select an object store&hellip;</option>
         </select>
       </div>
       <div class="form-group">
         <label class="control-label">Object store identity</label>
         <input type="text" class="form-control" ng-model="identity"
-          ng-disabled="edit" placeholder="API identity">
+          ng-disabled="edit || provider === null" placeholder="API identity">
       </div>
       <div class="form-group">
         <label class="control-label">Object store credential</label>
         <input type="password" class="form-control" ng-model="credential"
-          placeholder="Secret key">
+          placeholder="Secret key" ng-disabled="provider === null">
       </div>
-      <div class="form-group">
+      <div class="form-group" ng-if="provider !== null && provider.hasEndpoint">
         <label class="control-label">Object store endpoint</label>
-        <input type="text" class="form-control" ng-model="endpoint"
-          ng-disabled="edit" placeholder="Endpoint">
+        <input type="text" class="form-control" ng-model="provider.endpoint"
+          ng-disabled="edit || provider === null" placeholder="Endpoint">
       </div>
-      <div class="form-group">
+      <div class="form-group" ng-if="provider !== null && provider.hasRegion">
         <label class="control-label">Object store region</label>
-        <select class="form-control" ng-model="region" ng-disabled="edit">
-        <!-- regions are provider dependent and dynamically populated -->
+        <select class="form-control" ng-model="provider.region" ng-disabled="edit"
+            ng-options="region.value as region.name for region in provider.regions"
+            ng-if="provider.regions.length !== 0">
+          <option value="">Select region&hellip;</option>
         </select>
+        <input type="text" class="form-control" ng-model="provider.region"
+            placeholder="Enter region"
+            ng-if="provider.regions.length === 0" ng-disabled="edit">
       </div>
       <div class="row">
         <button class="btn btn-success" ng-click="actions.submitNewStore()"

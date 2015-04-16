@@ -4,33 +4,123 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
   '$location', '$routeParams', 'ObjectStore',
   function ($scope, $rootScope, $location, $routeParams, ObjectStore) {
     $scope.actions = {};
-    $scope.provider = 'none';
+    $scope.provider = null;
+
+    var awsRegions = [ { name: "US Standard",
+                           value: "us-east-1"
+                       },
+                       { name: "US West (California)",
+                         value: "us-west-1"
+                       },
+                       { name: "US West (Oregon)",
+                         value: "us-west-2"
+                       },
+                       { name: "EU (Ireland)",
+                         value: "eu-west-1"
+                       },
+                       { name: "Singapore",
+                         value: "ap-southeast-1"
+                       },
+                       { name: "Sydney",
+                         value: "ap-southeast-2"
+                       },
+                       { name: "Tokyo",
+                         value: "ap-northeast-1"
+                       },
+                       { name: "South America (Sao Paulo)",
+                         value: "sa-east-1"
+                       }
+                     ];
+    var googleRegions = [ { name: "Eastern Asia-Pacific",
+                            value: "ASIA-EAST1"
+                          },
+                          { name: "Central US (1)",
+                            value: "US-CENTRAL1"
+                          },
+                          { name: "Central US (2)",
+                            value: "US-CENTRAL2"
+                          },
+                          { name: "Eastern US (1)",
+                            value: "US-EAST1"
+                          },
+                          { name: "Eastern US (2)",
+                            value: "US-EAST2"
+                          },
+                          { name: "Eastern US (3)",
+                            value: "US-EAST3"
+                          },
+                          { name: "Western US",
+                            value: "US-WEST1"
+                          }
+                        ];
+
+    $scope.providers = [ { name: "Amazon S3",
+                           value: "aws-s3",
+                           regions: awsRegions,
+                           hasRegion: true,
+                           hasEndpoint: false,
+                           region: null
+                         },
+                         /*{ name: "Google Cloud Storage",
+                           value: "google",
+                           hasRegion: true,
+                           hasEndpoint: false,
+                           regions: googleRegions
+                           region: null
+                         },
+                         { name: "Microsoft Azure",
+                             value: "azure"
+                           } */
+                         { name: "OpenStack Swift",
+                           value: "openstack-swift",
+                           hasRegion: true,
+                           regions: [],
+                           hasEndpoint: true,
+                           region: null,
+                           endpoint: null
+                         },
+                         { name: "Local filesystem (debugging only)",
+                           value: "filesystem",
+                           hasRegion: false,
+                           hasEndpoint: true,
+                           endpoint: null
+                         },
+                         { name: "In-memory store (debugging only)",
+                           value: "transient",
+                           hasRegion: false,
+                           hasEndpoint: false
+                         }
+                       ];
 
     if (typeof($routeParams.objectStoreId) === 'string') {
       $scope.edit = true;
       ObjectStore.get({ id:$routeParams.objectStoreId },
         function(result) {
           $scope.nickname = result.nickname;
-          $scope.provider = result.provider;
+          for (var i = 0; i < $scope.providers.length; i++) {
+            if ($scope.providers[i].value === result.provider) {
+              $scope.provider = $scope.providers[i];
+            }
+          }
           $scope.identity = result.identity;
           $scope.credential = result.credential;
-          $scope.region = result.region;
-          $scope.endpoint = result.endpoint;
+          $scope.provider.region = result.region;
+          $scope.provider.endpoint = result.endpoint;
       });
     }
 
     $scope.actions.submitNewStore = function() {
       var newStore = { nickname: $scope.nickname,
-                       provider: $scope.provider,
+                       provider: $scope.provider.value,
                        identity: $scope.identity,
                        credential: $scope.credential,
-                       region: $scope.region,
+                       region: $scope.provider.region,
                        endpoint: $scope.endpoint
                      };
       ObjectStore.save(newStore, function (res) {
-          $rootScope.$emit('addedStore', newStore);
-          $location.path('/stores');
-        });
+        $rootScope.$emit('addedStore', newStore);
+        $location.path('/stores');
+      });
     };
 
     $scope.actions.updateStore = function() {
