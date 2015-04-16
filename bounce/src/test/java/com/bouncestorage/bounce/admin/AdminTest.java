@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce.admin;
 
+import static com.bouncestorage.bounce.UtilsTest.assertStatus;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
@@ -109,9 +111,9 @@ public final class AdminTest {
         Collection<BounceService.BounceTaskStatus> res = bounceBlobsResource.status();
         assertThat(res).hasSize(1);
         BounceService.BounceTaskStatus status = res.iterator().next();
-        assertThat(status.getMovedObjectCount()).isEqualTo(1);
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
-        assertThat(status.getTotalObjectCount()).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
         assertThat(status.future().isDone()).isTrue();
     }
 
