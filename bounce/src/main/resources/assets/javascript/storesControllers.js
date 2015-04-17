@@ -150,8 +150,8 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
 }]);
 
 function findStore(stores, id) {
-  for (var i = 0; i < id; i++) {
-    if (stores[i].id == id) {
+  for (var i = 0; i < stores.length; i++) {
+    if (stores[i].id === id) {
       return stores[i];
     }
   }
@@ -235,13 +235,19 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
 
     ObjectStore.query(function(results) {
       $scope.stores = results;
+      var redirect = true;
       if ($routeParams.id !== null) {
-        $scope.store = findStore($scope.stores, $routeParams.id);
-        if ($scope.store === undefined) {
-          $scope.store = $scope.stores[0];
+        $scope.store = findStore($scope.stores, Number($routeParams.id));
+        if ($scope.store !== undefined) {
+          redirect = false;
         }
-      } else {
-        $scope.store = $scope.stores[0];
+      }
+      if (redirect === true) {
+        if ($scope.stores.length > 0) {
+          $location.path('/stores/0');
+        } else {
+          $location.path('/create_store');
+        }
       }
       $scope.refreshContainersMap();
     });

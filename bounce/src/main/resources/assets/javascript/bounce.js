@@ -67,10 +67,16 @@ bounce.controller('NavBarCtrl', ['$scope', '$rootScope', '$location',
   });
 
   $rootScope.$on('addedStore', function(event, store) {
-    $scope.stores.push(store);
+    ObjectStore.query(function(results) {
+      $scope.stores = results;
+    });
   });
 
   $scope.isActive = function(path) {
-    return $location.path() === path || $location.path().startsWith(path);
+    return $location.path() === path;
+  };
+
+  $scope.isActivePrefix = function(path) {
+    return $location.path().startsWith(path);
   };
 }]);
