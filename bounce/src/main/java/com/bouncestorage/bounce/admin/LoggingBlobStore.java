@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce.admin;
 
+import java.util.Date;
+
 import javax.ws.rs.HttpMethod;
 
 import com.bouncestorage.bounce.ForwardingBlobStore;
@@ -25,18 +27,21 @@ public final class LoggingBlobStore extends ForwardingBlobStore {
 
     @Override
     public Blob getBlob(String containerName, String blobName, GetOptions options) {
+        Date startTime = new Date();
         Blob blob = delegate().getBlob(containerName, blobName, options);
         if (blob != null) {
-            app.getBounceStats().logOperation(HttpMethod.GET, containerName, blobName, blob.getMetadata().getSize());
+            app.getBounceStats().logOperation(HttpMethod.GET, containerName, blobName,
+                    blob.getMetadata().getSize(), startTime.getTime());
         }
         return blob;
     }
 
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions options) {
+        Date startTime = new Date();
         String result = delegate().putBlob(containerName, blob, options);
         app.getBounceStats().logOperation(HttpMethod.PUT, containerName, blob.getMetadata().getName(),
-                blob.getMetadata().getContentMetadata().getContentLength());
+                blob.getMetadata().getContentMetadata().getContentLength(), startTime.getTime());
         return result;
     }
 }
