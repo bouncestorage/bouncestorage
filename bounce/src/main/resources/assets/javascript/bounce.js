@@ -1,6 +1,7 @@
 var bounce = angular.module('bounce', [
   'ngResource',
   'ngRoute',
+  'dashboardControllers',
   'settingsControllers',
   'storesControllers',
   'welcomeControllers'
@@ -17,7 +18,8 @@ bounce.config(['$routeProvider', function($routeProvider) {
       controller: 'CreateStoreCtrl'
     }).
     when('/dashboard', {
-      redirectTo: '/stores'
+      templateUrl: 'views/partials/dashboard.html',
+      controller: 'DashboardCtrl'
     }).
     when('/edit_store/:objectStore', {
       redirectTo: '/create_store/:objectStore'
