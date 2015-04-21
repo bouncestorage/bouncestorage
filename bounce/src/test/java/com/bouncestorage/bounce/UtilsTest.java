@@ -149,14 +149,15 @@ public final class UtilsTest {
         }
     }
 
-    public static AbstractLongAssert assertStatus(BounceService.BounceTaskStatus status, LongSupplier supplier)
-            throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        class LongAssert extends AbstractLongAssert<LongAssert> {
-            LongAssert(Long actual) {
-                super(actual, LongAssert.class);
-            }
+    private static class LongAssert extends AbstractLongAssert<LongAssert> {
+        LongAssert(Long actual) {
+            super(actual, LongAssert.class);
         }
+    }
+
+    public static AbstractLongAssert<LongAssert> assertStatus(BounceService.BounceTaskStatus status,
+            LongSupplier supplier) throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
         return new LongAssert(supplier.getAsLong())
                 .as(mapper.writeValueAsString(status));
     }
