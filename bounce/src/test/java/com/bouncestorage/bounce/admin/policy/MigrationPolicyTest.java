@@ -221,13 +221,15 @@ public final class MigrationPolicyTest {
         Object[] putOp = q.remove();
         Object[] getOp = q.remove();
         assertThat(putOp[1]).isEqualTo(HttpMethod.PUT);
-        assertThat(putOp[2]).isEqualTo(containerName + "-dest");
-        assertThat(putOp[3]).isEqualTo(blobName);
-        assertThat(putOp[4]).isEqualTo(getBlob.getMetadata().getSize());
+        assertThat(putOp[2]).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putOp[3]).isEqualTo(containerName + "-dest");
+        assertThat(putOp[4]).isEqualTo(blobName);
+        assertThat(putOp[5]).isEqualTo(getBlob.getMetadata().getSize());
         assertThat(getOp[1]).isEqualTo(HttpMethod.GET);
-        assertThat(getOp[2]).isEqualTo(containerName + "-dest");
-        assertThat(getOp[3]).isEqualTo(blobName);
-        assertThat(getOp[4]).isEqualTo(getBlob.getMetadata().getSize());
+        assertThat(putOp[2]).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(getOp[3]).isEqualTo(containerName + "-dest");
+        assertThat(getOp[4]).isEqualTo(blobName);
+        assertThat(getOp[5]).isEqualTo(getBlob.getMetadata().getSize());
     }
 
     private void verifyList(String[] expectedNames) throws Exception {

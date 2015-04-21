@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 public class BounceStats {
     public static final String DATABASE = "bounce";
     public static final String OPS_SERIES = "ops";
-    public static final String[] OPS_COLUMNS = {"time", "op", "container", "object", "size", "duration"};
+    public static final String[] OPS_COLUMNS = {"time", "op", "provider", "container", "object", "size", "duration"};
     public static final String ENDPOINT = "http://localhost:8086";
     public static final String USER = "bounce";
     public static final String PASSWORD = "bounce";
@@ -55,10 +55,11 @@ public class BounceStats {
         }
     }
 
-    public void logOperation(String opName, String containerName, String objectName, Long size, Long startTime) {
+    public void logOperation(String opName, String providerName, String containerName, String objectName, Long size,
+                             Long startTime) {
         synchronized (opsQueue) {
             Long timeStamp = new Date().getTime();
-            Object[] values = {timeStamp, opName, containerName, objectName, size, timeStamp - startTime};
+            Object[] values = {timeStamp, opName, providerName, containerName, objectName, size, timeStamp - startTime};
             opsQueue.add(values);
         }
     }

@@ -22,14 +22,14 @@ public class BounceStatsTest {
 
     @Test
     public void testRemoveProcessedValues() {
-        stats.logOperation(HttpMethod.GET, "container", "foo", Long.valueOf(1), Long.valueOf(0));
-        stats.logOperation(HttpMethod.PUT, "container", "foo", Long.valueOf(2), Long.valueOf(0));
-        stats.logOperation(HttpMethod.PUT, "container", "foo", Long.valueOf(3), Long.valueOf(0));
+        stats.logOperation(HttpMethod.GET, "provider", "container", "foo", Long.valueOf(1), Long.valueOf(0));
+        stats.logOperation(HttpMethod.PUT, "provider", "container", "foo", Long.valueOf(2), Long.valueOf(0));
+        stats.logOperation(HttpMethod.PUT, "provider", "container", "foo", Long.valueOf(3), Long.valueOf(0));
         Serie serie = stats.prepareSerie();
-        stats.logOperation(HttpMethod.GET, "container", "foo", Long.valueOf(4), Long.valueOf(0));
-        stats.logOperation(HttpMethod.GET, "container", "foo", Long.valueOf(5), Long.valueOf(0));
+        stats.logOperation(HttpMethod.GET, "provider", "container", "foo", Long.valueOf(4), Long.valueOf(0));
+        stats.logOperation(HttpMethod.GET, "provider", "container", "foo", Long.valueOf(5), Long.valueOf(0));
         stats.removeProcessedValues(serie);
         assertThat(stats.getOpsQueue()).hasSize(2);
-        assertThat(stats.getOpsQueue().peek()[4]).isEqualTo(Long.valueOf(4));
+        assertThat(stats.getOpsQueue().peek()[5]).isEqualTo(Long.valueOf(4));
     }
 }

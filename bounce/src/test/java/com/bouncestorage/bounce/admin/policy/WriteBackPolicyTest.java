@@ -313,16 +313,19 @@ public class WriteBackPolicyTest {
         Object[] putOp = q.remove();
         Object[] getOp = q.remove();
         assertThat(putMarkerOp[1]).isEqualTo(HttpMethod.PUT);
-        assertThat(putMarkerOp[2]).isEqualTo(containerName);
-        assertThat(putMarkerOp[3]).isEqualTo(blobName + WriteBackPolicy.LOG_MARKER_SUFFIX);
+        assertThat(putOp[2]).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putMarkerOp[3]).isEqualTo(containerName);
+        assertThat(putMarkerOp[4]).isEqualTo(blobName + WriteBackPolicy.LOG_MARKER_SUFFIX);
         assertThat(putOp[1]).isEqualTo(HttpMethod.PUT);
-        assertThat(putOp[2]).isEqualTo(containerName);
-        assertThat(putOp[3]).isEqualTo(blobName);
-        assertThat(putOp[4]).isEqualTo(getBlob.getMetadata().getSize());
+        assertThat(putOp[2]).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putOp[3]).isEqualTo(containerName);
+        assertThat(putOp[4]).isEqualTo(blobName);
+        assertThat(putOp[5]).isEqualTo(getBlob.getMetadata().getSize());
         assertThat(getOp[1]).isEqualTo(HttpMethod.GET);
-        assertThat(getOp[2]).isEqualTo(containerName);
-        assertThat(getOp[3]).isEqualTo(blobName);
-        assertThat(getOp[4]).isEqualTo(getBlob.getMetadata().getSize());
+        assertThat(putOp[2]).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(getOp[3]).isEqualTo(containerName);
+        assertThat(getOp[4]).isEqualTo(blobName);
+        assertThat(getOp[5]).isEqualTo(getBlob.getMetadata().getSize());
     }
 
     private void assertEqualBlobStores(BlobStore one, BlobStore two) throws Exception {

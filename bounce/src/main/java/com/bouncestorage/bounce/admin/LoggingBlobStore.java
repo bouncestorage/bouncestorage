@@ -29,8 +29,9 @@ public final class LoggingBlobStore extends ForwardingBlobStore {
     public Blob getBlob(String containerName, String blobName, GetOptions options) {
         Date startTime = new Date();
         Blob blob = delegate().getBlob(containerName, blobName, options);
+
         if (blob != null) {
-            app.getBounceStats().logOperation(HttpMethod.GET, containerName, blobName,
+            app.getBounceStats().logOperation(HttpMethod.GET, getProviderId(), containerName, blobName,
                     blob.getMetadata().getSize(), startTime.getTime());
         }
         return blob;
@@ -40,8 +41,12 @@ public final class LoggingBlobStore extends ForwardingBlobStore {
     public String putBlob(String containerName, Blob blob, PutOptions options) {
         Date startTime = new Date();
         String result = delegate().putBlob(containerName, blob, options);
-        app.getBounceStats().logOperation(HttpMethod.PUT, containerName, blob.getMetadata().getName(),
+        app.getBounceStats().logOperation(HttpMethod.PUT, getProviderId(), containerName, blob.getMetadata().getName(),
                 blob.getMetadata().getContentMetadata().getContentLength(), startTime.getTime());
         return result;
+    }
+
+    private String getProviderId() {
+        return this.getContext().unwrap().getProviderMetadata().getId();
     }
 }
