@@ -41,12 +41,12 @@ public class BounceStats {
     public BounceStats() {
         db = InfluxDBFactory.connect(ENDPOINT, USER, PASSWORD);
         opsQueue = new LinkedList<>();
-        scheduler = new ScheduledThreadPoolExecutor(0);
+        scheduler = new ScheduledThreadPoolExecutor(1);
     }
 
     public void start() {
         logger.debug("Starting the stats service");
-        scheduler.scheduleAtFixedRate(() -> submitValues(), 0, STATS_INTERVAL, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(this::submitValues, 0, STATS_INTERVAL, TimeUnit.SECONDS);
     }
 
     public void shutdown() {
