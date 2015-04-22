@@ -1,4 +1,4 @@
-<nav class="navbar navbar-inverse navbar-fixed-top">
+<nav class="navbar navbar-inverse navbar-fixed-top" ng-controller="NavBarCtrl">
   <div class="container-fluid">
     <div class="navbar-header">
       <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
@@ -12,22 +12,26 @@
     </div>
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav navbar-left">
-        <li class="dropdown">
+        <li ng-class="{ dropdown: true,
+            active: isActive('/create_store') || isActive('/stores/') }">
           <a href="" class="dropdown-toggle" data-toggle="dropdown"
             role="button">
               Object Stores <span class="caret"></span>
           </a>
           <ul class="dropdown-menu" role="menu">
-            <li ng-repeat="store in stores">
+            <li ng-repeat="store in stores" ng-if="stores.length > 0"
+                ng-class="{ active: isActive('/stores/{{store.id}}')}">
               <a href="/#/stores/{{store.id}}">{{store.nickname}}</a>
             </li>
-            <li class="divider"></li>
-            <li>
+            <li class="divider" ng-if="stores.length > 0"></li>
+            <li ng-class="{ active: isActive('/create_store') }">
               <a href="/#/create_store">Create a new store</a>
             </li>
           </ul>
         </li>
-        <li class="settings-link"><a href="/#/settings">Settings</a></li>
+        <li ng-class="{ active: isActive('/settings') }">
+          <a href="/#/settings">Settings</a>
+        </li>
       </ul>
     </div>
   </div>
