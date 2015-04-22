@@ -1,14 +1,10 @@
 var storesControllers = angular.module('storesControllers', ['bounce']);
 
-storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
-  '$routeParams', 'ObjectStore',
-  function ($scope, $location, $routeParams, ObjectStore) {
+storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
+  '$location', '$routeParams', 'ObjectStore',
+  function ($scope, $rootScope, $location, $routeParams, ObjectStore) {
     $scope.actions = {};
     $scope.provider = 'none';
-
-    ObjectStore.query(function(results) {
-      $scope.stores = results;
-    });
 
     if (typeof($routeParams.objectStoreId) === 'string') {
       $scope.edit = true;
@@ -24,14 +20,15 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$location',
     }
 
     $scope.actions.submitNewStore = function() {
-      ObjectStore.save(
-        { nickname: $scope.nickname,
-          provider: $scope.provider,
-          identity: $scope.identity,
-          credential: $scope.credential,
-          region: $scope.region,
-          endpoint: $scope.endpoint
-        }, function (res) {
+      var newStore = { nickname: $scope.nickname,
+                       provider: $scope.provider,
+                       identity: $scope.identity,
+                       credential: $scope.credential,
+                       region: $scope.region,
+                       endpoint: $scope.endpoint
+                     };
+      ObjectStore.save(newStore, function (res) {
+          $rootScope.$emit('addedStore', newStore);
           $location.path('/stores');
         });
     };
