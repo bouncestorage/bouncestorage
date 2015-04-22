@@ -60,7 +60,7 @@ APT_SOURCES = "/etc/apt/sources.list"
 UNSTABLE_REPO = "deb http://cloudfront.debian.net/debian unstable main"
 
 VERIFIER_SENDER = "timuralp@bouncestorage.com"
-VERIFIER_RECEPIENTS = ["timuralp@bouncestorage.com",
+VERIFIER_RECIPIENTS = ["timuralp@bouncestorage.com",
                        "khc@bouncestorage.com",
                        "gaul@bouncestorage.com"
                       ]
@@ -152,7 +152,7 @@ def send_email(creds, subject, body, attachment = None):
         msg = email.mime.multipart.MIMEMultipart()
         msg['Subject'] = subject
         msg['From'] = VERIFIER_SENDER
-        msg['To'] = ';'.join(VERIFIER_RECEPIENTS)
+        msg['To'] = ', '.join(VERIFIER_RECIPIENTS)
         msg.preamble = 'Multipart test results.\n'
         msg.attach(email.mime.text.MIMEText(body))
         mimeAttachment = email.mime.application.MIMEApplication(open(attachment,
@@ -161,12 +161,12 @@ def send_email(creds, subject, body, attachment = None):
                 filename=os.path.basename(attachment))
         msg.attach(mimeAttachment)
         conn.send_raw_email(msg.as_string(), source = VERIFIER_SENDER,
-                destinations = VERIFIER_RECEPIENTS)
+                destinations = VERIFIER_RECIPIENTS)
     else:
         conn.send_email(VERIFIER_SENDER,
                         subject,
                         body,
-                        VERIFIER_RECEPIENTS
+                        VERIFIER_RECIPIENTS
                        )
 
 def setup_github_key(creds):
