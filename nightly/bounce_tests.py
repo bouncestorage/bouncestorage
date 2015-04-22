@@ -2,6 +2,9 @@
 
 import boto
 import boto.ses
+import email.mime.application
+import email.mime.multipart
+import email.mime.text
 import hashlib
 import json
 import os
@@ -35,6 +38,9 @@ META_URL = "http://169.254.169.254/latest/meta-data/iam/"\
 
 BOUNCE_REPO = "git@github.com:bouncestorage/bouncestorage.git"
 BOUNCE_SRC_DIR = "bouncestorage"
+SUREFIRE_DIR = os.path.join(BOUNCE_SRC_DIR, 'bounce', 'target')
+SUREFIRE_DIR_NAME = 'surefire-reports'
+SUREFIRE_ARCHIVE = '/tmp/surefire.tgz'
 BOUNCE_NIGHTLY_TEST_NAME = "nightly/bounce_tests.py"
 
 DOCKER_SWIFT_REPO = "https://github.com/timuralp/docker-swift"
@@ -131,17 +137,37 @@ def get_object(creds, object_name):
     bucket = conn.get_bucket(CONFIG_BUCKET, validate=False, headers=security_headers)
     return bucket.get_key(object_name, headers=security_headers)
 
-def send_email(creds, subject, body):
+def archive_surefire():
+    target_dir = os.path.join(os.environ['HOME'], SUREFIRE_DIR)
+    execute("cd %s && tar -czf %s %s" % (target_dir, SUREFIRE_ARCHIVE,
+            SUREFIRE_DIR_NAME))
+
+def send_email(creds, subject, body, attachment = None):
     conn = boto.ses.connect_to_region("us-east-1",
                                       aws_access_key_id=creds.key,
                                       aws_secret_access_key=creds.secret,
                                       security_token=creds.token)
 
-    conn.send_email(VERIFIER_SENDER,
-                    subject,
-                    body,
-                    VERIFIER_RECEPIENTS
-                   )
+    if attachment:
+        msg = email.mime.multipart.MIMEMultipart()
+        msg['Subject'] = subject
+        msg['From'] = VERIFIER_SENDER
+        msg['To'] = ';'.join(VERIFIER_RECEPIENTS)
+        msg.preamble = 'Multipart test results.\n'
+        msg.attach(email.mime.text.MIMEText(body))
+        mimeAttachment = email.mime.application.MIMEApplication(open(attachment,
+                'rb').read())
+        mimeAttachment.add_header('Content-Disposition', 'attachment',
+                filename=os.path.basename(attachment))
+        msg.attach(mimeAttachment)
+        conn.send_raw_email(msg.as_string(), source = VERIFIER_SENDER,
+                destinations = VERIFIER_RECEPIENTS)
+    else:
+        conn.send_email(VERIFIER_SENDER,
+                        subject,
+                        body,
+                        VERIFIER_RECEPIENTS
+                       )
 
 def setup_github_key(creds):
     key = get_object(creds, GITHUB_KEY)
@@ -176,11 +202,12 @@ def run_test(provider_details, swift_port, test="all"):
     execute(command)
 
 def notify_failure(creds, error, backtrace):
+    archive_surefire()
     message = "Exception message:\n%s\n" % error.message
     message += backtrace + "\n"
     with open(OUTPUT_LOG) as log_file:
         message += log_file.read()
-    send_email(creds, "Nightly failed!", message)
+    send_email(creds, "Nightly failed!", message, SUREFIRE_ARCHIVE)
 
 def notify_success(creds):
     message = "Success!\n%s" % subprocess.check_output(["/usr/games/cowsay",
@@ -253,7 +280,9 @@ def main():
         execute("sudo docker rm %s" % saio_far_container)
 
     if ec2:
+        sys.stdout.flush()
         log.close()
+        sys.stdout = open(os.devnull, 'w')
         notify_failure(creds, exception, traceback.format_exc()) if exception else notify_success(creds)
         execute("sudo poweroff")
     if exception:
