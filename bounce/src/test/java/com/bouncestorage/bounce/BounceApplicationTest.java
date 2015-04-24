@@ -23,7 +23,6 @@ import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 public final class BounceApplicationTest {

@@ -103,7 +103,12 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             if (swiftProxy != null) {
                 swiftProxy.stop();
             }
-            URI endpoint = new URI(config.getString(SwiftProxy.PROPERTY_ENDPOINT));
+            String endpointString = config.getString(SwiftProxy.PROPERTY_ENDPOINT);
+            if (endpointString == null || endpointString.equals("")) {
+                logger.warn("Swift endpoint not set");
+                return;
+            }
+            URI endpoint = new URI(endpointString);
             SwiftProxy.Builder builder = SwiftProxy.Builder.builder().endpoint(endpoint).locator(
                     (identity, container, object) -> locateBlobStore(identity, container, object));
             swiftProxy = builder.build();
@@ -122,15 +127,22 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             }
             if (!config.containsKey(S3ProxyConstants.PROPERTY_ENDPOINT) ||
                     !config.containsKey(S3ProxyConstants.PROPERTY_AUTHORIZATION)) {
-                throw new RuntimeException("S3 endpoint and authorization must be set");
+                logger.warn("S3 endpoint and authorization must be set");
+                return;
             }
 
             if (!config.getString(S3ProxyConstants.PROPERTY_AUTHORIZATION).equalsIgnoreCase("aws-v2") &&
                     !config.getString(S3ProxyConstants.PROPERTY_AUTHORIZATION).equalsIgnoreCase("none")) {
-                throw new RuntimeException("S3 authorization must be 'none' or 'aws-v2'");
+                logger.warn("S3 authorization must be 'none' or 'aws-v2'");
+                return;
             }
 
-            URI endpoint = new URI(config.getString(S3ProxyConstants.PROPERTY_ENDPOINT));
+            String endpointString = config.getString(S3ProxyConstants.PROPERTY_ENDPOINT);
+            if (endpointString == null || endpointString.equals("")) {
+                logger.warn("S3 endpoint is not set");
+                return;
+            }
+            URI endpoint = new URI(endpointString);
             S3Proxy.Builder builder = S3Proxy.builder()
                     .endpoint(endpoint);
 
@@ -343,12 +355,34 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     }
 
     private void initFromConfig() {
-        config.getList(BounceBlobStore.STORES_LIST).forEach(id ->
+        try {
+            startS3Proxy();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        try {
+            startSwiftProxy();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        config.getList(BounceBlobStore.STORES_LIST).forEach(id -> {
+            try {
                 addProviderFromConfig("bounce.backend." + id,
-                        config.getString("bounce.backend." + id + ".jclouds.provider")));
-        config.getList(VirtualContainerResource.CONTAINERS_PREFIX).forEach(id ->
+                        config.getString("bounce.backend." + id + ".jclouds.provider"));
+            } catch (Throwable e) {
+                logger.error("Failed to initialize provider " + id + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+        config.getList(VirtualContainerResource.CONTAINERS_PREFIX).forEach(id -> {
+            try {
                 addContainerFromConfig("bounce.container." + id,
-                        config.getString("bounce.container." + id + ".name")));
+                        config.getString("bounce.container." + id + ".name"));
+            } catch (Throwable e) {
+                logger.error("Failed to initialize container " + id + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
     }
 
     public BounceConfiguration getConfiguration() {
@@ -424,21 +458,6 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                 throw new IllegalStateException("Cannot find the application port");
             }
         });
-
-        if (config.containsKey(S3ProxyConstants.PROPERTY_ENDPOINT)) {
-            try {
-                startS3Proxy();
-            } catch (Throwable t) {
-                t.printStackTrace();
-            }
-        }
-        if (config.containsKey(SwiftProxy.PROPERTY_ENDPOINT)) {
-            try {
-                startSwiftProxy();
-            } catch (Throwable t) {
-                t.printStackTrace();
-            }
-        }
         registerConfigurationListener();
         bounceService = new BounceService(this);
         initFromConfig();

@@ -16,7 +16,9 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
+import com.bouncestorage.swiftproxy.SwiftProxy;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -44,17 +46,70 @@ public class SettingsResource {
 
     @POST
     @Timed
-    public void updateSettings(Settings settings) throws URISyntaxException {
+    public Response updateSettings(Settings settings) throws URISyntaxException {
+        if (!settings.validate()) {
+            return Response.status(Response.Status.BAD_REQUEST).build();
+        }
         Properties p = new Properties();
-        URI endpoint = new URI("http", null, settings.s3Address, settings.s3Port, null, null, null);
-        p.put(S3ProxyConstants.PROPERTY_ENDPOINT, endpoint.toString());
+        URI s3Endpoint = settings.getEndpoint(Settings.PROXY.S3Proxy);
+        URI swiftEndpoint = settings.getEndpoint(Settings.PROXY.SwiftProxy);
+        BounceConfiguration config = app.getConfiguration();
+        if (config.getString(S3ProxyConstants.PROPERTY_ENDPOINT) != null && s3Endpoint == null) {
+            p.setProperty(S3ProxyConstants.PROPERTY_ENDPOINT, "");
+        } else if (s3Endpoint != null) {
+            p.put(S3ProxyConstants.PROPERTY_ENDPOINT, s3Endpoint.toString());
+        }
+
+        if (config.getString(SwiftProxy.PROPERTY_ENDPOINT) != null && swiftEndpoint == null) {
+            p.setProperty(SwiftProxy.PROPERTY_ENDPOINT, "");
+        } else if (swiftEndpoint != null) {
+            p.put(SwiftProxy.PROPERTY_ENDPOINT, swiftEndpoint.toString());
+        }
         app.getConfiguration().setAll(p);
+        return Response.ok().build();
     }
 
     private static class Settings {
+        enum PROXY { S3Proxy, SwiftProxy };
         @JsonProperty
         private String s3Address;
         @JsonProperty
-        private int s3Port;
+        private int s3Port = -1;
+        @JsonProperty
+        private String swiftAddress;
+        @JsonProperty
+        private int swiftPort = -1;
+
+        private URI getEndpoint(PROXY type) throws URISyntaxException {
+            String address;
+            int port;
+            switch (type) {
+                case S3Proxy:
+                    address = s3Address;
+                    port = s3Port;
+                    break;
+                case SwiftProxy:
+                    address = swiftAddress;
+                    port = swiftPort;
+                    break;
+                default:
+                    address = null;
+                    port = -1;
+            }
+            if (address == null || port < 0) {
+                return null;
+            }
+            return new URI("http", null, address, port, null, null, null);
+        }
+
+        private boolean validate() {
+            if (swiftAddress == null) {
+                return true;
+            }
+            if (s3Address == null) {
+                return true;
+            }
+            return !(swiftAddress.equalsIgnoreCase(s3Address) && swiftPort == s3Port);
+        }
     }
 }
