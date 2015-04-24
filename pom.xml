@@ -8,6 +8,7 @@
   <packaging>pom</packaging>
   <modules>
     <module>s3proxy</module>
+    <module>swiftproxy</module>
     <module>bounce</module>
   </modules>
 </project>
