@@ -13,7 +13,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Queue;
 import java.util.Random;
+
+import javax.ws.rs.HttpMethod;
 
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.Utils;
@@ -295,6 +298,34 @@ public class WriteBackPolicyTest {
         status.future().get();
         assertStatus(status, status::getTotalObjectCount).isEqualTo(numBlobsInStore);
         assertStatus(status, status::getLinkedObjectCount).isEqualTo(numBlobsInStore);
+    }
+
+    @Test
+    public void testPutGetLogging() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        Blob blob = UtilsTest.makeBlob(policy, blobName);
+        policy.putBlob(containerName, blob);
+        Blob getBlob = policy.getBlob(containerName, blobName);
+        UtilsTest.assertEqualBlobs(getBlob, blob);
+        Queue<Object[]> q = app.getBounceStats().getOpsQueue();
+        assertThat(q).hasSize(3);
+        Object[] putMarkerOp = q.remove();
+        Object[] putOp = q.remove();
+        Object[] getOp = q.remove();
+        assertThat(putMarkerOp[1]).isEqualTo(HttpMethod.PUT);
+        assertThat(putOp[2]).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putMarkerOp[3]).isEqualTo(containerName);
+        assertThat(putMarkerOp[4]).isEqualTo(blobName + WriteBackPolicy.LOG_MARKER_SUFFIX);
+        assertThat(putOp[1]).isEqualTo(HttpMethod.PUT);
+        assertThat(putOp[2]).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putOp[3]).isEqualTo(containerName);
+        assertThat(putOp[4]).isEqualTo(blobName);
+        assertThat(putOp[5]).isEqualTo(getBlob.getMetadata().getSize());
+        assertThat(getOp[1]).isEqualTo(HttpMethod.GET);
+        assertThat(putOp[2]).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(getOp[3]).isEqualTo(containerName);
+        assertThat(getOp[4]).isEqualTo(blobName);
+        assertThat(getOp[5]).isEqualTo(getBlob.getMetadata().getSize());
     }
 
     private void assertEqualBlobStores(BlobStore one, BlobStore two) throws Exception {
