@@ -115,7 +115,7 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
                        identity: $scope.identity,
                        credential: $scope.credential,
                        region: $scope.provider.region,
-                       endpoint: $scope.endpoint
+                       endpoint: $scope.provider.endpoint
                      };
       ObjectStore.save(newStore, function (res) {
         $rootScope.$emit('addedStore', newStore);
@@ -130,8 +130,8 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
         provider: $scope.provider,
         identity: $scope.identity,
         credential: $scope.credential,
-        region: $scope.region,
-        endpoint: $scope.endpoint
+        region: $scope.provider.region,
+        endpoint: $scope.provider.endpoint
       }, function(res) {
         $location.path('/stores');
       }, function(error) {
