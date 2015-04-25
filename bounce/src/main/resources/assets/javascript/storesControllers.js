@@ -275,7 +275,8 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       }
       var editLocation = $scope.editLocation.object;
       var blobStoreId = editLocation.blobStoreId;
-      if (!(blobStoreId in $scope.containers)) {
+      if (!(blobStoreId in $scope.containersMap)) {
+        console.log("blob store ID not found");
         return [];
       }
       return $scope.containersMap[blobStoreId].filter(
