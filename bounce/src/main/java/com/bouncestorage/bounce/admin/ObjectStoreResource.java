@@ -57,9 +57,7 @@ public final class ObjectStoreResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public String createObjectStore(ObjectStore objectStore) {
         try {
-            Properties properties = new Properties();
-            properties.put(PROPERTIES_PREFIX + "identity", objectStore.identity);
-            properties.put(PROPERTIES_PREFIX + "credential", objectStore.credential);
+            Properties properties = objectStore.getJCloudsProperties(PROPERTIES_PREFIX);
             ContextBuilder builder = ContextBuilder.newBuilder(objectStore.provider).overrides(properties);
             BlobStoreContext context = builder.build(BlobStoreContext.class);
             BlobStore store = context.getBlobStore();
@@ -67,16 +65,13 @@ public final class ObjectStoreResource {
             BounceConfiguration config = app.getConfiguration();
             int storeIndex = getLastBlobStoreIndex(config);
             String prefix = BounceBlobStore.STORE_PROPERTY + "." + storeIndex + "." + PROPERTIES_PREFIX;
-            properties = new Properties();
-            properties.setProperty(prefix + "provider", objectStore.provider);
-            properties.setProperty(prefix + "identity", objectStore.identity);
-            properties.setProperty(prefix + "credential", objectStore.credential);
-            properties.setProperty(prefix + "nickname", objectStore.nickname);
+            properties = objectStore.getJCloudsProperties(prefix);
             String backendsList = config.getString(BounceBlobStore.STORES_LIST);
             properties.setProperty(BounceBlobStore.STORES_LIST, backendsList + "," + storeIndex);
             config.setAll(properties);
             return SUCCESS_RESPONSE;
         } catch (Exception e) {
+            e.printStackTrace();
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
         }
     }
@@ -312,6 +307,26 @@ public final class ObjectStoreResource {
 
         public int getId() {
             return id;
+        }
+
+        Properties getJCloudsProperties(String propertiesPrefix) {
+            Properties properties = new Properties();
+
+            properties.put(propertiesPrefix + "provider", provider);
+            properties.put(propertiesPrefix + "identity", identity);
+            properties.put(propertiesPrefix + "credential", credential);
+            if (endpoint != null) {
+                properties.put(propertiesPrefix + "endpoint", endpoint);
+                if (endpoint.endsWith("/auth/v1.0/")) {
+                    properties.put(propertiesPrefix + "keystone.credential-type", "tempAuthCredentials");
+                }
+            }
+            if (region != null) {
+                properties.put(propertiesPrefix + "region", region);
+            }
+            properties.put(propertiesPrefix + "nickname", nickname);
+
+            return properties;
         }
 
         public String getValueByName(String field) {
