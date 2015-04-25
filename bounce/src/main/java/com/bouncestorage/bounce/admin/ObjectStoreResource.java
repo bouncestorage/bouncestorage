@@ -67,7 +67,11 @@ public final class ObjectStoreResource {
             String prefix = BounceBlobStore.STORE_PROPERTY + "." + storeIndex + "." + PROPERTIES_PREFIX;
             properties = objectStore.getJCloudsProperties(prefix);
             String backendsList = config.getString(BounceBlobStore.STORES_LIST);
-            properties.setProperty(BounceBlobStore.STORES_LIST, backendsList + "," + storeIndex);
+            if (backendsList == null) {
+                properties.setProperty(BounceBlobStore.STORES_LIST, Integer.toString(storeIndex));
+            } else {
+                properties.setProperty(BounceBlobStore.STORES_LIST, backendsList + "," + storeIndex);
+            }
             config.setAll(properties);
             return SUCCESS_RESPONSE;
         } catch (Exception e) {

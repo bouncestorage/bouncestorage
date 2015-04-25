@@ -292,7 +292,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             return;
         }
 
-        config.getList("bounce.backends").forEach(id ->
+        config.getList(BounceBlobStore.STORES_LIST).forEach(id ->
                 addProviderFromConfig("bounce.backend." + id,
                         config.getString("bounce.backend." + id + ".jclouds.provider")));
         config.getList("bounce.containers").forEach(id ->
