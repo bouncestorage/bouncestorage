@@ -46,6 +46,7 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 
 import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.ConfigurationException;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.ServerConnector;
 import org.gaul.s3proxy.S3Proxy;
@@ -86,6 +87,16 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
 
     public BounceApplication() {
         this.config = new BounceConfiguration();
+        this.configView = new ConfigurationPropertiesView(config);
+        bounceStats = new BounceStats();
+    }
+
+    public BounceApplication(String configurationFile) {
+        try {
+            this.config = new BounceConfiguration(configurationFile);
+        } catch (ConfigurationException e) {
+            throw propagate(e);
+        }
         this.configView = new ConfigurationPropertiesView(config);
         bounceStats = new BounceStats();
     }

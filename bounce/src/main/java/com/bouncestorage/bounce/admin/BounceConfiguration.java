@@ -5,16 +5,25 @@
 
 package com.bouncestorage.bounce.admin;
 
-import java.util.HashMap;
+import static com.google.common.base.Throwables.propagate;
+
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
-import org.apache.commons.configuration.MapConfiguration;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.PropertiesConfiguration;
 
-public class BounceConfiguration extends MapConfiguration {
+public class BounceConfiguration extends PropertiesConfiguration {
+    private String fileName;
+
+    public BounceConfiguration(String filename) throws ConfigurationException {
+        super(filename);
+        this.fileName = filename;
+    }
+
     public BounceConfiguration() {
-        super(new HashMap<>());
+        super();
     }
 
     public void setAll(Properties properties) {
@@ -29,5 +38,12 @@ public class BounceConfiguration extends MapConfiguration {
         }
         newEntries.forEach(entry ->
                 fireEvent(EVENT_SET_PROPERTY, String.valueOf(entry.getKey()), entry.getValue(), false));
+        if (fileName != null) {
+            try {
+                save(fileName);
+            } catch (ConfigurationException e) {
+                propagate(e);
+            }
+        }
     }
 }
