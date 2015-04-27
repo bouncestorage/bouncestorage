@@ -221,12 +221,12 @@ public final class MigrationPolicyTest {
         Object[] putOp = q.remove();
         Object[] getOp = q.remove();
         assertThat(putOp[1]).isEqualTo(HttpMethod.PUT);
-        assertThat(putOp[2]).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putOp[2]).isEqualTo(policy.getDestination().getContext().unwrap().getProviderMetadata().getId());
         assertThat(putOp[3]).isEqualTo(containerName + "-dest");
         assertThat(putOp[4]).isEqualTo(blobName);
         assertThat(putOp[5]).isEqualTo(getBlob.getMetadata().getSize());
         assertThat(getOp[1]).isEqualTo(HttpMethod.GET);
-        assertThat(putOp[2]).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putOp[2]).isEqualTo(policy.getDestination().getContext().unwrap().getProviderMetadata().getId());
         assertThat(getOp[3]).isEqualTo(containerName + "-dest");
         assertThat(getOp[4]).isEqualTo(blobName);
         assertThat(getOp[5]).isEqualTo(getBlob.getMetadata().getSize());
