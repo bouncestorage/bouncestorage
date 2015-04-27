@@ -1,5 +1,5 @@
 FROM dockerfile/java:oracle-java8
-ADD https://s3.amazonaws.com/influxdb/influxdb_latest_amd64.deb /tmp/
+RUN curl https://s3.amazonaws.com/influxdb/influxdb_latest_amd64.deb -o /tmp/influxdb_latest_amd64.deb
 RUN dpkg -i /tmp/influxdb_latest_amd64.deb
 COPY setup_influxdb.sh /tmp/influxdb.sh
 RUN bash /tmp/influxdb.sh
