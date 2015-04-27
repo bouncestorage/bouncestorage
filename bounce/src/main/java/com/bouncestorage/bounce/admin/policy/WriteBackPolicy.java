@@ -237,7 +237,9 @@ public class WriteBackPolicy extends BouncePolicy {
         if (sourceObject.getRegions().equals(BounceBlobStore.EVERYWHERE)) {
             BlobMetadata sourceMetadata = getSource().blobMetadata(container, sourceObject.getName());
             BlobMetadata destinationMetadata = getDestination().blobMetadata(container, destinationObject.getName());
-            if (Utils.eTagsEqual(destinationMetadata.getETag(), sourceMetadata.getETag())) {
+
+            if (sourceMetadata != null && destinationMetadata != null &&
+                    Utils.eTagsEqual(destinationMetadata.getETag(), sourceMetadata.getETag())) {
                 Utils.createBounceLink(this, sourceMetadata);
                 return BounceResult.LINK;
             }
