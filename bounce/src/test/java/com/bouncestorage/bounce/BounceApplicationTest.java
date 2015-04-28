@@ -13,7 +13,7 @@ import java.util.Properties;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceConfiguration;
-import com.google.common.collect.ImmutableList;
+import com.bouncestorage.swiftproxy.SwiftProxy;
 
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
 import org.gaul.s3proxy.S3ProxyConstants;
@@ -27,51 +27,51 @@ import org.junit.Before;
 import org.junit.Test;
 
 public final class BounceApplicationTest {
-    private Properties properties;
     private String webConfig = Main.class.getResource("/bounce.yml")
             .toExternalForm();
     private BounceApplication app;
-    private String identity;
-    private String credential;
-
-    @Before
-    public void setUp() throws Exception {
-        properties = new Properties();
-        try (InputStream is = BounceApplicationTest.class.getResourceAsStream("/bounce.properties")) {
-            properties.load(is);
-        }
-
-        identity = properties.getProperty(S3ProxyConstants.PROPERTY_IDENTITY);
-        credential = properties.getProperty(S3ProxyConstants.PROPERTY_CREDENTIAL);
-
-        app = new BounceApplication();
-        BounceConfiguration config = app.getConfiguration();
-        config.setAll(properties);
-        config.addProperty("bounce.backends", ImmutableList.of("0"));
-        config.addProperty("bounce.backend.0.jclouds.provider", "transient");
-        config.addProperty("bounce.backend.0.jclouds.identity", identity);
-        config.addProperty("bounce.backend.0.jclouds.credential", credential);
-        app.useRandomPorts();
-        synchronized (BounceApplication.class) {
-            app.run(new String[]{"server", webConfig});
-        }
-    }
 
     @After
     public void tearDown() throws Exception {
-        app.stop();
+        if (app != null) {
+            app.stop();
+        }
     }
 
     @Test
     public void testS3ProxyStartup() throws Exception {
-        while (!app.getS3ProxyState().equals(AbstractLifeCycle.STARTED)) {
-            Thread.sleep(10);
-        }
+        initializeDefaultProperties();
+        startApp();
 
+        String identity = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_IDENTITY);
+        String credential = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_CREDENTIAL);
+        configureBlobStore(identity, credential);
         BlobStoreContext context = ContextBuilder.newBuilder("s3")
                 .endpoint("http://127.0.0.1:" + app.getS3ProxyPort())
-                .credentials(properties.getProperty(S3ProxyConstants.PROPERTY_IDENTITY),
-                        properties.getProperty(S3ProxyConstants.PROPERTY_CREDENTIAL))
+                .credentials(app.getConfiguration().getString(S3ProxyConstants.PROPERTY_IDENTITY),
+                        app.getConfiguration().getString(S3ProxyConstants.PROPERTY_CREDENTIAL))
+                .build(BlobStoreContext.class);
+        BlobStore blobStore = context.getBlobStore();
+        PageSet<? extends StorageMetadata> res = blobStore.list();
+        assertThat(res).isEmpty();
+    }
+
+    @Test
+    public void testSwiftProxyStartup() throws Exception {
+        app = new BounceApplication();
+        BounceConfiguration config = app.getConfiguration();
+        config.setProperty(SwiftProxy.PROPERTY_ENDPOINT, "http://127.0.0.1:0");
+        startApp();
+
+        String identity = "foo";
+        String credential = "bar";
+        configureBlobStore(identity, credential);
+        Properties swiftProperties = new Properties();
+        swiftProperties.setProperty("jclouds.keystone.credential-type", "tempAuthCredentials");
+        BlobStoreContext context = ContextBuilder.newBuilder("openstack-swift")
+                .endpoint("http://127.0.0.1:" + app.getSwiftPort() + "/auth/v1.0")
+                .overrides(swiftProperties)
+                .credentials("foo", "bar")
                 .build(BlobStoreContext.class);
         BlobStore blobStore = context.getBlobStore();
         PageSet<? extends StorageMetadata> res = blobStore.list();
@@ -80,8 +80,42 @@ public final class BounceApplicationTest {
 
     @Test
     public void testConfigureProviders() throws Exception {
+        initializeDefaultProperties();
+        startApp();
+        String identity = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_IDENTITY);
+        String credential = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_CREDENTIAL);
+        configureBlobStore(identity, credential);
         Map.Entry<String, BlobStore> res = app.locateBlobStore(identity, null, null);
         assertThat(res.getKey()).isEqualTo(credential);
         assertThat(res.getValue()).isNotNull();
+    }
+
+    private void configureBlobStore(String identity, String credential) {
+        BounceConfiguration config = app.getConfiguration();
+        Properties properties = new Properties();
+        properties.setProperty("bounce.backends", "0");
+        properties.setProperty("bounce.backend.0.jclouds.provider", "transient");
+        properties.setProperty("bounce.backend.0.jclouds.identity", identity);
+        properties.setProperty("bounce.backend.0.jclouds.credential", credential);
+        config.setAll(properties);
+    }
+
+    private void initializeDefaultProperties() throws Exception {
+        Properties properties = new Properties();
+        try (InputStream is = BounceApplicationTest.class.getResourceAsStream("/bounce.properties")) {
+            properties.load(is);
+        }
+        app = new BounceApplication();
+        app.getConfiguration().setAll(properties);
+    }
+
+    private void startApp() throws Exception {
+        app.useRandomPorts();
+        synchronized (BounceApplication.class) {
+            app.run(new String[]{"server", webConfig});
+        }
+        while (!app.getS3ProxyState().equals(AbstractLifeCycle.STARTED) && !app.isSwiftProxyStarted()) {
+            Thread.sleep(10);
+        }
     }
 }

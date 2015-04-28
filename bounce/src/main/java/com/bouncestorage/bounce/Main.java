@@ -6,9 +6,7 @@
 package com.bouncestorage.bounce;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
-import com.bouncestorage.bounce.admin.BounceConfiguration;
 
-import org.gaul.s3proxy.S3ProxyConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,25 +27,6 @@ public final class Main {
         }
 
         BounceApplication app = new BounceApplication(args[1]);
-        BounceConfiguration config = app.getConfiguration();
-        String s3ProxyEndpointString = config.getString(S3ProxyConstants.PROPERTY_ENDPOINT);
-        String s3ProxyAuthorization = config.getString(S3ProxyConstants.PROPERTY_AUTHORIZATION);
-        if (s3ProxyEndpointString == null ||
-                s3ProxyAuthorization == null) {
-            logger.error("Properties file must contain: {} {}",
-                    S3ProxyConstants.PROPERTY_ENDPOINT,
-                    S3ProxyConstants.PROPERTY_AUTHORIZATION);
-            System.exit(1);
-        }
-
-        if (!(s3ProxyAuthorization.equalsIgnoreCase("aws-v2") ||
-                s3ProxyAuthorization.equalsIgnoreCase("none"))) {
-            logger.error("{} must be aws-v2 or none, was: {}",
-                    S3ProxyConstants.PROPERTY_AUTHORIZATION,
-                    s3ProxyAuthorization);
-            System.exit(1);
-        }
-
         String webConfig = Main.class.getResource("/bounce.yml").toExternalForm();
         app.run(new String[] {"server", webConfig});
     }
