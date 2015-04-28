@@ -130,7 +130,7 @@ public final class Utils {
                 ListContainerOptions options) {
             this.blobStore = Objects.requireNonNull(blobStore);
             this.containerName = Objects.requireNonNull(containerName);
-            this.options = Objects.requireNonNull(options).recursive();
+            this.options = Objects.requireNonNull(options);
             advance();
         }
 
