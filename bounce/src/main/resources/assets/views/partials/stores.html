@@ -100,7 +100,8 @@
                   <option value="">Select object store&hellip;</option>
                 </select>
                 <select class="form-control" ng-model="editLocation.object.containerName"
-                    ng-options="container.name as container.name for container in getContainersForPrompt()">
+                    ng-options="container.name as container.name for container in getContainersForPrompt()"
+                    ng-disabled="editLocation.object.blobStoreId < 0">
                   <option value="">Select container&hellip;</option>
                 </select>
               </div>

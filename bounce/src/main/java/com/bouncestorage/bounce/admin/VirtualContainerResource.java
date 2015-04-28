@@ -35,6 +35,7 @@ import org.apache.commons.configuration.Configuration;
 @Produces(MediaType.APPLICATION_JSON)
 public final class VirtualContainerResource {
     public static final String VIRTUAL_CONTAINER_PREFIX = "bounce.container";
+    public static final String CONTAINERS_PREFIX = "bounce.containers";
 
     private final BounceApplication app;
 
@@ -82,7 +83,14 @@ public final class VirtualContainerResource {
     public String createContainer(VirtualContainer container) {
         container.setId(getNextContainerId());
         BounceConfiguration config = app.getConfiguration();
-        config.setAll(generatePropertiesFromRequest(container, null));
+        Properties newProperties = generatePropertiesFromRequest(container, null);
+        if (config.getProperty(CONTAINERS_PREFIX) == null) {
+            newProperties.setProperty(CONTAINERS_PREFIX, Integer.toString(container.getId()));
+        } else {
+            newProperties.setProperty(CONTAINERS_PREFIX, config.getString(CONTAINERS_PREFIX) + "," +
+                    Integer.toString(container.getId()));
+        }
+        config.setAll(newProperties);
         return "{\"status\":\"success\"}";
     }
 

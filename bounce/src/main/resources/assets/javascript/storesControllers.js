@@ -244,17 +244,19 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       }
       if (redirect === true) {
         if ($scope.stores.length > 0) {
-          $location.path('/stores/0');
+          $location.path('/stores/' + $scope.stores[0].id);
         } else {
           $location.path('/create_store');
         }
+      } else {
+        $scope.refreshContainersMap();
       }
-      $scope.refreshContainersMap();
     });
 
     $scope.updateContainerMap = function(blobStoreId) {
       $scope.containersMap[blobStoreId] = [];
       Container.query({ id: blobStoreId }, function(results) {
+        console.log($scope.store);
         for (var i = 0; i < results.length; i++) {
           $scope.containersMap[blobStoreId].push(results[i]);
         }
@@ -273,7 +275,8 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       }
       var editLocation = $scope.editLocation.object;
       var blobStoreId = editLocation.blobStoreId;
-      if (!(blobStoreId in $scope.containers)) {
+      if (!(blobStoreId in $scope.containersMap)) {
+        console.log("blob store ID not found");
         return [];
       }
       return $scope.containersMap[blobStoreId].filter(

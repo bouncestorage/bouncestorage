@@ -5,12 +5,8 @@
 
 package com.bouncestorage.bounce;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.util.Properties;
-
 import com.bouncestorage.bounce.admin.BounceApplication;
+import com.bouncestorage.bounce.admin.BounceConfiguration;
 
 import org.gaul.s3proxy.S3ProxyConstants;
 import org.slf4j.Logger;
@@ -31,15 +27,11 @@ public final class Main {
             logger.error("Usage: bounce --properties FILE");
             System.exit(1);
         }
-        Properties properties = new Properties();
-        try (InputStream is = new FileInputStream(new File(args[1]))) {
-            properties.load(is);
-        }
 
-        String s3ProxyEndpointString = properties.getProperty(
-                S3ProxyConstants.PROPERTY_ENDPOINT);
-        String s3ProxyAuthorization = properties.getProperty(
-                S3ProxyConstants.PROPERTY_AUTHORIZATION);
+        BounceApplication app = new BounceApplication(args[1]);
+        BounceConfiguration config = app.getConfiguration();
+        String s3ProxyEndpointString = config.getString(S3ProxyConstants.PROPERTY_ENDPOINT);
+        String s3ProxyAuthorization = config.getString(S3ProxyConstants.PROPERTY_AUTHORIZATION);
         if (s3ProxyEndpointString == null ||
                 s3ProxyAuthorization == null) {
             logger.error("Properties file must contain: {} {}",
@@ -56,8 +48,6 @@ public final class Main {
             System.exit(1);
         }
 
-        BounceApplication app = new BounceApplication();
-        app.getConfiguration().setAll(properties);
         String webConfig = Main.class.getResource("/bounce.yml").toExternalForm();
         app.run(new String[] {"server", webConfig});
     }
