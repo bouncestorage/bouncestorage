@@ -93,7 +93,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private void startS3Proxy() {
         try {
             if (s3Proxy != null) {
-                stop();
+                logger.info("Stopping S3Proxy");
+                s3Proxy.stop();
             }
             URI endpoint = new URI(config.getString(S3ProxyConstants.PROPERTY_ENDPOINT));
             S3Proxy.Builder builder = S3Proxy.builder()
