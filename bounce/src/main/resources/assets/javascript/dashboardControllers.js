@@ -2,7 +2,7 @@ var dashboardControllers = angular.module('dashboardControllers', ['bounce',
     'nvd3ChartDirectives']);
 
 var DB_NAME = "bounce";
-var DB_URL = "http://localhost:8086";
+var DB_URL = "http://" + window.location.hostname + ":8086";
 var DB_USER = "bounce";
 var DB_PASSWORD = "bounce";
 var SERIES_URL = DB_URL + "/db/" + DB_NAME + "/series?u=" + DB_USER +

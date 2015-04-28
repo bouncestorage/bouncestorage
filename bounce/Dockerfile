@@ -7,6 +7,6 @@ COPY target/bounce /data/
 COPY src/test/resources/bounce.properties /data/
 COPY docker_entrypoint.sh /data/
 RUN mkdir -p /tmp/blobstore
-EXPOSE 8080 9000 9001
+EXPOSE 8080 9000 9001 8086
 CMD []
 ENTRYPOINT ["/bin/bash", "./docker_entrypoint.sh"]
