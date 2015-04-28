@@ -18,6 +18,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 
+import javax.annotation.Nullable;
+
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.collect.ImmutableList;
@@ -294,7 +296,10 @@ public final class Utils {
                 ;
     }
 
-    public static String trimETag(String eTag) {
+    public static String trimETag(@Nullable String eTag) {
+        if (eTag == null) {
+            return null;
+        }
         int begin = 0;
         int end = eTag.length();
         if (eTag.startsWith("\"")) {
@@ -306,8 +311,8 @@ public final class Utils {
         return eTag.substring(begin, end);
     }
 
-    public static boolean eTagsEqual(String eTag1, String eTag2) {
-        return trimETag(eTag1).equals(trimETag(eTag2));
+    public static boolean eTagsEqual(@Nullable String eTag1, @Nullable String eTag2) {
+        return Objects.equals(trimETag(eTag1), trimETag(eTag2));
     }
 
     public static StorageMetadata getNextOrNull(PeekingIterator<StorageMetadata> iterator) {
