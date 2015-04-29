@@ -29,6 +29,7 @@ import javax.ws.rs.core.Response;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.codahale.metrics.annotation.Timed;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.commons.configuration.Configuration;
@@ -66,11 +67,12 @@ public final class ObjectStoreResource {
             int storeIndex = getLastBlobStoreIndex(config);
             String prefix = BounceBlobStore.STORE_PROPERTY + "." + storeIndex + "." + PROPERTIES_PREFIX;
             properties = objectStore.getJCloudsProperties(prefix);
-            String backendsList = config.getString(BounceBlobStore.STORES_LIST);
-            if (backendsList == null) {
+            List<Object> backendsList = config.getList(BounceBlobStore.STORES_LIST);
+            if (backendsList == null || backendsList.isEmpty()) {
                 properties.setProperty(BounceBlobStore.STORES_LIST, Integer.toString(storeIndex));
             } else {
-                properties.setProperty(BounceBlobStore.STORES_LIST, backendsList + "," + storeIndex);
+                backendsList.add(Integer.toString(storeIndex));
+                properties.setProperty(BounceBlobStore.STORES_LIST, Joiner.on(",").join(backendsList));
             }
             config.setAll(properties);
             return SUCCESS_RESPONSE;

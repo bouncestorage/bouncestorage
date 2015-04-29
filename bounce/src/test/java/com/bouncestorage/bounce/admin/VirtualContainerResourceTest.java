@@ -7,17 +7,12 @@ package com.bouncestorage.bounce.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 import javax.ws.rs.HttpMethod;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
 
 import com.bouncestorage.bounce.BounceBlobStore;
+import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.base.Joiner;
 
@@ -56,7 +51,7 @@ public class VirtualContainerResourceTest {
 
         String url = String.format("http://localhost:%d/api/virtual_container/0", app.getPort());
 
-        String response = submitRequest(url, HttpMethod.PUT, jsonInput);
+        String response = UtilsTest.submitRequest(url, HttpMethod.PUT, jsonInput);
         assertThat(response).isEqualToIgnoringCase("OK");
         String containerPrefix = Joiner.on(".").join(VirtualContainerResource.VIRTUAL_CONTAINER_PREFIX, "0");
         String primaryTierPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.PRIMARY_TIER_PREFIX);
@@ -80,7 +75,7 @@ public class VirtualContainerResourceTest {
                 "\"copyDelay\":null,\"moveDelay\":null},\"name\":\"magic\"}";
 
         String url = String.format("http://localhost:%d/api/virtual_container/0", app.getPort());
-        String response = submitRequest(url, HttpMethod.PUT, jsonInput);
+        String response = UtilsTest.submitRequest(url, HttpMethod.PUT, jsonInput);
         assertThat(response).isEqualToIgnoringCase("OK");
         String containerPrefix = Joiner.on(".").join(VirtualContainerResource.VIRTUAL_CONTAINER_PREFIX, "0");
         String targetLocationPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.MIGRATION_TIER_PREFIX);
@@ -89,18 +84,6 @@ public class VirtualContainerResourceTest {
                 .isEqualTo("0");
         assertThat(config.getProperty(Joiner.on(".").join(targetLocationPrefix, Location.CONTAINER_NAME_FIELD)))
                 .isEqualTo("target");
-    }
-
-    private String submitRequest(String url, String method, String json) throws Exception {
-        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-        connection.setRequestMethod(method);
-        connection.setRequestProperty(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
-        connection.setDoOutput(true);
-        try (OutputStream os = connection.getOutputStream()) {
-            os.write(json.getBytes(StandardCharsets.UTF_8));
-        }
-
-        return connection.getResponseMessage();
     }
 
     private Properties getDefaultProperties() {
