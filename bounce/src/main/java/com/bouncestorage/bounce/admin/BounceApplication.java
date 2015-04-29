@@ -138,7 +138,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             logger.info("Starting S3Proxy on {}", endpoint);
             s3Proxy.start();
         } catch (Exception e) {
-            throw propagate(e);
+            e.printStackTrace();
         }
     }
 
