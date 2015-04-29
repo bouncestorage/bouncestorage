@@ -1,2 +1,3 @@
 com.bouncestorage.bounce.BounceApiMetadata
 com.bouncestorage.bounce.EncryptedApiMetadata
+com.bouncestorage.bounce.utils.nil.NullApiMetadata
