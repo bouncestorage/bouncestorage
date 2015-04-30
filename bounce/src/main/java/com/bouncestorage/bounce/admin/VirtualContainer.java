@@ -14,6 +14,9 @@ public final class VirtualContainer {
     public static final String MIGRATION_TIER_PREFIX = TIER_PREFIX + TIER.MIGRATION.ordinal();
     public static final String NAME = "name";
 
+    String identity;
+    String credential;
+
     private String name;
     private int id;
     private Location originLocation;
@@ -43,6 +46,21 @@ public final class VirtualContainer {
 
     public int getId() {
         return id;
+    }
+
+    Location getLocation(int tierId) {
+        switch (tierId) {
+            case 0:
+                return cacheLocation;
+            case 1:
+                return originLocation;
+            case 2:
+                return archiveLocation;
+            case 3:
+                return migrationTargetLocation;
+            default:
+                throw new IllegalArgumentException(Integer.valueOf(tierId).toString());
+        }
     }
 
     public void setOriginLocation(Location location) {

@@ -32,7 +32,6 @@ import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.PausableThreadPoolExecutor;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -77,7 +76,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private S3Proxy s3Proxy;
     private Map<Integer, BlobStore> providers = new HashMap<>();
     private Map<String, BouncePolicy> virtualContainers = new HashMap<>();
-    private Map<String, Map<String, String>> vContainerCredentials = new HashMap<>();
+    private Map<String, VirtualContainer> vContainerConfig = new HashMap<>();
     private final Pattern providerConfigPattern = Pattern.compile("(bounce.backend.\\d+).jclouds.provider");
     private final Pattern containerConfigPattern = Pattern.compile("(bounce.container.\\d+).name");
     private Clock clock = Clock.systemUTC();
@@ -171,19 +170,47 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                 .findAny();
     }
 
+    private static int prefixToId(String prefix) {
+        int dot = prefix.lastIndexOf('.', prefix.length() - 2);
+        if (dot == -1) {
+            throw new IllegalArgumentException(prefix);
+        }
+
+        return Integer.valueOf(prefix.substring(dot + 1));
+    }
+
     private void addContainerFromConfig(String prefix, String containerName) {
         logger.debug("adding container {} from {}", containerName, prefix);
         Configuration c = config.subset(prefix);
+        int containerId = prefixToId(prefix);
         int maxTierID = 3;
         BlobStore lastBlobStore = null;
         BouncePolicy lastPolicy = null;
+        VirtualContainer virtualContainer = vContainerConfig.get(containerName);
+        if (virtualContainer == null) {
+            virtualContainer = new VirtualContainer();
+            virtualContainer.setName(containerName);
+            vContainerConfig.put(containerName, virtualContainer);
+            virtualContainer.setId(containerId);
+        } else {
+            if (virtualContainer.getId() != containerId) {
+                throw new IllegalArgumentException(
+                        String.format("Cannot update container id from %d to %d",
+                                virtualContainer.getId(), containerId));
+            }
+        }
+
         for (int i = maxTierID; i >= 0; i--) {
             String tierPrefix = "tier." + i;
-            if (!c.containsKey(tierPrefix + "." + Location.BLOB_STORE_ID_FIELD)) {
+            int id = c.getInt(tierPrefix + "." + Location.BLOB_STORE_ID_FIELD, -1);
+            if (id == -1) {
                 continue;
             }
-            int id = c.getInt(tierPrefix + "." + Location.BLOB_STORE_ID_FIELD);
             BlobStore store = providers.get(id);
+            if (store == null) {
+                throw new IllegalArgumentException(String.format("Blobstore %d not found", id));
+            }
+            virtualContainer.getLocation(i).setBlobStoreId(id);
             String targetContainerName = c.getString(tierPrefix + "." + Location.CONTAINER_NAME_FIELD, containerName);
             if (lastBlobStore == null) {
                 lastBlobStore = new BlobStoreTarget(store, targetContainerName);
@@ -204,8 +231,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         }
         virtualContainers.put(containerName, lastPolicy);
         if (c.containsKey("identity")) {
-            vContainerCredentials.put(containerName,
-                    ImmutableMap.of(c.getString("identity"), c.getString("credential")));
+            virtualContainer.identity = c.getString("identity");
+            virtualContainer.credential = c.getString("credential");
         }
     }
 
@@ -248,15 +275,24 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     public Map.Entry<String, BlobStore> locateBlobStore(String identity,
                                                         String container, String blob) {
         BlobStore blobStore = null;
-        Optional<String> credential = Optional.empty();
+        String credential = null;
 
         if (container != null) {
             blobStore = virtualContainers.get(container);
 
             if (blobStore != null) {
-                Map<String, String> creds = vContainerCredentials.get(container);
-                if (creds != null) {
-                    credential = Optional.ofNullable(creds.get(identity));
+                VirtualContainer virtualContainer = vContainerConfig.get(container);
+                if (identity.equals(virtualContainer.identity)) {
+                    credential = virtualContainer.credential;
+                } else {
+                    for (int i = 0; i < 3; i++) {
+                        Location loc = virtualContainer.getLocation(i);
+                        int blobstoreId = loc.getBlobStoreId();
+                        Configuration c = config.subset(BounceBlobStore.STORE_PROPERTY + "." + blobstoreId);
+                        if (identity.equals(c.getString(Constants.PROPERTY_IDENTITY))) {
+                            credential = c.getString(Constants.PROPERTY_CREDENTIAL);
+                        }
+                    }
                 }
             }
         }
@@ -267,15 +303,15 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             for (Object id : backendIDs) {
                 Configuration c = config.subset(BounceBlobStore.STORE_PROPERTY + "." + id);
                 if (identity.equals(c.getString(Constants.PROPERTY_IDENTITY))) {
-                    credential = Optional.of(c.getString(Constants.PROPERTY_CREDENTIAL));
+                    credential = c.getString(Constants.PROPERTY_CREDENTIAL);
                     blobStore = providers.get(Integer.valueOf(id.toString()));
                 }
             }
         }
 
-        if (blobStore != null && credential.isPresent()) {
+        if (blobStore != null && credential != null) {
             logger.info("identity: {} credential: {}", identity, credential);
-            return Maps.immutableEntry(credential.get(), blobStore);
+            return Maps.immutableEntry(credential, blobStore);
         }
 
         return null;
