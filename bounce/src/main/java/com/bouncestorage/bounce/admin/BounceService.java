@@ -29,6 +29,7 @@ import com.google.common.collect.PeekingIterator;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.ListContainerOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,11 +89,12 @@ public final class BounceService {
         public void run() {
             BlobStore blobStore = app.getBlobStore(container);
             BouncePolicy policy = (BouncePolicy) requireNonNull(blobStore);
+            ListContainerOptions options = new ListContainerOptions().recursive();
 
             PeekingIterator<StorageMetadata> destinationIterator = Iterators.peekingIterator(
-                    Utils.crawlBlobStore(policy.getDestination(), container).iterator());
+                    Utils.crawlBlobStore(policy.getDestination(), container, options).iterator());
             PeekingIterator<StorageMetadata> sourceIterator = Iterators.peekingIterator(
-                    Utils.crawlBlobStore(policy, container).iterator());
+                    Utils.crawlBlobStore(policy, container, options).iterator());
 
             StorageMetadata destinationObject = Utils.getNextOrNull(destinationIterator);
             BounceStorageMetadata sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
