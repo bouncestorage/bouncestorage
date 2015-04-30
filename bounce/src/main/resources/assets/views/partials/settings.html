@@ -2,14 +2,36 @@
   <h1 class="page-header">Settings</h1>
   <div class="col-sm-4">
     <form class="form">
-      <div class="form-group">
+      <h2 class="sub-header">S3 settings</h2>
+      <div class="checkbox">
+        <label>
+          <input type="checkbox" ng-model="s3Enabled"> Enable S3 endpoint
+        </label>
+      </div>
+      <div class="form-group" ng-show="s3Enabled">
         <label class="control-label">S3 Endpoint IP</label>
         <input type="text" class="form-control" ng-model="s3Address"
           placeholder="0.0.0.0">
       </div>
-      <div class="form-group">
+      <div class="form-group" ng-show="s3Enabled">
         <label class="control-label">S3 Port</label>
         <input type="text" class="form-control" ng-model="s3Port"
+          placeholder="8080">
+      </div>
+      <h2 class="sub-header">Swift settings</h2>
+      <div class="checkbox">
+        <label>
+          <input type="checkbox" ng-model="swiftEnabled"> Enable Swift endpoint
+        </label>
+      </div>
+      <div class="form-group" ng-show="swiftEnabled">
+        <label class="control-label">Swift endpoint IP</label>
+        <input type="text" class="form-control" ng-model="swiftAddress"
+          placeholder="0.0.0.0">
+      </div>
+      <div class="form-group" ng-show="swiftEnabled">
+        <label class="control-label">Swift Port</label>
+        <input type="text" class="form-control" ng-model="swiftPort"
           placeholder="8080">
       </div>
       <div class="form-group">

@@ -5,6 +5,7 @@ server:
   adminConnectors:
   - type: http
     port: 9001
+  rootPath: '/api/*'
 logging:
   level: DEBUG
   loggers:
