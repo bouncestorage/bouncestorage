@@ -155,6 +155,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             context = builder.overrides(new ConfigurationPropertiesView(c))
                     .modules(ImmutableList.of(new SLF4JLoggingModule()))
                     .build(BlobStoreContext.class);
+            logger.info("added provider {} id {}", context.unwrap().getId(), id);
         } catch (CreationException e) {
             e.printStackTrace();
             throw propagate(e);
@@ -399,11 +400,15 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             }
         });
 
-        startS3Proxy();
-        bounceService = new BounceService(this);
-        initFromConfig();
-        bounceStats.start();
-        registerConfigurationListener();
+        try {
+            startS3Proxy();
+            registerConfigurationListener();
+            bounceService = new BounceService(this);
+            initFromConfig();
+            bounceStats.start();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
     }
 
     public void stop() throws Exception {
