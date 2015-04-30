@@ -11,7 +11,7 @@ function sigterm_handler() {
 trap "sigterm_handler" TERM
 
 service influxdb start
-./bounce --properties bounce.properties > /var/log/bounce.log &
+./bounce --properties bounce.properties >& /var/log/bounce.log &
 
 child=$!
 wait "$child"
