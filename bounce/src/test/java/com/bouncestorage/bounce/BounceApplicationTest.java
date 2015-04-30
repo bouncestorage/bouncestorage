@@ -37,8 +37,7 @@ public final class BounceApplicationTest {
     @Before
     public void setUp() throws Exception {
         properties = new Properties();
-        try (InputStream is = BounceApplicationTest.class
-                .getResourceAsStream("/bounce.properties")) {
+        try (InputStream is = BounceApplicationTest.class.getResourceAsStream("/bounce.properties")) {
             properties.load(is);
         }
 

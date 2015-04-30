@@ -11,6 +11,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -19,6 +23,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 import java.util.function.LongSupplier;
+
+import javax.ws.rs.core.HttpHeaders;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceConfiguration;
@@ -316,5 +322,17 @@ public final class UtilsTest {
 
     public static void advanceServiceClock(BounceApplication app, Duration duration) {
         app.setClock(Clock.offset(app.getClock(), duration));
+    }
+
+    public static String submitRequest(String url, String method, String json) throws Exception {
+        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        connection.setRequestMethod(method);
+        connection.setRequestProperty(HttpHeaders.CONTENT_TYPE, javax.ws.rs.core.MediaType.APPLICATION_JSON);
+        connection.setDoOutput(true);
+        try (OutputStream os = connection.getOutputStream()) {
+            os.write(json.getBytes(StandardCharsets.UTF_8));
+        }
+
+        return connection.getResponseMessage();
     }
 }
