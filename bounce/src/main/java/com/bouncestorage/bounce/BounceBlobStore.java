@@ -7,6 +7,7 @@ package com.bouncestorage.bounce;
 
 import static java.util.Objects.requireNonNull;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -25,6 +26,8 @@ import org.jclouds.blobstore.domain.BlobAccess;
 import org.jclouds.blobstore.domain.BlobBuilder;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.ContainerAccess;
+import org.jclouds.blobstore.domain.MultipartPart;
+import org.jclouds.blobstore.domain.MultipartUpload;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.CopyOptions;
@@ -33,6 +36,7 @@ import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.domain.Location;
+import org.jclouds.io.Payload;
 import org.jclouds.logging.Logger;
 import org.jclouds.providers.ProviderMetadata;
 
@@ -243,6 +247,46 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public long countBlobs(String container, ListContainerOptions listContainerOptions) {
         return policy.countBlobs(container, listContainerOptions);
+    }
+
+    @Override
+    public MultipartUpload initiateMultipartUpload(String s, BlobMetadata blobMetadata) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void abortMultipartUpload(MultipartUpload multipartUpload) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String completeMultipartUpload(MultipartUpload multipartUpload, List<MultipartPart> list) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public MultipartPart uploadMultipartPart(MultipartUpload multipartUpload, int i, Payload payload) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<MultipartPart> listMultipartUpload(MultipartUpload multipartUpload) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public long getMinimumMultipartPartSize() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int getMaximumNumberOfParts() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public long getMaximumMultipartPartSize() {
+        throw new UnsupportedOperationException();
     }
 
     public void updateBlobMetadata(String containerName, String blobName, Map<String, String> userMetadata) {
