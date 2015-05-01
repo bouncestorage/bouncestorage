@@ -23,8 +23,16 @@ settingsControllers.controller('SettingsCtrl', ['$scope', '$location',
           console.log(result);
           $scope.s3Enabled = (result.s3Address !== null &&
             result.s3Address !== "" && result.s3Port > 0);
+          if (!$scope.s3Enabled) {
+            $scope.s3Address = "0.0.0.0";
+            $scope.s3Port = 80;
+          }
           $scope.swiftEnabled = (result.swiftAddress !== null &&
             result.swiftAddress !== "" && result.swiftPort > 0);
+          if (!$scope.swiftEnabled) {
+            $scope.swiftAddress = "0.0.0.0";
+            $scope.swiftPort = 8080;
+          }
       });
 
       $scope.actions.update = function() {

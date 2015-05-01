@@ -41,6 +41,10 @@ public class SettingsResource {
                 S3ProxyConstants.PROPERTY_ENDPOINT));
         res.s3Address = endpoint.getHost();
         res.s3Port = endpoint.getPort();
+        URI swiftEndpoint = new URI(app.getConfiguration().getString(
+                SwiftProxy.PROPERTY_ENDPOINT));
+        res.swiftAddress = swiftEndpoint.getHost();
+        res.swiftPort = swiftEndpoint.getPort();
         return res;
     }
 
