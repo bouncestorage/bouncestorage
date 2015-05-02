@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 import java.util.Set;
 
 import javax.inject.Inject;
@@ -28,6 +29,8 @@ import org.jclouds.blobstore.domain.BlobAccess;
 import org.jclouds.blobstore.domain.BlobBuilder;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.ContainerAccess;
+import org.jclouds.blobstore.domain.MultipartPart;
+import org.jclouds.blobstore.domain.MultipartUpload;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.internal.BlobMetadataImpl;
@@ -40,6 +43,7 @@ import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.blobstore.util.BlobUtils;
 import org.jclouds.domain.Location;
 import org.jclouds.io.MutableContentMetadata;
+import org.jclouds.io.Payload;
 import org.jclouds.io.payloads.BaseMutableContentMetadata;
 
 public final class NullBlobStore implements BlobStore {
@@ -207,5 +211,65 @@ public final class NullBlobStore implements BlobStore {
     @Override
     public long countBlobs(String container, ListContainerOptions options) {
         return 0;
+    }
+
+    @Override
+    public MultipartUpload initiateMultipartUpload(String s, BlobMetadata blobMetadata) {
+        return new MultipartUpload() {
+            @Override
+            public String containerName() {
+                return null;
+            }
+
+            @Override
+            public String blobName() {
+                return null;
+            }
+
+            @Override
+            public String id() {
+                return null;
+            }
+
+            @Override
+            public BlobMetadata blobMetadata() {
+                return null;
+            }
+        };
+    }
+
+    @Override
+    public void abortMultipartUpload(MultipartUpload multipartUpload) {
+
+    }
+
+    @Override
+    public String completeMultipartUpload(MultipartUpload multipartUpload, List<MultipartPart> list) {
+        return null;
+    }
+
+    @Override
+    public MultipartPart uploadMultipartPart(MultipartUpload multipartUpload, int i, Payload payload) {
+        return MultipartPart.create(i, -1, "");
+    }
+
+    @Override
+    public List<MultipartPart> listMultipartUpload(MultipartUpload multipartUpload) {
+        return ImmutableList.<MultipartPart>of();
+    }
+
+    @Override
+    public long getMinimumMultipartPartSize() {
+        return 1;
+    }
+
+    @Override
+    public int getMaximumNumberOfParts() {
+        return Integer.MAX_VALUE;
+    }
+
+    @Override
+    public long getMaximumMultipartPartSize() {
+        return Long.MAX_VALUE;
     }
 }

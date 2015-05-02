@@ -6,6 +6,7 @@
 package com.bouncestorage.bounce;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -16,6 +17,8 @@ import org.jclouds.blobstore.domain.BlobAccess;
 import org.jclouds.blobstore.domain.BlobBuilder;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.ContainerAccess;
+import org.jclouds.blobstore.domain.MultipartPart;
+import org.jclouds.blobstore.domain.MultipartUpload;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.CopyOptions;
@@ -24,6 +27,7 @@ import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.domain.Location;
+import org.jclouds.io.Payload;
 
 public interface IForwardingBlobStore extends BlobStore {
     BlobStore delegate();
@@ -208,5 +212,45 @@ public interface IForwardingBlobStore extends BlobStore {
     default String copyBlob(String fromContainer, String fromName, String toContainer, String toName,
                     CopyOptions options) {
         return delegate().copyBlob(mapContainer(fromContainer), fromName, mapContainer(toContainer), toName, options);
+    }
+
+    @Override
+    default MultipartUpload initiateMultipartUpload(String s, BlobMetadata blobMetadata) {
+        return delegate().initiateMultipartUpload(s, blobMetadata);
+    }
+
+    @Override
+    default void abortMultipartUpload(MultipartUpload multipartUpload) {
+        delegate().abortMultipartUpload(multipartUpload);
+    }
+
+    @Override
+    default String completeMultipartUpload(MultipartUpload multipartUpload, List<MultipartPart> list) {
+        return delegate().completeMultipartUpload(multipartUpload, list);
+    }
+
+    @Override
+    default MultipartPart uploadMultipartPart(MultipartUpload multipartUpload, int i, Payload payload) {
+        return delegate().uploadMultipartPart(multipartUpload, i, payload);
+    }
+
+    @Override
+    default List<MultipartPart> listMultipartUpload(MultipartUpload multipartUpload) {
+        return delegate().listMultipartUpload(multipartUpload);
+    }
+
+    @Override
+    default long getMinimumMultipartPartSize() {
+        return delegate().getMinimumMultipartPartSize();
+    }
+
+    @Override
+    default int getMaximumNumberOfParts() {
+        return delegate().getMaximumNumberOfParts();
+    }
+
+    @Override
+    default long getMaximumMultipartPartSize() {
+        return delegate().getMaximumMultipartPartSize();
     }
 }
