@@ -3,11 +3,21 @@
   <p class="lead">
   Provider: {{store.provider}}
   </p>
-  <p>
-    <button class="btn btn-default" ng-click="actions.editStore(store)">
-      <span class="glyphicon glyphicon-edit"></span> Edit {{store.nickname}} store
-    </button>
-  </p>
+
+  <form class="form">
+    <div class="form-group">
+      <button class="btn btn-default" ng-click="actions.editStore(store)">
+        <span class="glyphicon glyphicon-edit"></span> Edit {{store.nickname}} store
+      </button>
+    </div>
+    <div class="form-group form-inline">
+      <label>Container name</label>
+      <input type="text" class="form-control" ng-model="newContainer" placeholder="container name">
+      <button class="btn btn-default" ng-click="actions.addContainer()">
+        <span class="glyphicon glyphicon-plus"></span> Add container
+      </button>
+    </div>
+  </form>
 
   <div class="col-sm-6 table-responsive">
     <table class="table table-hover">
