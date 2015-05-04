@@ -37,14 +37,18 @@ public class SettingsResource {
     @Timed
     public Settings getSettings() throws URISyntaxException {
         Settings res = new Settings();
-        URI endpoint = new URI(app.getConfiguration().getString(
-                S3ProxyConstants.PROPERTY_ENDPOINT));
-        res.s3Address = endpoint.getHost();
-        res.s3Port = endpoint.getPort();
-        URI swiftEndpoint = new URI(app.getConfiguration().getString(
-                SwiftProxy.PROPERTY_ENDPOINT));
-        res.swiftAddress = swiftEndpoint.getHost();
-        res.swiftPort = swiftEndpoint.getPort();
+        String s3URL = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_ENDPOINT);
+        if (s3URL != null) {
+            URI endpoint = new URI(s3URL);
+            res.s3Address = endpoint.getHost();
+            res.s3Port = endpoint.getPort();
+        }
+        String swiftURL = app.getConfiguration().getString(SwiftProxy.PROPERTY_ENDPOINT);
+        if (swiftURL != null) {
+            URI swiftEndpoint = new URI(swiftURL);
+            res.swiftAddress = swiftEndpoint.getHost();
+            res.swiftPort = swiftEndpoint.getPort();
+        }
         return res;
     }
 
