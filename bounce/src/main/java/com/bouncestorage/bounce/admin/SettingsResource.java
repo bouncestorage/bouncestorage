@@ -69,7 +69,14 @@ public class SettingsResource {
         } else if (swiftEndpoint != null) {
             p.put(SwiftProxy.PROPERTY_ENDPOINT, swiftEndpoint.toString());
         }
-        app.getConfiguration().setAll(p);
+        try {
+            app.getConfiguration().setAll(p);
+        } catch (Throwable e) {
+            if (e.getCause() != null) {
+                e = e.getCause();
+            }
+            return Response.serverError().entity(e).build();
+        }
         return Response.ok().build();
     }
 
