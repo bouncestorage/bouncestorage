@@ -7,9 +7,11 @@ package com.bouncestorage.bounce.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.HttpURLConnection;
 import java.util.Properties;
 
 import javax.ws.rs.HttpMethod;
+import javax.ws.rs.core.Response;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
@@ -51,8 +53,8 @@ public class VirtualContainerResourceTest {
 
         String url = String.format("http://localhost:%d/api/virtual_container/0", app.getPort());
 
-        String response = UtilsTest.submitRequest(url, HttpMethod.PUT, jsonInput);
-        assertThat(response).isEqualToIgnoringCase("OK");
+        HttpURLConnection response = UtilsTest.submitRequest(url, HttpMethod.PUT, jsonInput);
+        assertThat(response.getResponseCode()).isEqualTo(Response.Status.OK.getStatusCode());
         String containerPrefix = Joiner.on(".").join(VirtualContainerResource.VIRTUAL_CONTAINER_PREFIX, "0");
         String primaryTierPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.PRIMARY_TIER_PREFIX);
         Configuration config = app.getConfiguration();
@@ -75,8 +77,8 @@ public class VirtualContainerResourceTest {
                 "\"copyDelay\":null,\"moveDelay\":null},\"name\":\"magic\"}";
 
         String url = String.format("http://localhost:%d/api/virtual_container/0", app.getPort());
-        String response = UtilsTest.submitRequest(url, HttpMethod.PUT, jsonInput);
-        assertThat(response).isEqualToIgnoringCase("OK");
+        HttpURLConnection response = UtilsTest.submitRequest(url, HttpMethod.PUT, jsonInput);
+        assertThat(response.getResponseCode()).isEqualTo(Response.Status.OK.getStatusCode());
         String containerPrefix = Joiner.on(".").join(VirtualContainerResource.VIRTUAL_CONTAINER_PREFIX, "0");
         String targetLocationPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.MIGRATION_TIER_PREFIX);
         Configuration config = app.getConfiguration();

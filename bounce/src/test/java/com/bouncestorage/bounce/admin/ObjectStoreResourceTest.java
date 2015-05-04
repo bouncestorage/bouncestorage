@@ -10,8 +10,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 
 import javax.ws.rs.HttpMethod;
+import javax.ws.rs.core.Response;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
@@ -36,7 +38,7 @@ public class ObjectStoreResourceTest {
         }
         app = new BounceApplication(configFile.getPath());
         app.useRandomPorts();
-        String webConfig = VirtualContainerResourceTest.class.getResource("/bounce.yml").toExternalForm();
+        String webConfig = ObjectStoreResourceTest.class.getResource("/bounce.yml").toExternalForm();
         synchronized (app.getClass()) {
             app.run(new String[]{"server", webConfig});
         }
@@ -70,8 +72,8 @@ public class ObjectStoreResourceTest {
 
     private void validateStores(String[] nicknames) throws Exception {
         for (int i = 0; i < nicknames.length; i++) {
-            String response = createObjectStore(nicknames[i]);
-            assertThat(response).isEqualToIgnoringCase("OK");
+            HttpURLConnection response = createObjectStore(nicknames[i]);
+            assertThat(response.getResponseCode()).isEqualTo(Response.Status.OK.getStatusCode());
             Configuration config = app.getConfiguration();
             assertThat(config.getList(BounceBlobStore.STORES_LIST)).hasSize(i + 1);
             String id = Integer.toString(i + 1);
@@ -82,7 +84,7 @@ public class ObjectStoreResourceTest {
         }
     }
 
-    private String createObjectStore(String nickname) throws Exception {
+    private HttpURLConnection createObjectStore(String nickname) throws Exception {
         String jsonInput = "{ \"provider\" : \"transient\", \"identity\" : \"foo\", \"credential\" : \"foo\", " +
                 "\"nickname\" : \"" + nickname + "\" }";
 

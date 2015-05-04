@@ -324,15 +324,17 @@ public final class UtilsTest {
         app.setClock(Clock.offset(app.getClock(), duration));
     }
 
-    public static String submitRequest(String url, String method, String json) throws Exception {
+    public static HttpURLConnection submitRequest(String url, String method, String json) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setRequestMethod(method);
         connection.setRequestProperty(HttpHeaders.CONTENT_TYPE, javax.ws.rs.core.MediaType.APPLICATION_JSON);
         connection.setDoOutput(true);
-        try (OutputStream os = connection.getOutputStream()) {
-            os.write(json.getBytes(StandardCharsets.UTF_8));
+        if (json != null) {
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
         }
 
-        return connection.getResponseMessage();
+        return connection;
     }
 }
