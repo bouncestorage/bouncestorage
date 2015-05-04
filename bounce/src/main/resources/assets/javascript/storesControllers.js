@@ -226,6 +226,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     $scope.locations = [];
     $scope.containersMap = {};
     $scope.refreshBounce = null;
+    $scope.newContainer = null;
 
     $scope.refreshContainersMap = function() {
       for (var i = 0; i < $scope.stores.length; i++) {
@@ -369,6 +370,16 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
         console.log(error);
         $bounceBtn.removeClass('disabled');
       });
+    };
+
+    $scope.actions.addContainer = function() {
+      Container.save({ id: $scope.store.id, name: $scope.newContainer },
+        function(result) {
+          $scope.updateContainerMap($scope.store.id);
+        },
+        function(error) {
+          console.log(error);
+        });
     };
 
     var refreshBounceState = function() {

@@ -93,6 +93,22 @@ public final class ObjectStoreResource {
         return store;
     }
 
+    @POST
+    @Path("{id}/container")
+    @Timed
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response createContainer(@PathParam("id") int providerId, HashMap<String, String> request) {
+        BlobStore blobStore = app.getBlobStore(providerId);
+        if (blobStore == null) {
+            throw new WebApplicationException(Response.Status.NOT_FOUND);
+        }
+        if (!request.containsKey("name")) {
+            throw new WebApplicationException(Response.Status.BAD_REQUEST);
+        }
+        blobStore.createContainerInLocation(null, request.get("name"));
+        return Response.ok().build();
+    }
+
     @GET
     @Path("{id}/container")
     @Timed
