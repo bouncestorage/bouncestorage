@@ -10,7 +10,7 @@ function sigterm_handler() {
 
 trap "sigterm_handler" TERM
 
-service influxdb start
+./setup_influxdb.sh
 java -jar ./bounce.jar --properties bounce.properties >& /var/log/bounce.log &
 
 child=$!
