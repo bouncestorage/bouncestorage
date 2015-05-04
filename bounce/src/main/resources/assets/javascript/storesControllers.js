@@ -127,7 +127,7 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
       ObjectStore.update({
         id: $routeParams.objectStoreId,
         nickname: $scope.nickname,
-        provider: $scope.provider,
+        provider: $scope.provider.value,
         identity: $scope.identity,
         credential: $scope.credential,
         region: $scope.provider.region,
@@ -135,7 +135,7 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
       }, function(res) {
         $location.path('/stores');
       }, function(error) {
-        console.log('Error: ' + error);
+        console.log(error);
       });
     };
 
