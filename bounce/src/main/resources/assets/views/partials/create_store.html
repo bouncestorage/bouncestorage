@@ -1,11 +1,11 @@
 <div class="container main">
   <h1 class="page-header" ng-if="edit !== true">Create an object store</h1>
   <h1 class="page-header" ng-if="edit">Edit object store</h1>
-  <div class="col-sm-4">
+  <div class="col-sm-8">
     <form class="form">
       <div class="form-group">
         <label class="control-label">Object store nickname</label>
-        <input type="text" class="form-control" ng-model="nickname"
+        <input type="text" class="form-control" ng-model="provider.nickname"
           placeholder="Object store nickname">
       </div>
       <div class="form-group">
@@ -17,13 +17,18 @@
       </div>
       <div class="form-group">
         <label class="control-label">Object store identity</label>
-        <input type="text" class="form-control" ng-model="identity"
+        <input type="text" class="form-control" ng-model="provider.identity"
           ng-disabled="edit || provider === null" placeholder="API identity">
       </div>
       <div class="form-group">
         <label class="control-label">Object store credential</label>
-        <input type="password" class="form-control" ng-model="credential"
-          placeholder="Secret key" ng-disabled="provider === null">
+        <input type="password" class="form-control" ng-model="provider.credential"
+          placeholder="Secret key" ng-disabled="provider === null"
+          ng-if="provider.value !== 'google-cloud-storage'">
+        <textarea class="form-control" rows=16 ng-model="provider.credential"
+          placeholder="Private key" ng-disable="provider === null"
+          ng-if="provider.value === 'google-cloud-storage'">
+        </textarea>
       </div>
       <div class="form-group" ng-if="provider !== null && provider.hasEndpoint">
         <label class="control-label">Object store endpoint</label>

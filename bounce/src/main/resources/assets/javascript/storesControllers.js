@@ -102,18 +102,18 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
               $scope.provider = $scope.providers[i];
             }
           }
-          $scope.identity = result.identity;
-          $scope.credential = result.credential;
+          $scope.provider.identity = result.identity;
+          $scope.provider.credential = result.credential;
           $scope.provider.region = result.region;
           $scope.provider.endpoint = result.endpoint;
       });
     }
 
     $scope.actions.submitNewStore = function() {
-      var newStore = { nickname: $scope.nickname,
+      var newStore = { nickname: $scope.provider.nickname,
                        provider: $scope.provider.value,
-                       identity: $scope.identity,
-                       credential: $scope.credential,
+                       identity: $scope.provider.identity,
+                       credential: $scope.provider.credential,
                        region: $scope.provider.region,
                        endpoint: $scope.provider.endpoint
                      };
@@ -126,10 +126,10 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
     $scope.actions.updateStore = function() {
       ObjectStore.update({
         id: $routeParams.objectStoreId,
-        nickname: $scope.nickname,
+        nickname: $scope.provider.nickname,
         provider: $scope.provider.value,
-        identity: $scope.identity,
-        credential: $scope.credential,
+        identity: $scope.provider.identity,
+        credential: $scope.provider.credential,
         region: $scope.provider.region,
         endpoint: $scope.provider.endpoint
       }, function(res) {
