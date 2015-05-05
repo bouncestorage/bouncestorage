@@ -52,7 +52,7 @@ public final class ObjectStoreResource {
     @POST
     @Timed
     @Consumes(MediaType.APPLICATION_JSON)
-    public String createObjectStore(ObjectStore objectStore) {
+    public ObjectStore createObjectStore(ObjectStore objectStore) {
         try {
             Properties properties = objectStore.getJCloudsProperties(PROPERTIES_PREFIX);
             ContextBuilder builder = ContextBuilder.newBuilder(objectStore.provider).overrides(properties);
@@ -71,7 +71,7 @@ public final class ObjectStoreResource {
                 properties.setProperty(BounceBlobStore.STORES_LIST, Joiner.on(",").join(backendsList));
             }
             config.setAll(properties);
-            return SUCCESS_RESPONSE;
+            return getObjectStore(storeIndex);
         } catch (Exception e) {
             e.printStackTrace();
             throw new WebApplicationException(Response.Status.BAD_REQUEST);

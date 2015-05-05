@@ -32,9 +32,9 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
                        region: $scope.provider.region,
                        endpoint: $scope.provider.endpoint
                      };
-      ObjectStore.save(newStore, function (res) {
-        $rootScope.$emit('addedStore', newStore);
-        $location.path('/stores');
+      ObjectStore.save(newStore, function (successStore) {
+        $rootScope.$emit('addedStore', successStore);
+        $location.path('/stores/' + successStore.id);
       });
     };
 
