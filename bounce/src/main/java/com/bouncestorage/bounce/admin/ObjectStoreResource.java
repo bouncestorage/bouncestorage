@@ -189,6 +189,8 @@ public final class ObjectStoreResource {
             store.setNickname(value);
         } else if (field.equalsIgnoreCase("region")) {
             store.setRegion(value);
+        } else if (field.equalsIgnoreCase("storageClass")) {
+            store.setStorageClass(ObjectStore.StorageClass.valueOf(value));
         }
     }
 
@@ -211,6 +213,7 @@ public final class ObjectStoreResource {
     }
 
     private static class ObjectStore {
+        enum StorageClass { GLOBAL, ZONAL, LOCAL, COLD }
         private String identity;
         private String credential;
         private String endpoint;
@@ -218,6 +221,15 @@ public final class ObjectStoreResource {
         private String provider;
         private String region;
         private int id;
+        private StorageClass storageClass;
+
+        public StorageClass getStorageClass() {
+            return storageClass;
+        }
+
+        public void setStorageClass(StorageClass storageClass) {
+            this.storageClass = storageClass;
+        }
 
         public void setIdentity(String identity) {
             this.identity = identity;
@@ -283,7 +295,7 @@ public final class ObjectStoreResource {
             properties.put(propertiesPrefix + "credential", credential);
             if (endpoint != null) {
                 properties.put(propertiesPrefix + "endpoint", endpoint);
-                if (endpoint.endsWith("/auth/v1.0/")) {
+                if (endpoint.endsWith("/auth/v1.0")) {
                     properties.put(propertiesPrefix + "keystone.credential-type", "tempAuthCredentials");
                 }
             }
@@ -314,12 +326,15 @@ public final class ObjectStoreResource {
             if (field.equalsIgnoreCase("endpoint")) {
                 return endpoint;
             }
+            if (field.equalsIgnoreCase("storageClass")) {
+                return storageClass.toString();
+            }
             throw new IllegalArgumentException("Unknown field");
         }
 
         public String toString() {
             return "Id: " + id + " Provider: " + provider + " Identity: " + identity + " Credential: " + credential +
-                    " Nickname: " + nickname;
+                    " Nickname: " + nickname + " Storage class: " + storageClass;
         }
     }
 }

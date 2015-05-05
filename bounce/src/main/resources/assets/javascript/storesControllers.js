@@ -21,11 +21,12 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
           $scope.provider.credential = result.credential;
           $scope.provider.region = result.region;
           $scope.provider.endpoint = result.endpoint;
+          $scope.provider.class = result.storageClass;
       });
     }
 
     $scope.actions.submitNewStore = function() {
-      var newStore = { nickname: $scope.provider.nickname,
+      var newStore = { nickname: $scope.nickname,
                        provider: $scope.provider.value,
                        identity: $scope.provider.identity,
                        credential: $scope.provider.credential,
@@ -144,8 +145,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
         return $scope.provider.name;
       } else {
         return $scope.provider.name + " (" +
-          bounceConstants.getRegion($scope.provider, $scope.store.region).name +
-          ")";
+          bounceConstants.getCloudContext($scope.provider, $scope.store) + ")";
       }
     };
 

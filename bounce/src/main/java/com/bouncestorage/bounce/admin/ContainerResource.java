@@ -99,7 +99,7 @@ public final class ContainerResource {
     }
 
     private static class Container {
-        enum ContainerStatus { UNCONFIGURED, CONFIGURED, INUSE };
+        enum ContainerStatus { UNCONFIGURED, CONFIGURED, INUSE }
 
         private String name;
         private ContainerStatus status;
