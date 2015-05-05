@@ -4,93 +4,8 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
   '$location', '$routeParams', 'ObjectStore',
   function ($scope, $rootScope, $location, $routeParams, ObjectStore) {
     $scope.actions = {};
-    $scope.provider = null;
-
-    var awsRegions = [ { name: "US Standard",
-                           value: "us-east-1"
-                       },
-                       { name: "US West (California)",
-                         value: "us-west-1"
-                       },
-                       { name: "US West (Oregon)",
-                         value: "us-west-2"
-                       },
-                       { name: "EU (Ireland)",
-                         value: "eu-west-1"
-                       },
-                       { name: "Singapore",
-                         value: "ap-southeast-1"
-                       },
-                       { name: "Sydney",
-                         value: "ap-southeast-2"
-                       },
-                       { name: "Tokyo",
-                         value: "ap-northeast-1"
-                       },
-                       { name: "South America (Sao Paulo)",
-                         value: "sa-east-1"
-                       }
-                     ];
-    var googleRegions = [ { name: "Eastern Asia-Pacific",
-                            value: "ASIA-EAST1"
-                          },
-                          { name: "Central US (1)",
-                            value: "US-CENTRAL1"
-                          },
-                          { name: "Central US (2)",
-                            value: "US-CENTRAL2"
-                          },
-                          { name: "Eastern US (1)",
-                            value: "US-EAST1"
-                          },
-                          { name: "Eastern US (2)",
-                            value: "US-EAST2"
-                          },
-                          { name: "Eastern US (3)",
-                            value: "US-EAST3"
-                          },
-                          { name: "Western US",
-                            value: "US-WEST1"
-                          }
-                        ];
-
-    $scope.providers = [ { name: "Amazon S3",
-                           value: "aws-s3",
-                           regions: awsRegions,
-                           hasRegion: true,
-                           hasEndpoint: false,
-                           region: null
-                         },
-                         /*{ name: "Google Cloud Storage",
-                           value: "google",
-                           hasRegion: true,
-                           hasEndpoint: false,
-                           regions: googleRegions
-                           region: null
-                         },
-                         { name: "Microsoft Azure",
-                             value: "azure"
-                           } */
-                         { name: "OpenStack Swift",
-                           value: "openstack-swift",
-                           hasRegion: true,
-                           regions: [],
-                           hasEndpoint: true,
-                           region: null,
-                           endpoint: null
-                         },
-                         { name: "Local filesystem (debugging only)",
-                           value: "filesystem",
-                           hasRegion: false,
-                           hasEndpoint: true,
-                           endpoint: null
-                         },
-                         { name: "In-memory store (debugging only)",
-                           value: "transient",
-                           hasRegion: false,
-                           hasEndpoint: false
-                         }
-                       ];
+    $scope.provider = {};
+    $scope.providers = bounceConstants.providers;
 
     if (typeof($routeParams.objectStoreId) === 'string') {
       $scope.edit = true;
@@ -137,11 +52,6 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
       }, function(error) {
         console.log(error);
       });
-    };
-
-    $scope.actions.updatePrompts = function () {
-      // TODO: dynamically load prompts for various providers
-      console.log($scope.provider);
     };
 
     $scope.actions.cancelEdit = function() {
@@ -227,6 +137,17 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     $scope.containersMap = {};
     $scope.refreshBounce = null;
     $scope.newContainer = null;
+    $scope.providerLabel = null;
+
+    $scope.getProviderLabel = function() {
+      if ($scope.store.region === null) {
+        return $scope.provider.name;
+      } else {
+        return $scope.provider.name + " (" +
+          bounceConstants.getRegion($scope.provider, $scope.store.region).name +
+          ")";
+      }
+    };
 
     $scope.refreshContainersMap = function() {
       for (var i = 0; i < $scope.stores.length; i++) {
@@ -250,6 +171,8 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
           $location.path('/create_store');
         }
       } else {
+        $scope.provider = bounceConstants.getProvider($scope.store.provider);
+        $scope.providerLabel = $scope.getProviderLabel();
         $scope.refreshContainersMap();
       }
     });
@@ -257,7 +180,6 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     $scope.updateContainerMap = function(blobStoreId) {
       $scope.containersMap[blobStoreId] = [];
       Container.query({ id: blobStoreId }, function(results) {
-        console.log($scope.store);
         for (var i = 0; i < results.length; i++) {
           $scope.containersMap[blobStoreId].push(results[i]);
         }
@@ -290,7 +212,6 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     };
 
     $scope.actions.enhanceContainer = function(container) {
-      console.log(container);
       if (container.status === 'UNCONFIGURED') {
         var vContainer = createNewVirtualContainer($scope.store, container);
         $scope.locations = extractLocations(vContainer);
@@ -302,7 +223,6 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       VirtualContainer.get({ id: container.virtualContainerId },
                            function(vContainer) {
                              $scope.enhanceContainer = vContainer;
-                             console.log($scope.enhanceContainer);
                              setArchiveDuration(vContainer, false);
                              $scope.locations = extractLocations(vContainer);
                              $('#configureContainerModal').modal('show');
@@ -318,7 +238,6 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
 
     $scope.actions.saveContainer = function() {
       setArchiveDuration($scope.enhanceContainer, true);
-      console.log($scope.enhanceContainer);
       if (typeof($scope.enhanceContainer.id) === 'undefined') {
         VirtualContainer.save($scope.enhanceContainer,
         function(result) {

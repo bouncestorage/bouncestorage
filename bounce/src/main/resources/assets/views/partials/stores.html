@@ -1,7 +1,10 @@
 <div class="container main">
   <h1 class="page-header">{{store.nickname}}</h1>
-  <p class="lead">
-  Provider: {{store.provider}}
+  <p class="lead" ng-if="store.region === null">
+  Provider: {{provider.name}}
+  </p>
+  <p class="lead" ng-if="store.region !== null">
+  Provider: {{providerLabel}}
   </p>
 
   <form class="form">

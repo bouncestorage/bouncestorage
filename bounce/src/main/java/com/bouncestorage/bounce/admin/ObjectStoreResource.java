@@ -249,6 +249,8 @@ public final class ObjectStoreResource {
             store.setCredential(value);
         } else if (field.equalsIgnoreCase("nickname")) {
             store.setNickname(value);
+        } else if (field.equalsIgnoreCase("region")) {
+            store.setRegion(value);
         }
     }
 
