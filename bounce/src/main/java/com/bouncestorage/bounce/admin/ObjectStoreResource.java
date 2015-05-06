@@ -28,12 +28,14 @@ import javax.ws.rs.core.Response;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.googlecloudstorage.domain.DomainResourceReferences;
 
 @Path("/object_store")
 @Produces(MediaType.APPLICATION_JSON)
@@ -148,7 +150,7 @@ public final class ObjectStoreResource {
         return "{\"status\":\"success\"}";
     }
 
-    private ObjectStore getStoreById(int id, Configuration config) {
+    static ObjectStore getStoreById(int id, Configuration config) {
         String prefix = BounceBlobStore.STORE_PROPERTY + "." + id;
         Iterator<String> keysIterator = config.getKeys(prefix);
         ObjectStore result = null;
@@ -168,7 +170,7 @@ public final class ObjectStoreResource {
         return Integer.parseInt(key.substring(BounceBlobStore.STORE_PROPERTY.length() + 1, indexEnd));
     }
 
-    private String getFieldName(String key) {
+    private static String getFieldName(String key) {
         int indexEnd;
         if (!key.contains(PROPERTIES_PREFIX)) {
             indexEnd = key.indexOf(".", BounceBlobStore.STORE_PROPERTY.length() + 1) + 1;
@@ -178,7 +180,7 @@ public final class ObjectStoreResource {
         return key.substring(indexEnd);
     }
 
-    private void setProperty(ObjectStore store, String field, String value) {
+    private static void setProperty(ObjectStore store, String field, String value) {
         if (field.equalsIgnoreCase("provider")) {
             store.setProvider(value);
         } else if (field.equalsIgnoreCase("identity")) {
@@ -212,8 +214,14 @@ public final class ObjectStoreResource {
         return lastIndex;
     }
 
-    private static class ObjectStore {
+    static class ObjectStore {
         enum StorageClass { GLOBAL, ZONAL, LOCAL, COLD }
+
+        private static final ImmutableMap<StorageClass, DomainResourceReferences.StorageClass> GOOGLE_STORAGE_MAP =
+                ImmutableMap.of(StorageClass.GLOBAL, DomainResourceReferences.StorageClass.STANDARD,
+                        StorageClass.COLD, DomainResourceReferences.StorageClass.NEARLINE,
+                        StorageClass.ZONAL, DomainResourceReferences.StorageClass.DURABLE_REDUCED_AVAILABILITY);
+
         private String identity;
         private String credential;
         private String endpoint;
@@ -225,6 +233,24 @@ public final class ObjectStoreResource {
 
         public StorageClass getStorageClass() {
             return storageClass;
+        }
+
+        String translateStorageClass() {
+            if (provider.equals("google-cloud-storage")) {
+                return GOOGLE_STORAGE_MAP.get(storageClass).toString();
+            }
+            return null;
+        }
+
+        String translateIdentity() {
+            if (provider.equals("google-cloud-storage")) {
+                int separator = identity.indexOf("-");
+                if (separator < 0) {
+                    return null;
+                }
+                return identity.substring(0, identity.indexOf("-"));
+            }
+            return null;
         }
 
         public void setStorageClass(StorageClass storageClass) {

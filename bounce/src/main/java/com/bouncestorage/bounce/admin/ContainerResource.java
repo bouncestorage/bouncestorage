@@ -27,6 +27,13 @@ import com.codahale.metrics.annotation.Timed;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.googlecloud.domain.ListPage;
+import org.jclouds.googlecloudstorage.GoogleCloudStorageApi;
+import org.jclouds.googlecloudstorage.domain.Bucket;
+import org.jclouds.googlecloudstorage.domain.DomainResourceReferences;
+import org.jclouds.googlecloudstorage.domain.templates.BucketTemplate;
+import org.jclouds.googlecloudstorage.features.BucketApi;
+import org.jclouds.rest.ResourceAlreadyExistsException;
 
 @Path("/object_store/{id}/container")
 @Produces(MediaType.APPLICATION_JSON)
@@ -48,7 +55,36 @@ public final class ContainerResource {
         if (!request.containsKey("name")) {
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
         }
-        blobStore.createContainerInLocation(null, request.get("name"));
+        ObjectStoreResource.ObjectStore store = ObjectStoreResource.getStoreById(providerId, app.getConfiguration());
+        if (store.getStorageClass() == null && store.getRegion() == null) {
+            blobStore.createContainerInLocation(null, request.get("name"));
+            return Response.ok().build();
+        }
+
+        switch (store.getProvider()) {
+            case "google-cloud-storage":
+                GoogleCloudStorageApi api = blobStore.getContext().unwrapApi(GoogleCloudStorageApi.class);
+                BucketApi bucketApi = api.getBucketApi();
+                BucketTemplate template = new BucketTemplate().name(request.get("name"))
+                        .location(DomainResourceReferences.Location.valueOf(store.getRegion()))
+                        .storageClass(DomainResourceReferences.StorageClass.valueOf(store.translateStorageClass()));
+                Bucket bucket = bucketApi.createBucket(store.translateIdentity(), template);
+                if (bucket == null) {
+                    return Response.status(Response.Status.CONFLICT).build();
+                }
+                break;
+            case "aws-s3":
+                try {
+                    if (!blobStore.createContainerInLocation(getLocation(blobStore, store.getRegion()), request.get("name"))) {
+                        return Response.status(Response.Status.BAD_REQUEST).build();
+                    }
+                } catch (ResourceAlreadyExistsException e) {
+                    return Response.status(Response.Status.CONFLICT).build();
+                }
+                break;
+            default:
+                return Response.status(Response.Status.BAD_REQUEST).build();
+        }
         return Response.ok().build();
     }
 
@@ -56,10 +92,35 @@ public final class ContainerResource {
     @Timed
     public List<Container> getContainerList(@PathParam("id") int providerId) {
         BlobStore blobStore = app.getBlobStore(providerId);
+        ObjectStoreResource.ObjectStore store = ObjectStoreResource.getStoreById(providerId, app.getConfiguration());
         if (blobStore == null) {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
         }
-        PageSet<? extends StorageMetadata> pageSet = blobStore.list();
+        Map<String, ContainerMapEntry> containerMap = createVirtualContainerMap(providerId);
+        if (store.getStorageClass() == null) {
+            PageSet<? extends StorageMetadata> pageSet = blobStore.list();
+            return pageSet.stream()
+                    .filter(sm -> true)
+                    .map(sm -> createContainerObject(sm.getName(), containerMap))
+                    .collect(Collectors.toList());
+        }
+
+        GoogleCloudStorageApi googleApi = blobStore.getContext().unwrapApi(GoogleCloudStorageApi.class);
+        ListPage<Bucket> listPage = googleApi.getBucketApi().listBucket(store.translateIdentity());
+        return listPage.stream()
+                .filter(bucket -> bucket.storageClass() ==
+                        DomainResourceReferences.StorageClass.valueOf(store.translateStorageClass()))
+                .filter(bucket -> bucket.location().name().equalsIgnoreCase(store.getRegion()))
+                .map(bucket -> createContainerObject(bucket.name(), containerMap))
+                .collect(Collectors.toList());
+    }
+
+    private org.jclouds.domain.Location getLocation(BlobStore blobStore, String region) {
+        return blobStore.listAssignableLocations().stream().filter(location -> location.getId().equals(region))
+                .findFirst().orElse(null);
+    }
+
+    private Map<String, ContainerMapEntry> createVirtualContainerMap(int providerId) {
         List<VirtualContainer> vContainers = new VirtualContainerResource(app).getContainers();
         Map<String, ContainerMapEntry> containerMap = new TreeMap<>();
         for (VirtualContainer container : vContainers) {
@@ -80,17 +141,17 @@ public final class ContainerResource {
                 containerMap.put(container.getOriginLocation().getContainerName(), entry);
             }
         }
-        return pageSet.stream()
-                .map(sm -> {
-                    Container container = new Container(sm.getName());
-                    if (containerMap.containsKey(container.getName())) {
-                        ContainerMapEntry entry = containerMap.get(container.getName());
-                        container.setStatus(entry.status);
-                        container.setVirtualContainerId(entry.virtualContainerId);
-                    }
-                    return container;
-                })
-                .collect(Collectors.toList());
+        return containerMap;
+    }
+
+    private Container createContainerObject(String name, Map<String, ContainerMapEntry> containerMap) {
+        Container container = new Container(name);
+        if (containerMap.containsKey(container.getName())) {
+            ContainerMapEntry entry = containerMap.get(container.getName());
+            container.setStatus(entry.status);
+            container.setVirtualContainerId(entry.virtualContainerId);
+        }
+        return container;
     }
 
     private static class ContainerMapEntry {
