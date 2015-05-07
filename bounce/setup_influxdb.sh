@@ -2,7 +2,7 @@
 
 set -e
 
-setup_file=./setup
+setup_file=/data/setup
 
 service influxdb start
 
