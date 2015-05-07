@@ -127,7 +127,8 @@ BounceUtils.providers = [
 ];
 
 BounceUtils.getProvider = function(providerValue) {
-  for (var i = 0; i < BounceUtils.providers.length; i++) {
+  var i;
+  for (i = 0; i < BounceUtils.providers.length; i++) {
     if (BounceUtils.providers[i].value === providerValue) {
       return BounceUtils.providers[i];
     }
@@ -136,7 +137,8 @@ BounceUtils.getProvider = function(providerValue) {
 };
 
 BounceUtils.getRegionName = function(regions, search_region) {
-  for (var i = 0; i < regions.length; i++) {
+  var i;
+  for (i = 0; i < regions.length; i++) {
     var region = regions[i];
     if (region.value === search_region) {
       return region.name;
@@ -153,9 +155,10 @@ BounceUtils.getCloudContext = function(provider, store) {
     return BounceUtils.getRegionName(provider.regions, store.region);
   }
 
+  var i;
   var search_regions = null;
   var storage_class = null;
-  for (var i = 0; i < provider.storageClasses.length; i++) {
+  for (i = 0; i < provider.storageClasses.length; i++) {
     storage_class = provider.storageClasses[i];
     if (storage_class.value === store.storageClass) {
       search_regions = provider.regions[storage_class.value];
@@ -205,14 +208,16 @@ BounceUtils.createLocationMap = function(virtualContainer) {
 
 BounceUtils.translateLocations = function(locationMap, object) {
   var result = [];
-  for (var i = 0; i < object.regions.length; i++) {
+  var i;
+  for (i = 0; i < object.regions.length; i++) {
     result.push(locationMap[object.regions[i]]);
   }
   return result.join(", ");
 };
 
 BounceUtils.findStore = function(stores, id) {
-  for (var i = 0; i < stores.length; i++) {
+  var i;
+  for (i = 0; i < stores.length; i++) {
     if (stores[i].id === id) {
       return stores[i];
     }

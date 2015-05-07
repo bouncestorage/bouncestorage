@@ -1,3 +1,5 @@
+/*global angular*/
+
 var bounce = angular.module('bounce', [
   'ngResource',
   'ngRoute',

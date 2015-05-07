@@ -1,3 +1,7 @@
+/*global $*/
+/*global angular*/
+/*global BounceUtils*/
+
 var storesControllers = angular.module('storesControllers', ['bounce']);
 
 storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
@@ -11,8 +15,9 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
       $scope.edit = true;
       ObjectStore.get({ id:$routeParams.objectStoreId },
         function(result) {
+          var i;
           $scope.nickname = result.nickname;
-          for (var i = 0; i < $scope.providers.length; i++) {
+          for (i = 0; i < $scope.providers.length; i++) {
             if ($scope.providers[i].value === result.provider) {
               $scope.provider = $scope.providers[i];
             }
@@ -132,7 +137,8 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     };
 
     $scope.refreshContainersMap = function() {
-      for (var i = 0; i < $scope.stores.length; i++) {
+      var i;
+      for (i = 0; i < $scope.stores.length; i++) {
         $scope.updateContainerMap($scope.stores[i].id);
       }
     };
@@ -163,7 +169,8 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     $scope.updateContainerMap = function(blobStoreId) {
       $scope.containersMap[blobStoreId] = [];
       Container.query({ id: blobStoreId }, function(results) {
-        for (var i = 0; i < results.length; i++) {
+        var i;
+        for (i = 0; i < results.length; i++) {
           $scope.containersMap[blobStoreId].push(results[i]);
         }
         if (blobStoreId === $scope.store.id) {
@@ -227,8 +234,9 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       var container = virtualContainer[tierName].containerName;
       Container.get({ id: id, name: container },
                     function(result) {
+                      var i;
                       var map = BounceUtils.createLocationMap(virtualContainer);
-                      for (var i = 0; i < result.objects.length; i++) {
+                      for (i = 0; i < result.objects.length; i++) {
                         var object = result.objects[i];
                         object.locations = BounceUtils.translateLocations(map, object);
                       }
@@ -255,7 +263,8 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
                         name: container.name
                       },
                       function(result) {
-                        for (var i = 0; i < result.objects.length; i++) { 
+                        var i;
+                        for (i = 0; i < result.objects.length; i++) {
                           result.objects[i].locations = BounceUtils.tiers.ORIGIN.displayName;
                         }
                         $scope.listedContainer = result;
@@ -339,12 +348,13 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
 
     var refreshBounceState = function() {
       var $allBouncing = $('.bouncing');
-      if ($allBouncing.length == 0) {
+      var i;
+      if ($allBouncing.length === 0) {
         $interval.cancel($scope.refreshBounce);
         $scope.refreshBounce = null;
         return;
       }
-      for (var i = 0; i < $allBouncing.length; i++) {
+      for (i = 0; i < $allBouncing.length; i++) {
         var $button = $allBouncing[i];
         var name = $button.id.substring("bounce-btn-".length);
         BounceService.get({ name: name }, function(result) {
