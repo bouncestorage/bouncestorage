@@ -13,8 +13,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -30,14 +28,14 @@ import javax.ws.rs.core.Response;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
-import org.jclouds.blobstore.domain.PageSet;
-import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.googlecloudstorage.domain.DomainResourceReferences;
 
 @Path("/object_store")
 @Produces(MediaType.APPLICATION_JSON)
@@ -56,7 +54,7 @@ public final class ObjectStoreResource {
     @POST
     @Timed
     @Consumes(MediaType.APPLICATION_JSON)
-    public String createObjectStore(ObjectStore objectStore) {
+    public ObjectStore createObjectStore(ObjectStore objectStore) {
         try {
             Properties properties = objectStore.getJCloudsProperties(PROPERTIES_PREFIX);
             ContextBuilder builder = ContextBuilder.newBuilder(objectStore.provider).overrides(properties);
@@ -75,7 +73,7 @@ public final class ObjectStoreResource {
                 properties.setProperty(BounceBlobStore.STORES_LIST, Joiner.on(",").join(backendsList));
             }
             config.setAll(properties);
-            return SUCCESS_RESPONSE;
+            return getObjectStore(storeIndex);
         } catch (Exception e) {
             e.printStackTrace();
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
@@ -91,64 +89,6 @@ public final class ObjectStoreResource {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
         }
         return store;
-    }
-
-    @POST
-    @Path("{id}/container")
-    @Timed
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response createContainer(@PathParam("id") int providerId, HashMap<String, String> request) {
-        BlobStore blobStore = app.getBlobStore(providerId);
-        if (blobStore == null) {
-            throw new WebApplicationException(Response.Status.NOT_FOUND);
-        }
-        if (!request.containsKey("name")) {
-            throw new WebApplicationException(Response.Status.BAD_REQUEST);
-        }
-        blobStore.createContainerInLocation(null, request.get("name"));
-        return Response.ok().build();
-    }
-
-    @GET
-    @Path("{id}/container")
-    @Timed
-    public List<Container> getContainerList(@PathParam("id") int providerId) {
-        BlobStore blobStore = app.getBlobStore(providerId);
-        if (blobStore == null) {
-            throw new WebApplicationException(Response.Status.NOT_FOUND);
-        }
-        PageSet<? extends StorageMetadata> pageSet = blobStore.list();
-        List<VirtualContainer> vContainers = new VirtualContainerResource(app).getContainers();
-        Map<String, ContainerMapEntry> containerMap = new TreeMap<>();
-        for (VirtualContainer container : vContainers) {
-            Location[] locations = {container.getCacheLocation(), container.getArchiveLocation(), container
-                    .getMigrationTargetLocation()};
-            for (Location location : locations) {
-                if (location != null && location.getBlobStoreId() == providerId) {
-                    ContainerMapEntry entry = new ContainerMapEntry();
-                    entry.status = Container.ContainerStatus.INUSE;
-                    entry.virtualContainerId = container.getId();
-                    containerMap.put(location.getContainerName(), entry);
-                }
-            }
-            if (container.getOriginLocation().getBlobStoreId() == providerId) {
-                ContainerMapEntry entry = new ContainerMapEntry();
-                entry.status = Container.ContainerStatus.CONFIGURED;
-                entry.virtualContainerId = container.getId();
-                containerMap.put(container.getOriginLocation().getContainerName(), entry);
-            }
-        }
-        return pageSet.stream()
-                .map(sm -> {
-                    Container container = new Container(sm.getName());
-                    if (containerMap.containsKey(container.getName())) {
-                        ContainerMapEntry entry = containerMap.get(container.getName());
-                        container.setStatus(entry.status);
-                        container.setVirtualContainerId(entry.virtualContainerId);
-                    }
-                    return container;
-                })
-                .collect(Collectors.toList());
     }
 
     @GET
@@ -210,7 +150,7 @@ public final class ObjectStoreResource {
         return "{\"status\":\"success\"}";
     }
 
-    private ObjectStore getStoreById(int id, Configuration config) {
+    static ObjectStore getStoreById(int id, Configuration config) {
         String prefix = BounceBlobStore.STORE_PROPERTY + "." + id;
         Iterator<String> keysIterator = config.getKeys(prefix);
         ObjectStore result = null;
@@ -230,7 +170,7 @@ public final class ObjectStoreResource {
         return Integer.parseInt(key.substring(BounceBlobStore.STORE_PROPERTY.length() + 1, indexEnd));
     }
 
-    private String getFieldName(String key) {
+    private static String getFieldName(String key) {
         int indexEnd;
         if (!key.contains(PROPERTIES_PREFIX)) {
             indexEnd = key.indexOf(".", BounceBlobStore.STORE_PROPERTY.length() + 1) + 1;
@@ -240,7 +180,7 @@ public final class ObjectStoreResource {
         return key.substring(indexEnd);
     }
 
-    private void setProperty(ObjectStore store, String field, String value) {
+    private static void setProperty(ObjectStore store, String field, String value) {
         if (field.equalsIgnoreCase("provider")) {
             store.setProvider(value);
         } else if (field.equalsIgnoreCase("identity")) {
@@ -249,6 +189,10 @@ public final class ObjectStoreResource {
             store.setCredential(value);
         } else if (field.equalsIgnoreCase("nickname")) {
             store.setNickname(value);
+        } else if (field.equalsIgnoreCase("region")) {
+            store.setRegion(value);
+        } else if (field.equalsIgnoreCase("storageClass")) {
+            store.setStorageClass(ObjectStore.StorageClass.valueOf(value));
         }
     }
 
@@ -270,7 +214,14 @@ public final class ObjectStoreResource {
         return lastIndex;
     }
 
-    private static class ObjectStore {
+    static class ObjectStore {
+        enum StorageClass { GLOBAL, ZONAL, LOCAL, COLD }
+
+        private static final ImmutableMap<StorageClass, DomainResourceReferences.StorageClass> GOOGLE_STORAGE_MAP =
+                ImmutableMap.of(StorageClass.GLOBAL, DomainResourceReferences.StorageClass.STANDARD,
+                        StorageClass.COLD, DomainResourceReferences.StorageClass.NEARLINE,
+                        StorageClass.ZONAL, DomainResourceReferences.StorageClass.DURABLE_REDUCED_AVAILABILITY);
+
         private String identity;
         private String credential;
         private String endpoint;
@@ -278,6 +229,33 @@ public final class ObjectStoreResource {
         private String provider;
         private String region;
         private int id;
+        private StorageClass storageClass;
+
+        public StorageClass getStorageClass() {
+            return storageClass;
+        }
+
+        String translateStorageClass() {
+            if (provider.equals("google-cloud-storage")) {
+                return GOOGLE_STORAGE_MAP.get(storageClass).toString();
+            }
+            return null;
+        }
+
+        String translateIdentity() {
+            if (provider.equals("google-cloud-storage")) {
+                int separator = identity.indexOf("-");
+                if (separator < 0) {
+                    return null;
+                }
+                return identity.substring(0, identity.indexOf("-"));
+            }
+            return null;
+        }
+
+        public void setStorageClass(StorageClass storageClass) {
+            this.storageClass = storageClass;
+        }
 
         public void setIdentity(String identity) {
             this.identity = identity;
@@ -343,7 +321,7 @@ public final class ObjectStoreResource {
             properties.put(propertiesPrefix + "credential", credential);
             if (endpoint != null) {
                 properties.put(propertiesPrefix + "endpoint", endpoint);
-                if (endpoint.endsWith("/auth/v1.0/")) {
+                if (endpoint.endsWith("/auth/v1.0")) {
                     properties.put(propertiesPrefix + "keystone.credential-type", "tempAuthCredentials");
                 }
             }
@@ -374,55 +352,15 @@ public final class ObjectStoreResource {
             if (field.equalsIgnoreCase("endpoint")) {
                 return endpoint;
             }
+            if (field.equalsIgnoreCase("storageClass")) {
+                return storageClass.toString();
+            }
             throw new IllegalArgumentException("Unknown field");
         }
 
         public String toString() {
             return "Id: " + id + " Provider: " + provider + " Identity: " + identity + " Credential: " + credential +
-                    " Nickname: " + nickname;
-        }
-    }
-
-    private static class ContainerMapEntry {
-        private int virtualContainerId;
-        private Container.ContainerStatus status;
-    }
-
-    private static class Container {
-        enum ContainerStatus { UNCONFIGURED, CONFIGURED, INUSE };
-
-        private String name;
-        private ContainerStatus status;
-        private int virtualContainerId;
-
-        Container(String name) {
-            this.name = name;
-            virtualContainerId = -1;
-            status = ContainerStatus.UNCONFIGURED;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setStatus(ContainerStatus status) {
-            this.status = status;
-        }
-
-        public ContainerStatus getStatus() {
-            return status;
-        }
-
-        public int getVirtualContainerId() {
-            return virtualContainerId;
-        }
-
-        public void setVirtualContainerId(int virtualContainerId) {
-            this.virtualContainerId = virtualContainerId;
+                    " Nickname: " + nickname + " Storage class: " + storageClass;
         }
     }
 }
