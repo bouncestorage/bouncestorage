@@ -11,12 +11,15 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.util.Map;
 
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.Response;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.io.ByteStreams;
 
 import org.apache.commons.configuration.Configuration;
@@ -28,6 +31,7 @@ import org.junit.Test;
 public class ObjectStoreResourceTest {
     private BounceApplication app;
     private File configFile;
+    private String url;
 
     @Before
     public void setUp() throws Exception {
@@ -42,6 +46,7 @@ public class ObjectStoreResourceTest {
         synchronized (app.getClass()) {
             app.run(new String[]{"server", webConfig});
         }
+        url = String.format("http://localhost:%d/api/object_store", app.getPort());
     }
 
     @After
@@ -70,6 +75,24 @@ public class ObjectStoreResourceTest {
         validateStores(nicknames);
     }
 
+    @Test
+    public void testCreateFileSystemBlobStore() throws Exception {
+        String jsonRequest = "{" +
+                "\"provider\": \"filesystem\"," +
+                "\"identity\":\"foo\"," +
+                "\"credential\":\"bar\", " +
+                "\"nickname\":\"fs\", " +
+                "\"endpoint\":\"/tmp\" }";
+        HttpURLConnection response = UtilsTest.submitRequest(url, HttpMethod.POST, jsonRequest);
+        assertThat(response.getResponseCode()).isEqualTo(Response.Status.OK.getStatusCode());
+        try (InputStream stream = response.getInputStream()) {
+            Map<String, Object> jsonResponse = new ObjectMapper().readValue(stream, new TypeReference<Map<String,
+                    Object>>() {
+            });
+            assertThat(jsonResponse).containsKey("id");
+        }
+    }
+
     private void validateStores(String[] nicknames) throws Exception {
         for (int i = 0; i < nicknames.length; i++) {
             HttpURLConnection response = createObjectStore(nicknames[i]);
@@ -87,8 +110,6 @@ public class ObjectStoreResourceTest {
     private HttpURLConnection createObjectStore(String nickname) throws Exception {
         String jsonInput = "{ \"provider\" : \"transient\", \"identity\" : \"foo\", \"credential\" : \"foo\", " +
                 "\"nickname\" : \"" + nickname + "\" }";
-
-        String url = String.format("http://localhost:%d/api/object_store", app.getPort());
         return UtilsTest.submitRequest(url, HttpMethod.POST, jsonInput);
     }
 }
