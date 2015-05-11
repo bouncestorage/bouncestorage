@@ -35,6 +35,7 @@ import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.domain.internal.BlobImpl;
 import org.jclouds.blobstore.domain.internal.PageSetImpl;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
@@ -169,9 +170,11 @@ public class WriteBackPolicy extends BouncePolicy {
 
         Payload blobPayload = blob.getPayload();
         MutableContentMetadata contentMetadata = blob.getMetadata().getContentMetadata();
-        blob.setPayload(pipeIn);
+        Blob retBlob = new BlobImpl(blob.getMetadata());
+        retBlob.setPayload(pipeIn);
+        retBlob.setAllHeaders(blob.getAllHeaders());
         TeeInputStream tee = new TeeInputStream(blobPayload.openStream(), pipeOut, true);
-        blob.getMetadata().setContentMetadata(contentMetadata);
+        retBlob.getMetadata().setContentMetadata(contentMetadata);
 
         app.executeBackgroundTask(() -> {
             try {
@@ -180,7 +183,7 @@ public class WriteBackPolicy extends BouncePolicy {
                 tee.close();
             }
         });
-        return blob;
+        return retBlob;
     }
 
     @Override
