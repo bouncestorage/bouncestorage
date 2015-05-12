@@ -32,6 +32,7 @@ import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.PausableThreadPoolExecutor;
 import com.bouncestorage.swiftproxy.SwiftProxy;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.inject.CreationException;
@@ -125,26 +126,29 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                 logger.info("Stopping S3Proxy");
                 s3Proxy.stop();
             }
-            if (!config.containsKey(S3ProxyConstants.PROPERTY_ENDPOINT) ||
-                    !config.containsKey(S3ProxyConstants.PROPERTY_AUTHORIZATION)) {
+
+            String endpoint = config.getString(S3ProxyConstants.PROPERTY_ENDPOINT);
+            String secureEndpoint = config.getString(S3ProxyConstants.PROPERTY_SECURE_ENDPOINT);
+            String authorization = config.getString(S3ProxyConstants.PROPERTY_AUTHORIZATION);
+
+            if ((Strings.isNullOrEmpty(endpoint) && Strings.isNullOrEmpty(secureEndpoint)) ||
+                    Strings.isNullOrEmpty(authorization)) {
                 logger.warn("S3 endpoint and authorization must be set");
                 return;
             }
 
-            if (!config.getString(S3ProxyConstants.PROPERTY_AUTHORIZATION).equalsIgnoreCase("aws-v2") &&
-                    !config.getString(S3ProxyConstants.PROPERTY_AUTHORIZATION).equalsIgnoreCase("none")) {
+            if (!authorization.equalsIgnoreCase("aws-v2") && !authorization.equalsIgnoreCase("none")) {
                 logger.warn("S3 authorization must be 'none' or 'aws-v2'");
                 return;
             }
 
-            String endpointString = config.getString(S3ProxyConstants.PROPERTY_ENDPOINT);
-            if (endpointString == null || endpointString.equals("")) {
-                logger.warn("S3 endpoint is not set");
-                return;
+            S3Proxy.Builder builder = S3Proxy.builder();
+            if (!Strings.isNullOrEmpty(endpoint)) {
+                builder.endpoint(new URI(endpoint));
             }
-            URI endpoint = new URI(endpointString);
-            S3Proxy.Builder builder = S3Proxy.builder()
-                    .endpoint(endpoint);
+            if (!Strings.isNullOrEmpty(secureEndpoint)) {
+                builder.secureEndpoint(new URI(secureEndpoint));
+            }
 
             String identity = (String) configView.get(
                     S3ProxyConstants.PROPERTY_IDENTITY);
@@ -487,6 +491,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                 } else if ((m = containerConfigPattern.matcher(name)).matches()) {
                     addContainerFromConfig(m.group(1), (String) evt.getPropertyValue());
                 } else if (S3ProxyConstants.PROPERTY_ENDPOINT.equals(name)) {
+                    startS3Proxy();
+                } else if (S3ProxyConstants.PROPERTY_SECURE_ENDPOINT.equals(name)) {
                     startS3Proxy();
                 } else if (SwiftProxy.PROPERTY_ENDPOINT.equals(name)) {
                     startSwiftProxy();

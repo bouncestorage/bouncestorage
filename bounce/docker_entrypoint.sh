@@ -11,6 +11,7 @@ function sigterm_handler() {
 trap "sigterm_handler" TERM
 
 /data/setup_influxdb.sh
+/data/setup_keystore.sh
 java -jar /data/bounce.jar --properties /data/bounce.properties >& /var/log/bounce.log &
 
 child=$!
