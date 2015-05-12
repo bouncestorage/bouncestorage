@@ -34,8 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class BounceService {
-    public static final String BOUNCE_POLICY_PREFIX = "bounce.service.bounce-policy";
-
     private Logger logger = LoggerFactory.getLogger(getClass());
     private Map<String, BounceTaskStatus> bounceStatus = new HashMap<>();
     private ExecutorService executor =
