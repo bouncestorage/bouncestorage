@@ -320,9 +320,13 @@ public final class ObjectStoreResource {
             properties.put(propertiesPrefix + "identity", identity);
             properties.put(propertiesPrefix + "credential", credential);
             if (endpoint != null) {
-                properties.put(propertiesPrefix + "endpoint", endpoint);
-                if (endpoint.endsWith("/auth/v1.0")) {
-                    properties.put(propertiesPrefix + "keystone.credential-type", "tempAuthCredentials");
+                if (provider.equals("filesystem")) {
+                    properties.put(propertiesPrefix + "filesystem.basedir", endpoint);
+                } else {
+                    properties.put(propertiesPrefix + "endpoint", endpoint);
+                    if (endpoint.endsWith("/auth/v1.0")) {
+                        properties.put(propertiesPrefix + "keystone.credential-type", "tempAuthCredentials");
+                    }
                 }
             }
             if (region != null) {
