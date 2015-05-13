@@ -1,11 +1,11 @@
 FROM java:openjdk-8
 RUN curl https://s3.amazonaws.com/influxdb/influxdb_latest_amd64.deb -o /tmp/influxdb_latest_amd64.deb
 RUN dpkg -i /tmp/influxdb_latest_amd64.deb
-COPY setup_influxdb.sh /data/setup_influxdb.sh
-COPY target/bounce-1.0-SNAPSHOT-jar-with-dependencies.jar /data/bounce.jar
-COPY src/main/resources/bounce.properties /data/
-COPY docker_entrypoint.sh /data/
+WORKDIR /data
+COPY target/bounce-1.0-SNAPSHOT-jar-with-dependencies.jar bounce.jar
+COPY setup_influxdb.sh docker_entrypoint.sh docker_dev_entrypoint.sh ./
+COPY src/test/resources/bounce.properties ./
 RUN mkdir -p /tmp/blobstore
 EXPOSE 80 443 8080 9000 9001 8086
 CMD []
-ENTRYPOINT ["/bin/bash", "/data/docker_entrypoint.sh"]
+ENTRYPOINT ["/data/docker_entrypoint.sh"]
