@@ -9,7 +9,9 @@ import static java.util.Objects.requireNonNull;
 
 import static com.google.common.base.Throwables.propagate;
 
+import java.io.IOException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
 import java.time.Clock;
 import java.util.Collection;
 import java.util.HashMap;
@@ -30,6 +32,7 @@ import java.util.stream.StreamSupport;
 import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.PausableThreadPoolExecutor;
+import com.bouncestorage.bounce.utils.KeyStoreUtils;
 import com.bouncestorage.swiftproxy.SwiftProxy;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -46,6 +49,7 @@ import io.dropwizard.setup.Environment;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
+import org.bouncycastle.operator.OperatorCreationException;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
@@ -82,6 +86,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private PausableThreadPoolExecutor backgroundReconcileTasks = new PausableThreadPoolExecutor(4);
     private PausableThreadPoolExecutor backgroundTasks = new PausableThreadPoolExecutor(4);
     private BounceStats bounceStats;
+    private KeyStoreUtils keyStoreUtils;
 
     public BounceApplication() {
         this.config = new BounceConfiguration();
@@ -148,6 +153,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             }
             if (!Strings.isNullOrEmpty(secureEndpoint)) {
                 builder.secureEndpoint(new URI(secureEndpoint));
+                initKeyStore();
+                generateSelfSignedCert();
             }
 
             String identity = (String) configView.get(
@@ -499,6 +506,28 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                 }
             }
         });
+    }
+
+    public KeyStoreUtils getKeyStoreUtils() {
+        return keyStoreUtils;
+    }
+
+    private void generateSelfSignedCert() {
+        try {
+            keyStoreUtils.ensureCertificate("*." + config.getString(S3ProxyConstants.PROPERTY_VIRTUAL_HOST));
+        } catch (GeneralSecurityException | IOException | OperatorCreationException e) {
+            throw propagate(e);
+        }
+    }
+
+    private void initKeyStore() {
+        try {
+            keyStoreUtils = KeyStoreUtils.getKeyStore(
+                    config.getString(S3ProxyConstants.PROPERTY_KEYSTORE_PATH),
+                    config.getString(S3ProxyConstants.PROPERTY_KEYSTORE_PASSWORD));
+        } catch (GeneralSecurityException | IOException e) {
+            throw propagate(e);
+        }
     }
 
     @VisibleForTesting

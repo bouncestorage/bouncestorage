@@ -7,8 +7,11 @@ package com.bouncestorage.bounce.admin;
 
 import static java.util.Objects.requireNonNull;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.GeneralSecurityException;
+import java.security.cert.X509Certificate;
 import java.util.Properties;
 
 import javax.ws.rs.GET;
@@ -21,8 +24,10 @@ import javax.ws.rs.core.Response;
 import com.bouncestorage.swiftproxy.SwiftProxy;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Strings;
 
 import org.apache.commons.configuration.Configuration;
+import org.bouncycastle.operator.OperatorCreationException;
 import org.gaul.s3proxy.S3ProxyConstants;
 
 @Path("/settings")
@@ -36,8 +41,15 @@ public class SettingsResource {
 
     @GET
     @Timed
-    public Settings getSettings() throws URISyntaxException {
+    public Settings getSettings() throws URISyntaxException, GeneralSecurityException,
+            IOException, OperatorCreationException {
         Settings res = new Settings();
+        res.s3Domain = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_VIRTUAL_HOST);
+        if (!Strings.isNullOrEmpty(res.s3Domain)) {
+            X509Certificate cert = app.getKeyStoreUtils().ensureCertificate("*." + res.s3Domain);
+            res.domainCertificate = app.getKeyStoreUtils().exportToPem(cert);
+        }
+
         String s3URL = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_ENDPOINT);
         if (s3URL != null) {
             URI endpoint = new URI(s3URL);
@@ -82,6 +94,7 @@ public class SettingsResource {
         updateSetting(config, p, S3ProxyConstants.PROPERTY_ENDPOINT, s3Endpoint);
         updateSetting(config, p, S3ProxyConstants.PROPERTY_SECURE_ENDPOINT, s3SSLEndpoint);
         updateSetting(config, p, SwiftProxy.PROPERTY_ENDPOINT, swiftEndpoint);
+        updateSetting(config, p, S3ProxyConstants.PROPERTY_VIRTUAL_HOST, settings.s3Domain);
 
         try {
             app.getConfiguration().setAll(p);
@@ -97,6 +110,8 @@ public class SettingsResource {
     private static class Settings {
         enum PROXY { S3Proxy, S3SSLProxy, SwiftProxy };
         @JsonProperty
+        private String s3Domain;
+        @JsonProperty
         private String s3Address;
         @JsonProperty
         private int s3Port = -1;
@@ -108,6 +123,8 @@ public class SettingsResource {
         private String swiftAddress;
         @JsonProperty
         private int swiftPort = -1;
+        @JsonProperty
+        private String domainCertificate;
 
         private URI getEndpoint(PROXY type) throws URISyntaxException {
             String address;
