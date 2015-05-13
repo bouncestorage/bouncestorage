@@ -51,33 +51,48 @@ public final class ObjectStoreResource {
         this.app = requireNonNull(app);
     }
 
+    private void validateObjectStore(String provider, Properties properties) {
+        ContextBuilder builder = ContextBuilder.newBuilder(provider).overrides(properties);
+        BlobStoreContext context = builder.build(BlobStoreContext.class);
+        BlobStore store = context.getBlobStore();
+        store.list();
+    }
+
     @POST
     @Timed
     @Consumes(MediaType.APPLICATION_JSON)
     public ObjectStore createObjectStore(ObjectStore objectStore) {
+        boolean swiftV1Auth = false;
+        Properties properties = objectStore.getJCloudsProperties(PROPERTIES_PREFIX);
         try {
-            Properties properties = objectStore.getJCloudsProperties(PROPERTIES_PREFIX);
-            ContextBuilder builder = ContextBuilder.newBuilder(objectStore.provider).overrides(properties);
-            BlobStoreContext context = builder.build(BlobStoreContext.class);
-            BlobStore store = context.getBlobStore();
-            store.list();
-            BounceConfiguration config = app.getConfiguration();
-            int storeIndex = getLastBlobStoreIndex(config);
-            String prefix = BounceBlobStore.STORE_PROPERTY + "." + storeIndex + "." + PROPERTIES_PREFIX;
-            properties = objectStore.getJCloudsProperties(prefix);
-            List<Object> backendsList = config.getList(BounceBlobStore.STORES_LIST);
-            if (backendsList == null || backendsList.isEmpty()) {
-                properties.setProperty(BounceBlobStore.STORES_LIST, Integer.toString(storeIndex));
-            } else {
-                backendsList.add(Integer.toString(storeIndex));
-                properties.setProperty(BounceBlobStore.STORES_LIST, Joiner.on(",").join(backendsList));
-            }
-            config.setAll(properties);
-            return getObjectStore(storeIndex);
+            validateObjectStore(objectStore.provider, properties);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new WebApplicationException(Response.Status.BAD_REQUEST);
+            if (objectStore.provider.equals("openstack-swift")) {
+                // try again with v1 auth
+                properties.put(PROPERTIES_PREFIX + "keystone.credential-type", "tempAuthCredentials");
+                validateObjectStore(objectStore.provider, properties);
+                swiftV1Auth = true;
+            } else {
+                throw new WebApplicationException(Response.Status.BAD_REQUEST);
+            }
         }
+
+        BounceConfiguration config = app.getConfiguration();
+        int storeIndex = getLastBlobStoreIndex(config);
+        String prefix = BounceBlobStore.STORE_PROPERTY + "." + storeIndex + "." + PROPERTIES_PREFIX;
+        properties = objectStore.getJCloudsProperties(prefix);
+        if (swiftV1Auth) {
+            properties.put(prefix + "keystone.credential-type", "tempAuthCredentials");
+        }
+        List<Object> backendsList = config.getList(BounceBlobStore.STORES_LIST);
+        if (backendsList == null || backendsList.isEmpty()) {
+            properties.setProperty(BounceBlobStore.STORES_LIST, Integer.toString(storeIndex));
+        } else {
+            backendsList.add(Integer.toString(storeIndex));
+            properties.setProperty(BounceBlobStore.STORES_LIST, Joiner.on(",").join(backendsList));
+        }
+        config.setAll(properties);
+        return getObjectStore(storeIndex);
     }
 
     @GET
@@ -322,12 +337,8 @@ public final class ObjectStoreResource {
             if (endpoint != null) {
                 if (provider.equals("filesystem")) {
                     properties.put(propertiesPrefix + "filesystem.basedir", endpoint);
-                } else {
-                    properties.put(propertiesPrefix + "endpoint", endpoint);
-                    if (endpoint.endsWith("/auth/v1.0")) {
-                        properties.put(propertiesPrefix + "keystone.credential-type", "tempAuthCredentials");
-                    }
                 }
+                properties.put(propertiesPrefix + "endpoint", endpoint);
             }
             if (region != null) {
                 properties.put(propertiesPrefix + "region", region);
