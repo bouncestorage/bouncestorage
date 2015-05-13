@@ -153,10 +153,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             }
             if (!Strings.isNullOrEmpty(secureEndpoint)) {
                 builder.secureEndpoint(new URI(secureEndpoint));
-                initKeyStore();
-                generateSelfSignedCert();
             }
-
             String identity = (String) configView.get(
                     S3ProxyConstants.PROPERTY_IDENTITY);
             String credential = (String) configView.get(
@@ -171,6 +168,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                     S3ProxyConstants.PROPERTY_KEYSTORE_PASSWORD);
             if (keyStorePath != null || keyStorePassword != null) {
                 builder.keyStore(keyStorePath, keyStorePassword);
+                initKeyStore();
+                generateSelfSignedCert();
             }
 
             String virtualHost = config.getString(
