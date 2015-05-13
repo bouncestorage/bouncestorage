@@ -7,8 +7,11 @@ package com.bouncestorage.bounce.admin;
 
 import static java.util.Objects.requireNonNull;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.GeneralSecurityException;
+import java.security.cert.X509Certificate;
 import java.util.Properties;
 
 import javax.ws.rs.GET;
@@ -21,7 +24,10 @@ import javax.ws.rs.core.Response;
 import com.bouncestorage.swiftproxy.SwiftProxy;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Strings;
 
+import org.apache.commons.configuration.Configuration;
+import org.bouncycastle.operator.OperatorCreationException;
 import org.gaul.s3proxy.S3ProxyConstants;
 
 @Path("/settings")
@@ -35,13 +41,26 @@ public class SettingsResource {
 
     @GET
     @Timed
-    public Settings getSettings() throws URISyntaxException {
+    public Settings getSettings() throws URISyntaxException, GeneralSecurityException,
+            IOException, OperatorCreationException {
         Settings res = new Settings();
+        res.s3Domain = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_VIRTUAL_HOST);
+        if (!Strings.isNullOrEmpty(res.s3Domain)) {
+            X509Certificate cert = app.getKeyStoreUtils().ensureCertificate("*." + res.s3Domain);
+            res.domainCertificate = app.getKeyStoreUtils().exportToPem(cert);
+        }
+
         String s3URL = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_ENDPOINT);
         if (s3URL != null) {
             URI endpoint = new URI(s3URL);
             res.s3Address = endpoint.getHost();
             res.s3Port = endpoint.getPort();
+        }
+        String s3SSLURL = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_SECURE_ENDPOINT);
+        if (s3SSLURL != null) {
+            URI endpoint = new URI(s3SSLURL);
+            res.s3SSLAddress = endpoint.getHost();
+            res.s3SSLPort = endpoint.getPort();
         }
         String swiftURL = app.getConfiguration().getString(SwiftProxy.PROPERTY_ENDPOINT);
         if (swiftURL != null) {
@@ -52,6 +71,14 @@ public class SettingsResource {
         return res;
     }
 
+    private void updateSetting(Configuration config, Properties p, String key, Object value) {
+        if (config.getString(key) != null && value == null) {
+            p.setProperty(key, "");
+        } else if (value != null) {
+            p.setProperty(key, value.toString());
+        }
+    }
+
     @POST
     @Timed
     public Response updateSettings(Settings settings) throws URISyntaxException {
@@ -60,19 +87,15 @@ public class SettingsResource {
         }
         Properties p = new Properties();
         URI s3Endpoint = settings.getEndpoint(Settings.PROXY.S3Proxy);
+        URI s3SSLEndpoint = settings.getEndpoint(Settings.PROXY.S3SSLProxy);
         URI swiftEndpoint = settings.getEndpoint(Settings.PROXY.SwiftProxy);
         BounceConfiguration config = app.getConfiguration();
-        if (config.getString(S3ProxyConstants.PROPERTY_ENDPOINT) != null && s3Endpoint == null) {
-            p.setProperty(S3ProxyConstants.PROPERTY_ENDPOINT, "");
-        } else if (s3Endpoint != null) {
-            p.put(S3ProxyConstants.PROPERTY_ENDPOINT, s3Endpoint.toString());
-        }
 
-        if (config.getString(SwiftProxy.PROPERTY_ENDPOINT) != null && swiftEndpoint == null) {
-            p.setProperty(SwiftProxy.PROPERTY_ENDPOINT, "");
-        } else if (swiftEndpoint != null) {
-            p.put(SwiftProxy.PROPERTY_ENDPOINT, swiftEndpoint.toString());
-        }
+        updateSetting(config, p, S3ProxyConstants.PROPERTY_ENDPOINT, s3Endpoint);
+        updateSetting(config, p, S3ProxyConstants.PROPERTY_SECURE_ENDPOINT, s3SSLEndpoint);
+        updateSetting(config, p, SwiftProxy.PROPERTY_ENDPOINT, swiftEndpoint);
+        updateSetting(config, p, S3ProxyConstants.PROPERTY_VIRTUAL_HOST, settings.s3Domain);
+
         try {
             app.getConfiguration().setAll(p);
         } catch (Throwable e) {
@@ -84,24 +107,38 @@ public class SettingsResource {
         return Response.ok().build();
     }
 
-    private static class Settings {
-        enum PROXY { S3Proxy, SwiftProxy };
+    static class Settings {
+        enum PROXY { S3Proxy, S3SSLProxy, SwiftProxy };
         @JsonProperty
-        private String s3Address;
+        String s3Domain;
         @JsonProperty
-        private int s3Port = -1;
+        String s3Address;
         @JsonProperty
-        private String swiftAddress;
+        int s3Port = -1;
         @JsonProperty
-        private int swiftPort = -1;
+        String s3SSLAddress;
+        @JsonProperty
+        int s3SSLPort = -1;
+        @JsonProperty
+        String swiftAddress;
+        @JsonProperty
+        int swiftPort = -1;
+        @JsonProperty
+        String domainCertificate;
 
-        private URI getEndpoint(PROXY type) throws URISyntaxException {
+        URI getEndpoint(PROXY type) throws URISyntaxException {
             String address;
             int port;
+            String scheme = "http";
             switch (type) {
                 case S3Proxy:
                     address = s3Address;
                     port = s3Port;
+                    break;
+                case S3SSLProxy:
+                    scheme = "https";
+                    address = s3SSLAddress;
+                    port = s3SSLPort;
                     break;
                 case SwiftProxy:
                     address = swiftAddress;
@@ -114,7 +151,7 @@ public class SettingsResource {
             if (address == null || port < 0) {
                 return null;
             }
-            return new URI("http", null, address, port, null, null, null);
+            return new URI(scheme, null, address, port, null, null, null);
         }
 
         private boolean validate() {

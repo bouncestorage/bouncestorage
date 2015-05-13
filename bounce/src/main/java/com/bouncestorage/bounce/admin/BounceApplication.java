@@ -9,7 +9,9 @@ import static java.util.Objects.requireNonNull;
 
 import static com.google.common.base.Throwables.propagate;
 
+import java.io.IOException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
 import java.time.Clock;
 import java.util.Collection;
 import java.util.HashMap;
@@ -30,8 +32,10 @@ import java.util.stream.StreamSupport;
 import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.PausableThreadPoolExecutor;
+import com.bouncestorage.bounce.utils.KeyStoreUtils;
 import com.bouncestorage.swiftproxy.SwiftProxy;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.inject.CreationException;
@@ -45,6 +49,7 @@ import io.dropwizard.setup.Environment;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
+import org.bouncycastle.operator.OperatorCreationException;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
@@ -81,6 +86,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private PausableThreadPoolExecutor backgroundReconcileTasks = new PausableThreadPoolExecutor(4);
     private PausableThreadPoolExecutor backgroundTasks = new PausableThreadPoolExecutor(4);
     private BounceStats bounceStats;
+    private KeyStoreUtils keyStoreUtils;
 
     public BounceApplication() {
         this.config = new BounceConfiguration();
@@ -125,27 +131,29 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                 logger.info("Stopping S3Proxy");
                 s3Proxy.stop();
             }
-            if (!config.containsKey(S3ProxyConstants.PROPERTY_ENDPOINT) ||
-                    !config.containsKey(S3ProxyConstants.PROPERTY_AUTHORIZATION)) {
+
+            String endpoint = config.getString(S3ProxyConstants.PROPERTY_ENDPOINT);
+            String secureEndpoint = config.getString(S3ProxyConstants.PROPERTY_SECURE_ENDPOINT);
+            String authorization = config.getString(S3ProxyConstants.PROPERTY_AUTHORIZATION);
+
+            if ((Strings.isNullOrEmpty(endpoint) && Strings.isNullOrEmpty(secureEndpoint)) ||
+                    Strings.isNullOrEmpty(authorization)) {
                 logger.warn("S3 endpoint and authorization must be set");
                 return;
             }
 
-            if (!config.getString(S3ProxyConstants.PROPERTY_AUTHORIZATION).equalsIgnoreCase("aws-v2") &&
-                    !config.getString(S3ProxyConstants.PROPERTY_AUTHORIZATION).equalsIgnoreCase("none")) {
+            if (!authorization.equalsIgnoreCase("aws-v2") && !authorization.equalsIgnoreCase("none")) {
                 logger.warn("S3 authorization must be 'none' or 'aws-v2'");
                 return;
             }
 
-            String endpointString = config.getString(S3ProxyConstants.PROPERTY_ENDPOINT);
-            if (endpointString == null || endpointString.equals("")) {
-                logger.warn("S3 endpoint is not set");
-                return;
+            S3Proxy.Builder builder = S3Proxy.builder();
+            if (!Strings.isNullOrEmpty(endpoint)) {
+                builder.endpoint(new URI(endpoint));
             }
-            URI endpoint = new URI(endpointString);
-            S3Proxy.Builder builder = S3Proxy.builder()
-                    .endpoint(endpoint);
-
+            if (!Strings.isNullOrEmpty(secureEndpoint)) {
+                builder.secureEndpoint(new URI(secureEndpoint));
+            }
             String identity = (String) configView.get(
                     S3ProxyConstants.PROPERTY_IDENTITY);
             String credential = (String) configView.get(
@@ -160,6 +168,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                     S3ProxyConstants.PROPERTY_KEYSTORE_PASSWORD);
             if (keyStorePath != null || keyStorePassword != null) {
                 builder.keyStore(keyStorePath, keyStorePassword);
+                initKeyStore();
+                generateSelfSignedCert();
             }
 
             String virtualHost = config.getString(
@@ -488,11 +498,46 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                     addContainerFromConfig(m.group(1), (String) evt.getPropertyValue());
                 } else if (S3ProxyConstants.PROPERTY_ENDPOINT.equals(name)) {
                     startS3Proxy();
+                } else if (S3ProxyConstants.PROPERTY_SECURE_ENDPOINT.equals(name)) {
+                    startS3Proxy();
                 } else if (SwiftProxy.PROPERTY_ENDPOINT.equals(name)) {
                     startSwiftProxy();
                 }
             }
         });
+    }
+
+    public KeyStoreUtils getKeyStoreUtils() {
+        return keyStoreUtils;
+    }
+
+    private void generateSelfSignedCert() {
+        String virtualHost = config.getString(S3ProxyConstants.PROPERTY_VIRTUAL_HOST);
+        if (!Strings.isNullOrEmpty(virtualHost)) {
+            try {
+                keyStoreUtils.ensureCertificate("*." + virtualHost);
+            } catch (GeneralSecurityException | IOException | OperatorCreationException e) {
+                throw propagate(e);
+            }
+        }
+    }
+
+    void initTestingKeyStore() {
+        try {
+            keyStoreUtils = KeyStoreUtils.getTestingKeyStore();
+        } catch (GeneralSecurityException | IOException e) {
+            throw propagate(e);
+        }
+    }
+
+    private void initKeyStore() {
+        try {
+            keyStoreUtils = KeyStoreUtils.getKeyStore(
+                    config.getString(S3ProxyConstants.PROPERTY_KEYSTORE_PATH),
+                    config.getString(S3ProxyConstants.PROPERTY_KEYSTORE_PASSWORD));
+        } catch (GeneralSecurityException | IOException e) {
+            throw propagate(e);
+        }
     }
 
     @VisibleForTesting

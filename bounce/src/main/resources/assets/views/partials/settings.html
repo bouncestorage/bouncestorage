@@ -9,14 +9,22 @@
         </label>
       </div>
       <div class="form-group" ng-show="s3Enabled">
-        <label class="control-label">S3 Endpoint IP</label>
+        <label class="control-label">Domain</label>
+        <input type="text" class="form-control" ng-model="s3Domain"
+          placeholder="s3.amazonaws.com">
+        <pre style="width: 65em" ng-show="domainCertificate">{{ domainCertificate }}</pre>
+        <label class="control-label">IP</label>
         <input type="text" class="form-control" ng-model="s3Address"
           placeholder="0.0.0.0">
-      </div>
-      <div class="form-group" ng-show="s3Enabled">
-        <label class="control-label">S3 Port</label>
+        <label class="control-label">Port</label>
         <input type="text" class="form-control" ng-model="s3Port"
           placeholder="80">
+        <label class="control-label">IP (SSL)</label>
+        <input type="text" class="form-control" ng-model="s3SSLAddress"
+          placeholder="0.0.0.0">
+        <label class="control-label">Port</label>
+        <input type="text" class="form-control" ng-model="s3SSLPort"
+          placeholder="443">
       </div>
       <h2 class="sub-header">Swift settings</h2>
       <div class="checkbox">
