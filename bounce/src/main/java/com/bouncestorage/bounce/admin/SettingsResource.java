@@ -107,26 +107,26 @@ public class SettingsResource {
         return Response.ok().build();
     }
 
-    private static class Settings {
+    static class Settings {
         enum PROXY { S3Proxy, S3SSLProxy, SwiftProxy };
         @JsonProperty
-        private String s3Domain;
+        String s3Domain;
         @JsonProperty
-        private String s3Address;
+        String s3Address;
         @JsonProperty
-        private int s3Port = -1;
+        int s3Port = -1;
         @JsonProperty
-        private String s3SSLAddress;
+        String s3SSLAddress;
         @JsonProperty
-        private int s3SSLPort = -1;
+        int s3SSLPort = -1;
         @JsonProperty
-        private String swiftAddress;
+        String swiftAddress;
         @JsonProperty
-        private int swiftPort = -1;
+        int swiftPort = -1;
         @JsonProperty
-        private String domainCertificate;
+        String domainCertificate;
 
-        private URI getEndpoint(PROXY type) throws URISyntaxException {
+        URI getEndpoint(PROXY type) throws URISyntaxException {
             String address;
             int port;
             String scheme = "http";

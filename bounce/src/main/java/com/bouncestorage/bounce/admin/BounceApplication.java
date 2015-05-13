@@ -520,6 +520,14 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         }
     }
 
+    void initTestingKeyStore() {
+        try {
+            keyStoreUtils = KeyStoreUtils.getTestingKeyStore();
+        } catch (GeneralSecurityException | IOException e) {
+            throw propagate(e);
+        }
+    }
+
     private void initKeyStore() {
         try {
             keyStoreUtils = KeyStoreUtils.getKeyStore(

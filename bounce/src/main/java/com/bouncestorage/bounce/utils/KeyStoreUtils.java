@@ -30,6 +30,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Enumeration;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.bouncycastle.asn1.x500.X500NameBuilder;
 import org.bouncycastle.asn1.x500.style.BCStyle;
@@ -52,7 +54,7 @@ public final class KeyStoreUtils {
 
     private KeyStoreUtils(KeyStore keyStore, String path, char[] password) {
         this.keyStore = requireNonNull(keyStore);
-        this.path = requireNonNull(path);
+        this.path = path;
         this.password = requireNonNull(password);
     }
 
@@ -62,6 +64,14 @@ public final class KeyStoreUtils {
         } catch (FileNotFoundException e) {
             return null;
         }
+    }
+
+    @VisibleForTesting
+    public static KeyStoreUtils getTestingKeyStore() throws GeneralSecurityException, IOException {
+        KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+        char[] password = new char[0];
+        ks.load(null, password);
+        return new KeyStoreUtils(ks, null, password);
     }
 
     public static KeyStoreUtils getKeyStore(String path, String password)
@@ -143,7 +153,9 @@ public final class KeyStoreUtils {
 
         Pair<Key, X509Certificate> entry = generateKey(name);
         keyStore.setKeyEntry(name, entry.getLeft(), password, new X509Certificate[]{entry.getRight()});
-        keyStore.store(new FileOutputStream(path), password);
+        if (path != null) {
+            keyStore.store(new FileOutputStream(path), password);
+        }
         return entry.getRight();
     }
 }
