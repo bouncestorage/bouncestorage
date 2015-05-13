@@ -70,28 +70,19 @@ function findStore(stores, id) {
 }
 
 function createNewVirtualContainer(store, container) {
-  return { cacheLocation: { blobStoreId: -1,
-                            containerName: '',
-                            copyDelay: '',
-                            moveDelay: ''
-                          },
-           originLocation: { blobStoreId: store.id,
-                             containerName: container.name,
-                             copyDelay: '',
-                             moveDelay: ''
-                           },
-           archiveLocation: { blobStoreId: -1,
-                              containerName: '',
-                              copyDelay: '',
-                              moveDelay: ''
-                            },
-           migrationTargetLocation: { blobStoreId: -1,
-                                      containerName: '',
-                                      copyDelay: '',
-                                      moveDelay: ''
-                                    },
-           name: container.name,
-         };
+  var newVirtualContainer = { name: container.name };
+  angular.forEach(bounceConstants.tiers, function(tier) {
+    newVirtualContainer[tier.name] = { blobStoreId: -1,
+                                       containerName: '',
+                                       copyDelay: '',
+                                       moveDelay: ''
+                                     };
+    if (tier === bounceConstants.tiers.ORIGIN) {
+      newVirtualContainer[tier.name].blobStoreId = store.id;
+      newVirtualContainer[tier.name].containerName = container.name;
+    }
+  });
+  return newVirtualContainer;
 }
 
 function extractLocations(vContainer) {
@@ -229,6 +220,52 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
                            }
                           );
       return;
+    };
+
+    $scope.listVirtualContainer = function(virtualContainer) {
+      var tierName = bounceConstants.tiers.ORIGIN.name;
+      var id = virtualContainer[tierName].blobStoreId;
+      var container = virtualContainer[tierName].containerName;
+      Container.get({ id: id, name: container },
+                    function(result) {
+                      var map = bounceConstants.createLocationMap(virtualContainer);
+                      for (var i = 0; i < result.objects.length; i++) {
+                        var object = result.objects[i];
+                        object.locations = bounceConstants.translateLocations(map, object);
+                      }
+                      $scope.listedContainer = result;
+                    },
+                    function(error) {
+                      console.log(error);
+                    });
+    };
+
+    $scope.actions.listContainer = function(container) {
+      $scope.listedContainer = {};
+      if (container.status === 'CONFIGURED') {
+        VirtualContainer.get({ id: container.virtualContainerId },
+                              function(result) {
+                                $scope.listVirtualContainer(result);
+                              },
+                              function(error) {
+                                console.log(error);
+                              }
+                            );
+      } else {
+        Container.get({ id: $scope.store.id,
+                        name: container.name
+                      },
+                      function(result) {
+                        for (var i = 0; i < result.objects.length; i++) { 
+                          result.objects[i].locations = bounceConstants.tiers.ORIGIN.displayName;
+                        }
+                        $scope.listedContainer = result;
+                      },
+                      function(error) {
+                        console.log(error);
+                      });
+      }
+      $('#listContainerModal').modal('show');
     };
 
     $scope.actions.prompt = function(locationObject) {

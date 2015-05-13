@@ -22,41 +22,45 @@
     </div>
   </form>
 
-  <div class="col-sm-6 table-responsive">
-    <table class="table table-hover">
-      <thead>
-        <tr>
-          <th>Container</th>
-          <th>Status</th>
-          <th><!-- enhance/edit button --></th>
-          <th><!-- bounce button --></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr ng-repeat="container in containers">
-          <td>
-            {{container.name}}
-          </td>
-          <td><i>{{interpretStatus(container.status)}}</i></td>
-          <td>
-            <button class="btn btn-success" ng-click="actions.enhanceContainer(container)"
-                ng-if="container.status === 'UNCONFIGURED'">
-              enhance!
-            </button>
-            <button class="btn btn-default" ng-click="actions.enhanceContainer(container)"
-                ng-if="container.status === 'CONFIGURED'">
-              <span class="glyphicon glyphicon-edit"></span> edit
-            </button>
-          </td>
-          <td>
-            <button class="btn btn-primary" id="bounce-btn-{{container.name}}"
-                ng-click="actions.bounce(container)" ng-if="container.status === 'CONFIGURED'">
-              bounce!
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="col-sm-6">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Container</th>
+            <th>Status</th>
+            <th><!-- enhance/edit button --></th>
+            <th><!-- bounce button --></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr ng-repeat="container in containers">
+            <td>
+              <button class="btn btn-link" type="button" ng-click="actions.listContainer(container)">
+                {{container.name}}
+              </button>
+            </td>
+            <td><i>{{interpretStatus(container.status)}}</i></td>
+            <td>
+              <button class="btn btn-success" ng-click="actions.enhanceContainer(container)"
+                  ng-if="container.status === 'UNCONFIGURED'">
+                enhance!
+              </button>
+              <button class="btn btn-default" ng-click="actions.enhanceContainer(container)"
+                  ng-if="container.status === 'CONFIGURED'">
+                <span class="glyphicon glyphicon-edit"></span> edit
+              </button>
+            </td>
+            <td>
+              <button class="btn btn-primary" id="bounce-btn-{{container.name}}"
+                  ng-click="actions.bounce(container)" ng-if="container.status === 'CONFIGURED'">
+                bounce!
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -130,6 +134,41 @@
                 placeholder="Delay before moving to the primary store"/>
             </div>
           </form>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Show container contents modal -->
+<div class="modal fade" id="listContainerModal" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        <h4 class="modal-title">Objects in {{listedContainer.name}}</h4>
+      </div>
+      <div class="modal-body">
+        <div class="container-fluid">
+          <table class="table table-hover table-striped">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Locations</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr ng-repeat="object in listedContainer.objects">
+                <td>{{object.name}}</td>
+                <td>{{object.size}}</td>
+                <td>{{object.locations}}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
       <div class="modal-footer">

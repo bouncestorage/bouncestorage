@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
@@ -35,8 +34,8 @@ import org.jclouds.blobstore.options.PutOptions;
 @AutoService(BouncePolicy.class)
 public final class MigrationPolicy extends BouncePolicy {
     // The policy implements migration from "source" to "destination"
-    private static final Set<BounceBlobStore.Region> DESTINATION = BounceBlobStore.NEAR_ONLY;
-    private static final Set<BounceBlobStore.Region> SOURCE = BounceBlobStore.FAR_ONLY;
+    private static final Set<BounceStorageMetadata.Region> DESTINATION = BounceStorageMetadata.NEAR_ONLY;
+    private static final Set<BounceStorageMetadata.Region> SOURCE = BounceStorageMetadata.FAR_ONLY;
 
     @Override
     public Blob getBlob(String container, String blobName, GetOptions options) {
@@ -108,7 +107,7 @@ public final class MigrationPolicy extends BouncePolicy {
                     contents.put(sourceName, new BounceStorageMetadata(sourceMeta, SOURCE));
                     sourceMeta = com.bouncestorage.bounce.Utils.getNextOrNull(sourcePage);
                 } else if (compare == 0) {
-                    contents.put(sourceName, new BounceStorageMetadata(sourceMeta, BounceBlobStore.EVERYWHERE));
+                    contents.put(sourceName, new BounceStorageMetadata(sourceMeta, BounceStorageMetadata.EVERYWHERE));
                     sourceMeta = Utils.getNextOrNull(sourcePage);
                     destinationMeta = Utils.getNextOrNull(destinationPage);
                 } else {

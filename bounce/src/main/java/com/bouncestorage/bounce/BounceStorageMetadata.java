@@ -12,7 +12,6 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 
-import com.bouncestorage.bounce.BounceBlobStore.Region;
 import com.google.common.collect.ForwardingObject;
 import com.google.common.collect.ImmutableSet;
 
@@ -22,6 +21,15 @@ import org.jclouds.domain.Location;
 import org.jclouds.domain.ResourceMetadata;
 
 public final class BounceStorageMetadata extends ForwardingObject implements StorageMetadata {
+    public enum Region {
+        NEAR,
+        FAR,
+        FARTHER
+    }
+
+    public static final ImmutableSet<Region> FAR_ONLY = ImmutableSet.of(Region.FAR);
+    public static final ImmutableSet<Region> NEAR_ONLY = ImmutableSet.of(Region.NEAR);
+    public static final ImmutableSet<Region> EVERYWHERE = ImmutableSet.of(Region.NEAR, Region.FAR);
     private final StorageMetadata delegate;
     private final ImmutableSet<Region> regions;
     private boolean hasMarkerBlob;

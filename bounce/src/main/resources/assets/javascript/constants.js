@@ -168,3 +168,45 @@ bounceConstants.getCloudContext = function(provider, store) {
   return storage_class.name + " - " +
          bounceConstants.getRegionName(search_regions, store.region);
 };
+
+bounceConstants.tiers = {};
+bounceConstants.tiers.ORIGIN = { name: "originLocation",
+                                 displayName: "primary"
+                               };
+bounceConstants.tiers.ARCHIVE = { name: "archiveLocation",
+                                  displayName: "archive"
+                                };
+bounceConstants.tiers.MIGRATION = { name: "migrationTargetLocation",
+                                    displayName: "migration target"
+                                  };
+bounceConstants.tiers.CACHE = { name: "cacheLocation",
+                                displayName: "cache"
+                              };
+
+bounceConstants.createLocationMap = function(virtualContainer) {
+  var locationMap = {};
+  if (virtualContainer.cacheLocation.blobStoreId > 0) {
+    locationMap['NEAR'] = bounceConstants.tiers.CACHE.displayName;
+    locationMap['FAR'] = bounceConstants.tiers.ORIGIN.displayName;
+    if (virtualContainer.archiveLocation.blobStoreId > 0) {
+      locationMap['FARTHER'] = bounceConstants.tiers.ARCHIVE.displayName;
+    }
+  } else if (virtualContainer.migrationTargetLocation.blobStoreId > 0) {
+    locationMap['NEAR'] = bounceConstants.tiers.MIGRATION.displayName;
+    locationMap['FAR'] = bounceConstants.tiers.ORIGIN.displayName;
+  } else {
+    locationMap['NEAR'] = bounceConstants.tiers.ORIGIN.displayName;
+    if (virtualContainer.archiveLocation.blobStoreId > 0) {
+      locationMap['FAR'] = bounceConstants.tiers.ARCHIVE.displayName;
+    }
+  }
+  return locationMap;
+};
+
+bounceConstants.translateLocations = function(locationMap, object) {
+  var result = [];
+  for (var i = 0; i < object.regions.length; i++) {
+    result.push(locationMap[object.regions[i]]);
+  }
+  return result.join(", ");
+};

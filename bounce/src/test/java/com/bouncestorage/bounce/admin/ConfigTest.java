@@ -95,7 +95,7 @@ public final class ConfigTest {
     public void testConfigMoveEverythingPolicy() throws Exception {
         setTransientBackend();
 
-        BlobStore blobStore = app.getBlobStore(containerName);
+        BlobStore blobStore = app.getBlobStore(0);
         blobStore.createContainerInLocation(null, containerName);
 
         blobStore.putBlob(containerName,

@@ -17,7 +17,6 @@ import javax.inject.Inject;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableSet;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -41,20 +40,10 @@ import org.jclouds.logging.Logger;
 import org.jclouds.providers.ProviderMetadata;
 
 public final class BounceBlobStore implements BlobStore {
-
     public static final String STORES_LIST = "bounce.backends";
     public static final String STORE_PROPERTY = "bounce.backend";
     public static final String STORE_PROPERTY_1 = STORE_PROPERTY + ".1";
     public static final String STORE_PROPERTY_2 = STORE_PROPERTY + ".2";
-
-    public enum Region {
-        NEAR,
-        FAR,
-    }
-
-    public static final ImmutableSet<Region> NEAR_ONLY = ImmutableSet.of(Region.NEAR);
-    public static final ImmutableSet<Region> FAR_ONLY = ImmutableSet.of(Region.FAR);
-    public static final ImmutableSet<Region> EVERYWHERE = ImmutableSet.of(Region.NEAR, Region.FAR);
 
     @Resource
     private Logger logger = Logger.NULL;

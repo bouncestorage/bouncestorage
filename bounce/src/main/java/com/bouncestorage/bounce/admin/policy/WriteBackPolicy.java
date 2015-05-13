@@ -18,13 +18,13 @@ import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.google.auto.service.AutoService;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
 import com.google.common.io.ByteSource;
@@ -112,21 +112,21 @@ public class WriteBackPolicy extends BouncePolicy {
             if (destMeta != null) {
                 if (sourceMarkerMeta != null) {
                     if (BounceLink.isLink(sourceMeta)) {
-                        meta = new BounceStorageMetadata(destMeta, BounceBlobStore.FAR_ONLY);
+                        meta = new BounceStorageMetadata(destMeta, BounceStorageMetadata.FAR_ONLY);
                     } else if (Utils.eTagsEqual(sourceMeta.getETag(), destMeta.getETag())) {
-                        meta = new BounceStorageMetadata(sourceMeta, BounceBlobStore.EVERYWHERE);
+                        meta = new BounceStorageMetadata(sourceMeta, BounceStorageMetadata.EVERYWHERE);
                     } else {
-                        meta = new BounceStorageMetadata(sourceMeta, BounceBlobStore.NEAR_ONLY);
+                        meta = new BounceStorageMetadata(sourceMeta, BounceStorageMetadata.NEAR_ONLY);
                     }
                 } else {
                     if (Utils.eTagsEqual(sourceMeta.getETag(), destMeta.getETag())) {
-                        meta = new BounceStorageMetadata(sourceMeta, BounceBlobStore.EVERYWHERE);
+                        meta = new BounceStorageMetadata(sourceMeta, BounceStorageMetadata.EVERYWHERE);
                     } else {
-                        meta = new BounceStorageMetadata(destMeta, BounceBlobStore.FAR_ONLY);
+                        meta = new BounceStorageMetadata(destMeta, BounceStorageMetadata.FAR_ONLY);
                     }
                 }
             } else {
-                meta = new BounceStorageMetadata(sourceMeta, BounceBlobStore.NEAR_ONLY);
+                meta = new BounceStorageMetadata(sourceMeta, BounceStorageMetadata.NEAR_ONLY);
             }
 
             return reconcileObject(container, meta, destMeta);
@@ -234,10 +234,10 @@ public class WriteBackPolicy extends BouncePolicy {
 
     protected final BounceResult maybeMoveObject(String container, BounceStorageMetadata sourceObject,
             StorageMetadata destinationObject) throws IOException {
-        if (sourceObject.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
+        if (sourceObject.getRegions().equals(BounceStorageMetadata.FAR_ONLY)) {
             return BounceResult.NO_OP;
         }
-        if (sourceObject.getRegions().equals(BounceBlobStore.EVERYWHERE)) {
+        if (sourceObject.getRegions().equals(BounceStorageMetadata.EVERYWHERE)) {
             BlobMetadata sourceMetadata = getSource().blobMetadata(container, sourceObject.getName());
             BlobMetadata destinationMetadata = getDestination().blobMetadata(container, destinationObject.getName());
 
@@ -303,29 +303,38 @@ public class WriteBackPolicy extends BouncePolicy {
                 }
 
                 BounceStorageMetadata meta;
+                ImmutableSet<BounceStorageMetadata.Region> farRegions = translateRegions(farMeta);
 
                 if (nextIsMarker) {
                     if (BounceLink.isLink(getSource().blobMetadata(s, name))) {
-                        meta = new BounceStorageMetadata(farMeta, BounceBlobStore.FAR_ONLY);
+                        meta = new BounceStorageMetadata(farMeta, farRegions);
                     } else if (Utils.eTagsEqual(nearMeta.getETag(), farMeta.getETag())) {
-                        meta = new BounceStorageMetadata(nearMeta, BounceBlobStore.EVERYWHERE);
+                        meta = new BounceStorageMetadata(nearMeta,
+                                new ImmutableSet.Builder<BounceStorageMetadata.Region>()
+                                        .addAll(farRegions)
+                                        .add(BounceStorageMetadata.Region.NEAR)
+                                        .build());
                     } else {
-                        meta = new BounceStorageMetadata(nearMeta, BounceBlobStore.NEAR_ONLY);
+                        meta = new BounceStorageMetadata(nearMeta, BounceStorageMetadata.NEAR_ONLY);
                     }
 
                     meta.hasMarkerBlob(true);
                     contents.put(name, meta);
                 } else {
                     if (Utils.eTagsEqual(nearMeta.getETag(), farMeta.getETag())) {
-                        meta = new BounceStorageMetadata(nearMeta, BounceBlobStore.EVERYWHERE);
+                        meta = new BounceStorageMetadata(nearMeta,
+                                new ImmutableSet.Builder<BounceStorageMetadata.Region>()
+                                        .add(BounceStorageMetadata.Region.NEAR)
+                                        .addAll(farRegions)
+                                        .build());
                     } else {
-                        meta = new BounceStorageMetadata(farMeta, BounceBlobStore.FAR_ONLY);
+                        meta = new BounceStorageMetadata(farMeta, farRegions);
                     }
                 }
 
                 contents.put(name, meta);
             } else {
-                contents.put(name, new BounceStorageMetadata(nearMeta, BounceBlobStore.NEAR_ONLY));
+                contents.put(name, new BounceStorageMetadata(nearMeta, BounceStorageMetadata.NEAR_ONLY));
             }
         }
 
@@ -344,6 +353,20 @@ public class WriteBackPolicy extends BouncePolicy {
 
         return new PageSetImpl<>(contents.values(),
                 nearPage.hasNext() ? nearPage.next().getName() : null);
+    }
+
+    private ImmutableSet<BounceStorageMetadata.Region> translateRegions(StorageMetadata farMetadata) {
+        if (!(farMetadata instanceof BounceStorageMetadata)) {
+            return BounceStorageMetadata.FAR_ONLY;
+        }
+        ImmutableSet<BounceStorageMetadata.Region> regions = ((BounceStorageMetadata) farMetadata).getRegions();
+        if (regions.equals(BounceStorageMetadata.FAR_ONLY)) {
+            return ImmutableSet.of(BounceStorageMetadata.Region.FARTHER);
+        } else if (regions.equals(BounceStorageMetadata.NEAR_ONLY)) {
+            return ImmutableSet.of(BounceStorageMetadata.Region.FAR);
+        } else {
+            return ImmutableSet.of(BounceStorageMetadata.Region.FAR, BounceStorageMetadata.Region.FARTHER);
+        }
     }
 
     protected final BounceResult maybeRemoveDestinationObject(String container, StorageMetadata object) {
@@ -367,10 +390,10 @@ public class WriteBackPolicy extends BouncePolicy {
 
     protected final BounceResult maybeCopyObject(String container, BounceStorageMetadata sourceObject,
             StorageMetadata destinationObject) throws IOException {
-        if (sourceObject.getRegions().equals(BounceBlobStore.FAR_ONLY)) {
+        if (sourceObject.getRegions().equals(BounceStorageMetadata.FAR_ONLY)) {
             return BounceResult.NO_OP;
         }
-        if (sourceObject.getRegions().equals(BounceBlobStore.EVERYWHERE)) {
+        if (sourceObject.getRegions().equals(BounceStorageMetadata.EVERYWHERE)) {
             BlobMetadata destinationMeta = getDestination().blobMetadata(container, destinationObject.getName());
             BlobMetadata sourceMeta = getSource().blobMetadata(container, sourceObject.getName());
             if (Utils.eTagsEqual(destinationMeta.getETag(), sourceMeta.getETag())) {

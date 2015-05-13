@@ -7,8 +7,6 @@ package com.bouncestorage.bounce;
 
 import static com.google.common.base.Throwables.propagate;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
@@ -56,14 +54,6 @@ public final class Utils {
             BlobStore blobStore, String containerName,
             ListContainerOptions options) {
         return new CrawlBlobStoreIterable(blobStore, containerName, options);
-    }
-
-    public static Properties propertiesFromFile(File file) throws IOException {
-        Properties properties = new Properties();
-        try (InputStream is = new FileInputStream(file)) {
-            properties.load(is);
-        }
-        return properties;
     }
 
     public static BlobStore storeFromProperties(Properties properties) {
