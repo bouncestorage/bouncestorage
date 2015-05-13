@@ -513,10 +513,13 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     }
 
     private void generateSelfSignedCert() {
-        try {
-            keyStoreUtils.ensureCertificate("*." + config.getString(S3ProxyConstants.PROPERTY_VIRTUAL_HOST));
-        } catch (GeneralSecurityException | IOException | OperatorCreationException e) {
-            throw propagate(e);
+        String virtualHost = config.getString(S3ProxyConstants.PROPERTY_VIRTUAL_HOST);
+        if (!Strings.isNullOrEmpty(virtualHost)) {
+            try {
+                keyStoreUtils.ensureCertificate("*." + virtualHost);
+            } catch (GeneralSecurityException | IOException | OperatorCreationException e) {
+                throw propagate(e);
+            }
         }
     }
 
