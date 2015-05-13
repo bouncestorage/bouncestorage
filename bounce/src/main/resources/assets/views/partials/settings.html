@@ -12,7 +12,7 @@
         <label class="control-label">Domain</label>
         <input type="text" class="form-control" ng-model="s3Domain"
           placeholder="s3.amazonaws.com">
-        <pre style="width: 65em">{{ domainCertificate }}</pre>
+        <pre style="width: 65em" ng-show="domainCertificate">{{ domainCertificate }}</pre>
         <label class="control-label">IP</label>
         <input type="text" class="form-control" ng-model="s3Address"
           placeholder="0.0.0.0">
