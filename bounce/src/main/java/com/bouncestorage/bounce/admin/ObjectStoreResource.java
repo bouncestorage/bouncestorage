@@ -53,9 +53,10 @@ public final class ObjectStoreResource {
 
     private void validateObjectStore(String provider, Properties properties) {
         ContextBuilder builder = ContextBuilder.newBuilder(provider).overrides(properties);
-        BlobStoreContext context = builder.build(BlobStoreContext.class);
-        BlobStore store = context.getBlobStore();
-        store.list();
+        try (BlobStoreContext context = builder.build(BlobStoreContext.class)) {
+            BlobStore store = context.getBlobStore();
+            store.list();
+        }
     }
 
     @POST
