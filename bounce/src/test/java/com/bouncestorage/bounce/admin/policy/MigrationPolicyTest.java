@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 
 import javax.ws.rs.HttpMethod;
 
+import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceApplication;
@@ -223,13 +224,14 @@ public final class MigrationPolicyTest {
         ArrayList<Object> putOp = entry.getValues();
         entry = q.remove();
         ArrayList<Object> getOp = entry.getValues();
+        int blobStoreId = app.getBlobStoreId(((BlobStoreTarget) policy.getDestination()).delegate());
         assertThat(putOp.get(1)).isEqualTo(HttpMethod.PUT);
-        assertThat(putOp.get(2)).isEqualTo(policy.getDestination().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putOp.get(2)).isEqualTo(blobStoreId);
         assertThat(putOp.get(3)).isEqualTo(containerName + "-dest");
         assertThat(putOp.get(4)).isEqualTo(blobName);
         assertThat(putOp.get(5)).isEqualTo(getBlob.getMetadata().getSize());
         assertThat(getOp.get(1)).isEqualTo(HttpMethod.GET);
-        assertThat(putOp.get(2)).isEqualTo(policy.getDestination().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putOp.get(2)).isEqualTo(blobStoreId);
         assertThat(getOp.get(3)).isEqualTo(containerName + "-dest");
         assertThat(getOp.get(4)).isEqualTo(blobName);
         assertThat(getOp.get(5)).isEqualTo(getBlob.getMetadata().getSize());

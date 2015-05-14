@@ -46,7 +46,7 @@ public final class LoggingBlobStore extends ForwardingBlobStore {
         return result;
     }
 
-    private String getProviderId() {
-        return this.getContext().unwrap().getProviderMetadata().getId();
+    private int getProviderId() {
+        return app.getBlobStoreId(this);
     }
 }

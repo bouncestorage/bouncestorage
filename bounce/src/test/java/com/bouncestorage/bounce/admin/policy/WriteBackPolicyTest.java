@@ -18,6 +18,7 @@ import java.util.Random;
 
 import javax.ws.rs.HttpMethod;
 
+import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
@@ -352,17 +353,18 @@ public class WriteBackPolicyTest {
         ArrayList<Object> putOp = entry.getValues();
         entry = q.remove();
         ArrayList<Object> getOp = entry.getValues();
+        int blobStoreId = app.getBlobStoreId(((BlobStoreTarget) policy.getSource()).delegate());
         assertThat(putMarkerOp.get(1)).isEqualTo(HttpMethod.PUT);
-        assertThat(putOp.get(2)).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putOp.get(2)).isEqualTo(blobStoreId);
         assertThat(putMarkerOp.get(3)).isEqualTo(containerName);
         assertThat(putMarkerOp.get(4)).isEqualTo(blobName + WriteBackPolicy.LOG_MARKER_SUFFIX);
         assertThat(putOp.get(1)).isEqualTo(HttpMethod.PUT);
-        assertThat(putOp.get(2)).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putOp.get(2)).isEqualTo(blobStoreId);
         assertThat(putOp.get(3)).isEqualTo(containerName);
         assertThat(putOp.get(4)).isEqualTo(blobName);
         assertThat(putOp.get(5)).isEqualTo(getBlob.getMetadata().getSize());
         assertThat(getOp.get(1)).isEqualTo(HttpMethod.GET);
-        assertThat(putOp.get(2)).isEqualTo(policy.getSource().getContext().unwrap().getProviderMetadata().getId());
+        assertThat(putOp.get(2)).isEqualTo(blobStoreId);
         assertThat(getOp.get(3)).isEqualTo(containerName);
         assertThat(getOp.get(4)).isEqualTo(blobName);
         assertThat(getOp.get(5)).isEqualTo(getBlob.getMetadata().getSize());

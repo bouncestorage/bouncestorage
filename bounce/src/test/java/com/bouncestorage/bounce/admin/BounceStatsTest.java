@@ -24,19 +24,19 @@ public class BounceStatsTest {
 
     @Test
     public void testRemoveProcessedValues() {
-        stats.logOperation(HttpMethod.GET, "provider", "container", "foo", Long.valueOf(1), Long.valueOf(0));
-        stats.logOperation(HttpMethod.PUT, "provider", "container", "foo", Long.valueOf(2), Long.valueOf(0));
-        stats.logOperation(HttpMethod.PUT, "provider", "container", "foo", Long.valueOf(3), Long.valueOf(0));
+        stats.logOperation(HttpMethod.GET, 0, "container", "foo", Long.valueOf(1), Long.valueOf(0));
+        stats.logOperation(HttpMethod.PUT, 0, "container", "foo", Long.valueOf(2), Long.valueOf(0));
+        stats.logOperation(HttpMethod.PUT, 0, "container", "foo", Long.valueOf(3), Long.valueOf(0));
         List<Serie> series = stats.prepareSeries();
-        stats.logOperation(HttpMethod.GET, "provider", "container", "foo", Long.valueOf(4), Long.valueOf(0));
-        stats.logOperation(HttpMethod.GET, "provider", "container", "foo", Long.valueOf(5), Long.valueOf(0));
+        stats.logOperation(HttpMethod.GET, 0, "container", "foo", Long.valueOf(4), Long.valueOf(0));
+        stats.logOperation(HttpMethod.GET, 0, "container", "foo", Long.valueOf(5), Long.valueOf(0));
         stats.removeProcessedValues(series.iterator().next());
         assertThat(stats.getQueue()).hasSize(2);
         assertThat(stats.getQueue().peek().getValues().get(5)).isEqualTo(Long.valueOf(4));
     }
     @Test
     public void testLogOperation() throws Exception {
-        stats.logOperation(HttpMethod.GET, "provider", "container", "foo", Long.valueOf(1), Long.valueOf(1));
+        stats.logOperation(HttpMethod.GET, 0, "container", "foo", Long.valueOf(1), Long.valueOf(1));
         StatsQueueEntry entry = stats.getQueue().peek();
         assertThat(entry.getDbSeries()).isEqualTo(BounceStats.OPS_SERIES);
     }

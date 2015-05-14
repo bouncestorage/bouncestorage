@@ -60,14 +60,14 @@ public class BounceStats {
         }
     }
 
-    public void logOperation(String opName, String providerName, String containerName, String objectName, Long size,
+    public void logOperation(String opName, int providerId, String containerName, String objectName, Long size,
                              Long startTime) {
         synchronized (queue) {
             Long timeStamp = new Date().getTime();
             ArrayList<Object> values = new ArrayList<>();
             values.add(timeStamp);
             values.add(opName);
-            values.add(providerName);
+            values.add(providerId);
             values.add(containerName);
             values.add(objectName);
             values.add(size);
