@@ -34,8 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class BounceService {
-    public static final String BOUNCE_POLICY_PREFIX = "bounce.service.bounce-policy";
-
     private Logger logger = LoggerFactory.getLogger(getClass());
     private Map<String, BounceTaskStatus> bounceStatus = new HashMap<>();
     private ExecutorService executor =
@@ -89,6 +87,14 @@ public final class BounceService {
         public void run() {
             BlobStore blobStore = app.getBlobStore(container);
             BouncePolicy policy = (BouncePolicy) requireNonNull(blobStore);
+            processPolicy(policy);
+            if (policy.getDestination() instanceof BouncePolicy) {
+                processPolicy((BouncePolicy) policy.getDestination());
+            }
+            status.endTime = new Date();
+        }
+
+        private void processPolicy(BouncePolicy policy) {
             ListContainerOptions options = new ListContainerOptions().recursive();
 
             PeekingIterator<StorageMetadata> destinationIterator = Iterators.peekingIterator(
@@ -128,8 +134,6 @@ public final class BounceService {
                     sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
                 }
             }
-
-            status.endTime = new Date();
         }
 
         private void reconcileObject(BouncePolicy policy, BounceStorageMetadata source, StorageMetadata destination) {

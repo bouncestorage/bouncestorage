@@ -7,7 +7,6 @@ package com.bouncestorage.bounce.admin.policy;
 
 import java.util.stream.Collectors;
 
-import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.google.auto.service.AutoService;
@@ -23,7 +22,7 @@ public class NoBouncePolicy extends BouncePolicy {
     public final PageSet<? extends StorageMetadata> list(String containerName, ListContainerOptions
             listContainerOptions) {
         PageSet<? extends StorageMetadata> listResults = delegate().list(containerName, listContainerOptions);
-        return new PageSetImpl<>(listResults.stream().map(m -> new BounceStorageMetadata(m, BounceBlobStore.NEAR_ONLY))
+        return new PageSetImpl<>(listResults.stream().map(m -> new BounceStorageMetadata(m, BounceStorageMetadata.NEAR_ONLY))
                 .collect(Collectors.toList()), listResults.getNextMarker());
     }
 

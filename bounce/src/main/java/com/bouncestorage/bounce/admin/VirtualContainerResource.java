@@ -121,8 +121,8 @@ public final class VirtualContainerResource {
             updateLocationConfig(properties, request.getOriginLocation(), locationPrefix);
         }
         if (current == null || current.getArchiveLocation().permittedChange(request.getArchiveLocation())) {
-            if (current == null || (current.getArchiveLocation().isUnset() &&
-                    !request.getArchiveLocation().isUnset())) {
+            if ((current == null || current.getArchiveLocation().isUnset()) &&
+                    !request.getArchiveLocation().isUnset()) {
                 properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
                         "WriteBackPolicy");
             }
@@ -131,7 +131,7 @@ public final class VirtualContainerResource {
         }
         if (current == null || current.getCacheLocation().permittedChange(request.getCacheLocation())) {
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.CACHE_TIER_PREFIX);
-            if (current == null || (current.getCacheLocation().isUnset() && !request.getCacheLocation().isUnset())) {
+            if ((current == null || current.getCacheLocation().isUnset()) && !request.getCacheLocation().isUnset()) {
                 properties.setProperty(Joiner.on(".").join(locationPrefix, "policy"), "WriteBackPolicy");
             }
             updateLocationConfig(properties, request.getCacheLocation(), locationPrefix);
@@ -139,8 +139,8 @@ public final class VirtualContainerResource {
         if (current == null || current.getMigrationTargetLocation().permittedChange(
                 request.getMigrationTargetLocation())) {
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.MIGRATION_TIER_PREFIX);
-            if (current == null || (current.getMigrationTargetLocation().isUnset() &&
-                    !request.getMigrationTargetLocation().isUnset())) {
+            if ((current == null || current.getMigrationTargetLocation().isUnset()) &&
+                    !request.getMigrationTargetLocation().isUnset()) {
                 properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
                         "MigrationPolicy");
             }

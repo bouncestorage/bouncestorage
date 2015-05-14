@@ -7,6 +7,9 @@ package com.bouncestorage.bounce.admin;
 
 import static java.util.Objects.requireNonNull;
 
+import static com.bouncestorage.bounce.admin.ObjectStoreResource.ObjectStore;
+import static com.bouncestorage.bounce.admin.ObjectStoreResource.getStoreById;
+
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -22,11 +25,15 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.codahale.metrics.annotation.Timed;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableSet;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.googlecloud.domain.ListPage;
 import org.jclouds.googlecloudstorage.GoogleCloudStorageApi;
 import org.jclouds.googlecloudstorage.domain.Bucket;
@@ -38,6 +45,8 @@ import org.jclouds.rest.ResourceAlreadyExistsException;
 @Path("/object_store/{id}/container")
 @Produces(MediaType.APPLICATION_JSON)
 public final class ContainerResource {
+    private static final int MAX_OBJECTS = 50;
+
     private final BounceApplication app;
 
     public ContainerResource(BounceApplication app) {
@@ -55,7 +64,7 @@ public final class ContainerResource {
         if (!request.containsKey("name")) {
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
         }
-        ObjectStoreResource.ObjectStore store = ObjectStoreResource.getStoreById(providerId, app.getConfiguration());
+        ObjectStore store = getStoreById(providerId, app.getConfiguration());
         if (store.getStorageClass() == null && store.getRegion() == null) {
             blobStore.createContainerInLocation(null, request.get("name"));
             return Response.ok().build();
@@ -90,9 +99,46 @@ public final class ContainerResource {
 
     @GET
     @Timed
+    @Path("/{name}")
+    public Container getContainer(@PathParam("id") int providerId, @PathParam("name") String containerName) {
+        BlobStore blobStore = app.getBlobStore(containerName);
+        if (containerName == null) {
+            throw new WebApplicationException(Response.Status.NOT_FOUND);
+        }
+        if (blobStore == null) {
+            // This occurs for containers that are not virtual containers
+            blobStore = app.getBlobStore(providerId);
+        }
+        if (blobStore == null) {
+            throw new WebApplicationException(Response.Status.NOT_FOUND);
+        }
+        if (!blobStore.containerExists(containerName)) {
+            throw new WebApplicationException(Response.Status.NOT_FOUND);
+        }
+        List<ContainerObject> objects = blobStore.list(containerName,
+                ListContainerOptions.Builder.maxResults(MAX_OBJECTS))
+                .stream()
+                .map(sm -> {
+                    ImmutableSet<BounceStorageMetadata.Region> regions;
+                    if (sm instanceof BounceStorageMetadata) {
+                        BounceStorageMetadata bounceMeta = (BounceStorageMetadata) sm;
+                        regions = bounceMeta.getRegions();
+                    } else {
+                        regions = BounceStorageMetadata.NEAR_ONLY;
+                    }
+                    return new ContainerObject(sm.getName(), sm.getSize(), regions);
+                })
+                .collect(Collectors.toList());
+        Container container = createContainerObject(containerName, createVirtualContainerMap(providerId));
+        container.objects = objects;
+        return container;
+    }
+
+    @GET
+    @Timed
     public List<Container> getContainerList(@PathParam("id") int providerId) {
         BlobStore blobStore = app.getBlobStore(providerId);
-        ObjectStoreResource.ObjectStore store = ObjectStoreResource.getStoreById(providerId, app.getConfiguration());
+        ObjectStore store = getStoreById(providerId, app.getConfiguration());
         if (blobStore == null) {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
         }
@@ -146,10 +192,10 @@ public final class ContainerResource {
 
     private Container createContainerObject(String name, Map<String, ContainerMapEntry> containerMap) {
         Container container = new Container(name);
-        if (containerMap.containsKey(container.getName())) {
-            ContainerMapEntry entry = containerMap.get(container.getName());
-            container.setStatus(entry.status);
-            container.setVirtualContainerId(entry.virtualContainerId);
+        if (containerMap.containsKey(container.name)) {
+            ContainerMapEntry entry = containerMap.get(container.name);
+            container.status = entry.status;
+            container.virtualContainerId = entry.virtualContainerId;
         }
         return container;
     }
@@ -162,38 +208,35 @@ public final class ContainerResource {
     private static class Container {
         enum ContainerStatus { UNCONFIGURED, CONFIGURED, INUSE }
 
+        @JsonProperty
         private String name;
+        @JsonProperty
         private ContainerStatus status;
+        @JsonProperty
         private int virtualContainerId;
+        @JsonProperty
+        private List<ContainerObject> objects;
 
         Container(String name) {
             this.name = name;
             virtualContainerId = -1;
             status = ContainerStatus.UNCONFIGURED;
         }
+    }
 
-        public void setName(String name) {
+    private static class ContainerObject {
+        enum Tier { CACHE, PRIMARY, ARCHIVE, MIGRATED }
+        @JsonProperty
+        String name;
+        @JsonProperty
+        long size;
+        @JsonProperty
+        ImmutableSet<BounceStorageMetadata.Region> regions;
+
+        public ContainerObject(String name, long size, ImmutableSet<BounceStorageMetadata.Region> regions) {
             this.name = name;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setStatus(ContainerStatus status) {
-            this.status = status;
-        }
-
-        public ContainerStatus getStatus() {
-            return status;
-        }
-
-        public int getVirtualContainerId() {
-            return virtualContainerId;
-        }
-
-        public void setVirtualContainerId(int virtualContainerId) {
-            this.virtualContainerId = virtualContainerId;
+            this.size = size;
+            this.regions = regions;
         }
     }
 }
