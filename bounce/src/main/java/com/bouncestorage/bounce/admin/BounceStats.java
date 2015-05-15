@@ -5,13 +5,19 @@
 
 package com.bouncestorage.bounce.admin;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
@@ -24,8 +30,7 @@ import org.slf4j.LoggerFactory;
 
 public class BounceStats {
     public static final String DATABASE = "bounce";
-    public static final String OPS_SERIES = "ops";
-    public static final String[] OPS_COLUMNS = {"time", "op", "provider", "container", "object", "size", "duration"};
+    public static final DBSeries OPS_SERIES = new DBSeries("ops", DBSeries.OPS_COLUMNS);
     public static final String ENDPOINT = "http://localhost:8086";
     public static final String USER = "bounce";
     public static final String PASSWORD = "bounce";
@@ -35,12 +40,12 @@ public class BounceStats {
 
     private InfluxDB db;
     private Logger logger = LoggerFactory.getLogger(BounceStats.class);
-    private final Queue<Object[]> opsQueue;
+    private final Queue<StatsQueueEntry> queue;
     private final ScheduledExecutorService scheduler;
 
     public BounceStats() {
         db = InfluxDBFactory.connect(ENDPOINT, USER, PASSWORD);
-        opsQueue = new LinkedList<>();
+        queue = new LinkedList<>();
         scheduler = new ScheduledThreadPoolExecutor(1);
     }
 
@@ -57,25 +62,34 @@ public class BounceStats {
 
     public void logOperation(String opName, String providerName, String containerName, String objectName, Long size,
                              Long startTime) {
-        synchronized (opsQueue) {
+        synchronized (queue) {
             Long timeStamp = new Date().getTime();
-            Object[] values = {timeStamp, opName, providerName, containerName, objectName, size, timeStamp - startTime};
-            opsQueue.add(values);
+            ArrayList<Object> values = new ArrayList<>();
+            values.add(timeStamp);
+            values.add(opName);
+            values.add(providerName);
+            values.add(containerName);
+            values.add(objectName);
+            values.add(size);
+            values.add(timeStamp - startTime);
+            queue.add(StatsQueueEntry.create(OPS_SERIES, values));
         }
     }
 
     @VisibleForTesting
-    public Queue<Object[]> getOpsQueue() {
-        return opsQueue;
+    public Queue<StatsQueueEntry> getQueue() {
+        return queue;
     }
 
     private void submitValues() {
         logger.debug("Pushing to influxdb");
         try {
-            Serie serie = prepareSerie();
-            if (serie != null) {
-                db.write(DATABASE, TimeUnit.MILLISECONDS, serie);
-                removeProcessedValues(serie);
+            List<Serie> series = prepareSeries();
+            if (series != null) {
+                for (Serie serie : series) {
+                    db.write(DATABASE, TimeUnit.MILLISECONDS, serie);
+                    removeProcessedValues(serie);
+                }
             }
         } catch (Throwable e) {
             logger.error("Exception while pushing stats: " + e.getMessage());
@@ -83,33 +97,55 @@ public class BounceStats {
         }
     }
 
-    Serie prepareSerie() {
-        Serie.Builder serieBuilder = null;
-        synchronized (opsQueue) {
-            ListIterator<Object[]> iterator = ((LinkedList<Object[]>) opsQueue).listIterator();
+    List<Serie> prepareSeries() {
+        Map<String, Serie.Builder> builderMap = new HashMap<>();
+        synchronized (queue) {
+            ListIterator<StatsQueueEntry> iterator = ((LinkedList<StatsQueueEntry>) queue).listIterator();
             for (int i = 0; i < SUBMIT_LIMIT; i++) {
-                Object[] entry;
+                StatsQueueEntry entry;
                 if (!iterator.hasNext()) {
                     break;
                 }
                 entry = iterator.next();
-                if (serieBuilder == null) {
-                    serieBuilder = new Serie.Builder(OPS_SERIES).columns(OPS_COLUMNS);
+                DBSeries dbSeries = entry.getDbSeries();
+                if (!builderMap.containsKey(dbSeries.getName())) {
+                    builderMap.put(dbSeries.getName(),
+                            new Serie.Builder(dbSeries.getName()).columns(dbSeries.getColumns()));
                 }
-                serieBuilder.values(entry);
+                builderMap.get(dbSeries.getName()).values(entry.getValues().toArray());
             }
         }
-        if (serieBuilder == null) {
-            return null;
+        if (builderMap.isEmpty()) {
+            return Collections.<Serie>emptyList();
         }
-        return serieBuilder.build();
+        return builderMap.values().stream().map(Serie.Builder::build).collect(Collectors.toList());
     }
 
     void removeProcessedValues(Serie serie) {
-        synchronized (opsQueue) {
+        synchronized (queue) {
             for (int i = 0; i < serie.getRows().size(); i++) {
-                opsQueue.remove();
+                queue.remove();
             }
+        }
+    }
+
+    public static final class DBSeries {
+        private static final String[] OPS_COLUMNS =
+                {"time", "op", "provider", "container", "object", "size", "duration"};
+        private final String[] columns;
+        private final String name;
+
+        public DBSeries(String name, String[] columns) {
+            this.columns = columns;
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String[] getColumns() {
+            return columns;
         }
     }
 }

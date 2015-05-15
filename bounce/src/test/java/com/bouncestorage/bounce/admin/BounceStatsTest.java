@@ -7,6 +7,8 @@ package com.bouncestorage.bounce.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import javax.ws.rs.HttpMethod;
 
 import org.influxdb.dto.Serie;
@@ -17,7 +19,7 @@ public class BounceStatsTest {
 
     @Test
     public void testNoStats() {
-        assertThat(stats.prepareSerie()).isNull();
+        assertThat(stats.prepareSeries()).isEmpty();
     }
 
     @Test
@@ -25,11 +27,17 @@ public class BounceStatsTest {
         stats.logOperation(HttpMethod.GET, "provider", "container", "foo", Long.valueOf(1), Long.valueOf(0));
         stats.logOperation(HttpMethod.PUT, "provider", "container", "foo", Long.valueOf(2), Long.valueOf(0));
         stats.logOperation(HttpMethod.PUT, "provider", "container", "foo", Long.valueOf(3), Long.valueOf(0));
-        Serie serie = stats.prepareSerie();
+        List<Serie> series = stats.prepareSeries();
         stats.logOperation(HttpMethod.GET, "provider", "container", "foo", Long.valueOf(4), Long.valueOf(0));
         stats.logOperation(HttpMethod.GET, "provider", "container", "foo", Long.valueOf(5), Long.valueOf(0));
-        stats.removeProcessedValues(serie);
-        assertThat(stats.getOpsQueue()).hasSize(2);
-        assertThat(stats.getOpsQueue().peek()[5]).isEqualTo(Long.valueOf(4));
+        stats.removeProcessedValues(series.iterator().next());
+        assertThat(stats.getQueue()).hasSize(2);
+        assertThat(stats.getQueue().peek().getValues().get(5)).isEqualTo(Long.valueOf(4));
+    }
+    @Test
+    public void testLogOperation() throws Exception {
+        stats.logOperation(HttpMethod.GET, "provider", "container", "foo", Long.valueOf(1), Long.valueOf(1));
+        StatsQueueEntry entry = stats.getQueue().peek();
+        assertThat(entry.getDbSeries()).isEqualTo(BounceStats.OPS_SERIES);
     }
 }

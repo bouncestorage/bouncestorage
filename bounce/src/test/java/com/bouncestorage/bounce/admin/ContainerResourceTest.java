@@ -46,12 +46,12 @@ public class ContainerResourceTest {
     public void setUp() throws Exception {
         configFile = File.createTempFile("bounce-test", "properties");
         try (FileOutputStream out = new FileOutputStream(configFile);
-             InputStream is = ObjectStoreResourceTest.class.getResourceAsStream("/bounce.properties")) {
+             InputStream is = ContainerResourceTest.class.getResourceAsStream("/bounce.properties")) {
             ByteStreams.copy(is, out);
         }
         app = new BounceApplication(configFile.getPath());
         app.useRandomPorts();
-        String webConfig = ObjectStoreResourceTest.class.getResource("/bounce.yml").toExternalForm();
+        String webConfig = ContainerResourceTest.class.getResource("/bounce.yml").toExternalForm();
         synchronized (app.getClass()) {
             app.run("server", webConfig);
         }
