@@ -20,7 +20,9 @@ import java.util.Optional;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.hash.HashCode;
+import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
+import com.google.common.net.MediaType;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
@@ -30,7 +32,6 @@ import org.jclouds.blobstore.domain.StorageType;
 import org.jclouds.blobstore.domain.internal.MutableBlobMetadataImpl;
 import org.jclouds.io.ContentMetadata;
 import org.jclouds.io.MutableContentMetadata;
-import org.jclouds.io.Payload;
 import org.jclouds.io.payloads.ByteSourcePayload;
 
 public final class BounceLink implements Serializable {
@@ -60,7 +61,7 @@ public final class BounceLink implements Serializable {
 
     public static BounceLink fromBlob(Blob b) throws IOException {
         try (InputStream is = b.getPayload().openStream();
-            ObjectInputStream ois = new ObjectInputStream(is)) {
+             ObjectInputStream ois = new ObjectInputStream(is)) {
             Object obj = ois.readObject();
             if (obj instanceof BounceLink) {
                 return (BounceLink) obj;
@@ -72,19 +73,23 @@ public final class BounceLink implements Serializable {
     }
 
     public Blob toBlob(BlobStore store) {
+        byte[] payload = toBlobPayload();
         return store.blobBuilder(metadata.getName())
-                .payload(toBlobPayload())
+                .payload(new ByteSourcePayload(ByteSource.wrap(payload)))
+                .contentLength(payload.length)
+                .contentMD5(Hashing.md5().hashBytes(payload))
+                .contentType(MediaType.OCTET_STREAM)
                 .userMetadata(BounceLink.BOUNCE_ATTR)
                 .build();
     }
 
-    private Payload toBlobPayload() {
+    private byte[] toBlobPayload() {
         try {
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             try (ObjectOutputStream oos = new ObjectOutputStream(bos)) {
                 oos.writeObject(this);
             }
-            return new ByteSourcePayload(ByteSource.wrap(bos.toByteArray()));
+            return bos.toByteArray();
         } catch (IOException e) {
             throw propagate(e);
         }
