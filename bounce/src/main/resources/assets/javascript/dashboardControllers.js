@@ -61,10 +61,6 @@ dashboardControllers.controller('DashboardCtrl', ['$scope', '$location',
     };
   };
 
-  $scope.getObjectStoreData = function() {
-    var query = OBJECT_STORES_QUERY;
-  };
-
   $scope.getDurationData = function() {
     for (var i in TRACKED_METHODS) {
       $http.get(SERIES_URL, { params: { q: durationQuery(i) } })
