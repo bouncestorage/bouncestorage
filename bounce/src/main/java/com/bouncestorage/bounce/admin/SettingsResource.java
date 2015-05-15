@@ -86,9 +86,9 @@ public class SettingsResource {
             return Response.status(Response.Status.BAD_REQUEST).build();
         }
         Properties p = new Properties();
-        URI s3Endpoint = settings.getEndpoint(Settings.PROXY.S3Proxy);
-        URI s3SSLEndpoint = settings.getEndpoint(Settings.PROXY.S3SSLProxy);
-        URI swiftEndpoint = settings.getEndpoint(Settings.PROXY.SwiftProxy);
+        URI s3Endpoint = settings.getEndpoint(Settings.Proxy.S3Proxy);
+        URI s3SSLEndpoint = settings.getEndpoint(Settings.Proxy.S3SSLProxy);
+        URI swiftEndpoint = settings.getEndpoint(Settings.Proxy.SwiftProxy);
         BounceConfiguration config = app.getConfiguration();
 
         updateSetting(config, p, S3ProxyConstants.PROPERTY_ENDPOINT, s3Endpoint);
@@ -108,7 +108,7 @@ public class SettingsResource {
     }
 
     static class Settings {
-        enum PROXY { S3Proxy, S3SSLProxy, SwiftProxy };
+        enum Proxy { S3Proxy, S3SSLProxy, SwiftProxy };
         @JsonProperty
         String s3Domain;
         @JsonProperty
@@ -126,7 +126,7 @@ public class SettingsResource {
         @JsonProperty
         String domainCertificate;
 
-        URI getEndpoint(PROXY type) throws URISyntaxException {
+        URI getEndpoint(Proxy type) throws URISyntaxException {
             String address;
             int port;
             String scheme = "http";

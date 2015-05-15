@@ -341,12 +341,14 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
 
         if (blobStore == null) {
             List<Object> backendIDs = config.getList(BounceBlobStore.STORES_LIST);
-            logger.info("keys: {}", backendIDs);
+            logger.debug("backend keys: {}", backendIDs);
             for (Object id : backendIDs) {
                 Configuration c = config.subset(BounceBlobStore.STORE_PROPERTY + "." + id);
                 if (identity.equals(c.getString(Constants.PROPERTY_IDENTITY))) {
                     credential = c.getString(Constants.PROPERTY_CREDENTIAL);
                     blobStore = providers.get(Integer.valueOf(id.toString()));
+                } else {
+                    logger.debug("identity {} != {}", identity, c.getString(Constants.PROPERTY_IDENTITY));
                 }
             }
         }
