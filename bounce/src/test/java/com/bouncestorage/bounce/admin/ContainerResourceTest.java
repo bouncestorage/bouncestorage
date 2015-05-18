@@ -12,7 +12,6 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -98,13 +97,10 @@ public class ContainerResourceTest {
                 HttpMethod.GET, null);
         assertThat(connection.getResponseCode()).isEqualTo(Response.Status.OK.getStatusCode());
         try (InputStream stream = connection.getInputStream()) {
-            Map<String, Object> map = new ObjectMapper().readValue(stream, new TypeReference<Map<String, Object>>() {
-            });
-            assertThat(map).containsKey("objects");
-            assertThat(map.get("objects")).isInstanceOf(List.class);
-            List objects = (List) map.get("objects");
-            assertThat(objects).hasSize(1);
-            assertThat(((Map<String, String>) objects.get(0)).get("name")).isEqualTo(blobName);
+            ContainerResource.Container container = new ObjectMapper().readValue(stream,
+                    ContainerResource.Container.class);
+            assertThat(container.objects).hasSize(1);
+            assertThat(container.objects.get(0).name).isEqualTo(blobName);
         }
     }
 
@@ -146,13 +142,10 @@ public class ContainerResourceTest {
                 HttpMethod.GET, null);
         assertThat(connection.getResponseCode()).isEqualTo(Response.Status.OK.getStatusCode());
         try (InputStream stream = connection.getInputStream()) {
-            Map<String, Object> map = new ObjectMapper().readValue(stream, new TypeReference<Map<String, Object>>() {
-            });
-            assertThat(map).containsKey("objects");
-            assertThat(map.get("objects")).isInstanceOf(List.class);
-            List objects = (List) map.get("objects");
-            assertThat(objects).hasSize(1);
-            assertThat(((Map<String, String>) objects.get(0)).get("name")).isEqualTo(blobName);
+            ContainerResource.Container container = new ObjectMapper().readValue(stream,
+                    ContainerResource.Container.class);
+            assertThat(container.objects).hasSize(1);
+            assertThat(container.objects.get(0).name).isEqualTo(blobName);
         }
     }
 }

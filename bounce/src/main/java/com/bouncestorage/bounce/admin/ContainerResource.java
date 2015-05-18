@@ -12,6 +12,7 @@ import static com.bouncestorage.bounce.admin.ObjectStoreResource.getStoreById;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -205,17 +206,21 @@ public final class ContainerResource {
         private Container.ContainerStatus status;
     }
 
-    private static class Container {
+    static class Container {
         enum ContainerStatus { UNCONFIGURED, CONFIGURED, INUSE }
 
         @JsonProperty
-        private String name;
+        String name;
         @JsonProperty
-        private ContainerStatus status;
+        ContainerStatus status;
         @JsonProperty
-        private int virtualContainerId;
+        int virtualContainerId;
         @JsonProperty
-        private List<ContainerObject> objects;
+        List<ContainerObject> objects;
+
+        // Used by Jackson for deserialization
+        Container() {
+        }
 
         Container(String name) {
             this.name = name;
@@ -224,14 +229,18 @@ public final class ContainerResource {
         }
     }
 
-    private static class ContainerObject {
+    static class ContainerObject {
         enum Tier { CACHE, PRIMARY, ARCHIVE, MIGRATED }
         @JsonProperty
         String name;
         @JsonProperty
         long size;
         @JsonProperty
-        ImmutableSet<BounceStorageMetadata.Region> regions;
+        Set<BounceStorageMetadata.Region> regions;
+
+        // Used by Jackson for deserialization
+        ContainerObject() {
+        }
 
         public ContainerObject(String name, long size, ImmutableSet<BounceStorageMetadata.Region> regions) {
             this.name = name;
