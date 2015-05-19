@@ -10,6 +10,8 @@ import static java.util.Objects.requireNonNull;
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.time.Clock;
@@ -61,6 +63,7 @@ import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.blobstore.reference.BlobStoreConstants;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -565,6 +568,16 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         // DropWizard's Application class has a static initializer that forces the filter
         // to be at WARN, this overrides that
         LoggingFactory.bootstrap(Level.toLevel(System.getProperty("LOG_LEVEL"), Level.INFO));
+        try {
+            Field f = BlobStoreConstants.class.getDeclaredField("DIRECTORY_SUFFIXES");
+            f.setAccessible(true);
+            Field modifiersField = Field.class.getDeclaredField("modifiers");
+            modifiersField.setAccessible(true);
+            modifiersField.setInt(f, f.getModifiers() & ~Modifier.FINAL);
+            f.set(null, ImmutableList.of("/"));
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw propagate(e);
+        }
     }
 
     public Clock getClock() {
