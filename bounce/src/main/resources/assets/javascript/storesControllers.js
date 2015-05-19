@@ -193,13 +193,20 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
         console.log("blob store ID not found");
         return [];
       }
-      return $scope.containersMap[blobStoreId].filter(
-        function(container) {
-          return (container.status === 'UNCONFIGURED' &&
-                  container.name !== $scope.enhanceContainer.name) ||
-                 (container.status === 'INUSE' &&
-                  container.name === editLocation.containerName);
-        });
+      if (blobStoreId === $scope.enhanceContainer.originLocation.blobStoreId) {
+        return $scope.containersMap[blobStoreId].filter(
+          function(container) {
+            return (container.status === 'UNCONFIGURED' &&
+                    container.name !== $scope.enhanceContainer.name) ||
+                   (container.status === 'INUSE' &&
+                    container.name === editLocation.containerName);
+          });
+      } else {
+        return $scope.containersMap[blobStoreId].filter(
+          function(container) {
+            return container.status === 'UNCONFIGURED';
+          });
+      }
     };
 
     $scope.actions.enhanceContainer = function(container) {
