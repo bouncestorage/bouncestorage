@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
@@ -30,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 public class BounceStats {
     public static final String DATABASE = "bounce";
-    public static final DBSeries OPS_SERIES = new DBSeries("ops", DBSeries.OPS_COLUMNS);
     public static final String ENDPOINT = "http://localhost:8086";
     public static final String USER = "bounce";
     public static final String PASSWORD = "bounce";
@@ -64,15 +64,16 @@ public class BounceStats {
                              Long startTime) {
         synchronized (queue) {
             Long timeStamp = new Date().getTime();
+            StringBuilder nameBuilder = new StringBuilder(DBSeries.OPS_SERIES)
+                    .append(".provider.").append(Integer.toString(providerId))
+                    .append(".container.").append(containerName)
+                    .append(".op.").append(opName);
             ArrayList<Object> values = new ArrayList<>();
             values.add(timeStamp);
-            values.add(opName);
-            values.add(providerId);
-            values.add(containerName);
             values.add(objectName);
             values.add(size);
             values.add(timeStamp - startTime);
-            queue.add(StatsQueueEntry.create(OPS_SERIES, values));
+            queue.add(StatsQueueEntry.create(new DBSeries(nameBuilder.toString(), DBSeries.OPS_COLUMNS), values));
         }
     }
 
@@ -110,7 +111,8 @@ public class BounceStats {
                 DBSeries dbSeries = entry.getDbSeries();
                 if (!builderMap.containsKey(dbSeries.getName())) {
                     builderMap.put(dbSeries.getName(),
-                            new Serie.Builder(dbSeries.getName()).columns(dbSeries.getColumns()));
+                            new Serie.Builder(dbSeries.getName()).columns(dbSeries.getColumns().toArray(
+                                    new String[dbSeries.getColumns().size()])));
                 }
                 builderMap.get(dbSeries.getName()).values(entry.getValues().toArray());
             }
@@ -130,12 +132,13 @@ public class BounceStats {
     }
 
     public static final class DBSeries {
-        private static final String[] OPS_COLUMNS =
-                {"time", "op", "provider", "container", "object", "size", "duration"};
-        private final String[] columns;
+        public static final String OPS_SERIES = "ops";
+        public static final List<String> OPS_COLUMNS = ImmutableList.of("time", "object", "size", "duration");
+
+        private final List<String> columns;
         private final String name;
 
-        public DBSeries(String name, String[] columns) {
+        public DBSeries(String name, List<String> columns) {
             this.columns = columns;
             this.name = name;
         }
@@ -144,7 +147,7 @@ public class BounceStats {
             return name;
         }
 
-        public String[] getColumns() {
+        public List<String> getColumns() {
             return columns;
         }
     }

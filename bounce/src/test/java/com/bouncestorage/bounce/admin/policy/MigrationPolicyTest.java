@@ -25,6 +25,7 @@ import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
+import com.bouncestorage.bounce.admin.BounceStats;
 import com.bouncestorage.bounce.admin.StatsQueueEntry;
 
 import org.jclouds.blobstore.domain.Blob;
@@ -220,21 +221,23 @@ public final class MigrationPolicyTest {
         UtilsTest.assertEqualBlobs(getBlob, blob);
         Queue<StatsQueueEntry> q = app.getBounceStats().getQueue();
         assertThat(q).hasSize(2);
-        StatsQueueEntry entry = q.remove();
-        ArrayList<Object> putOp = entry.getValues();
-        entry = q.remove();
-        ArrayList<Object> getOp = entry.getValues();
+        StatsQueueEntry putEntry = q.remove();
+        ArrayList<Object> putOp = putEntry.getValues();
+        StatsQueueEntry getEntry = q.remove();
+        ArrayList<Object> getOp = getEntry.getValues();
         int blobStoreId = app.getBlobStoreId(((BlobStoreTarget) policy.getDestination()).delegate());
-        assertThat(putOp.get(1)).isEqualTo(HttpMethod.PUT);
-        assertThat(putOp.get(2)).isEqualTo(blobStoreId);
-        assertThat(putOp.get(3)).isEqualTo(containerName + "-dest");
-        assertThat(putOp.get(4)).isEqualTo(blobName);
-        assertThat(putOp.get(5)).isEqualTo(getBlob.getMetadata().getSize());
-        assertThat(getOp.get(1)).isEqualTo(HttpMethod.GET);
-        assertThat(putOp.get(2)).isEqualTo(blobStoreId);
-        assertThat(getOp.get(3)).isEqualTo(containerName + "-dest");
-        assertThat(getOp.get(4)).isEqualTo(blobName);
-        assertThat(getOp.get(5)).isEqualTo(getBlob.getMetadata().getSize());
+        assertThat(putEntry.getDbSeries().getName()).isEqualTo(BounceStats.DBSeries.OPS_SERIES +
+                ".provider." + blobStoreId +
+                ".container." + containerName + "-dest" +
+                ".op." + HttpMethod.PUT);
+        assertThat(putOp.get(1)).isEqualTo(blobName);
+        assertThat(putOp.get(2)).isEqualTo(getBlob.getMetadata().getSize());
+        assertThat(getEntry.getDbSeries().getName()).isEqualTo(BounceStats.DBSeries.OPS_SERIES +
+                ".provider." + blobStoreId +
+                ".container." + containerName + "-dest" +
+                ".op." + HttpMethod.GET);
+        assertThat(getOp.get(1)).isEqualTo(blobName);
+        assertThat(getOp.get(2)).isEqualTo(getBlob.getMetadata().getSize());
     }
 
     private void verifyList(String[] expectedNames) throws Exception {

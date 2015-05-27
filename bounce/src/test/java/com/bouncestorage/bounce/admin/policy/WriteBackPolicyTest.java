@@ -25,6 +25,7 @@ import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
+import com.bouncestorage.bounce.admin.BounceStats;
 import com.bouncestorage.bounce.admin.StatsQueueEntry;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -347,27 +348,25 @@ public class WriteBackPolicyTest {
         UtilsTest.assertEqualBlobs(getBlob, blob);
         Queue<StatsQueueEntry> q = app.getBounceStats().getQueue();
         assertThat(q).hasSize(3);
-        StatsQueueEntry entry = q.remove();
-        ArrayList<Object> putMarkerOp = entry.getValues();
-        entry = q.remove();
-        ArrayList<Object> putOp = entry.getValues();
-        entry = q.remove();
-        ArrayList<Object> getOp = entry.getValues();
+        StatsQueueEntry putMarkerEntry = q.remove();
+        ArrayList<Object> putMarkerOp = putMarkerEntry.getValues();
+        StatsQueueEntry putEntry = q.remove();
+        ArrayList<Object> putOp = putEntry.getValues();
+        StatsQueueEntry getEntry = q.remove();
+        ArrayList<Object> getOp = getEntry.getValues();
         int blobStoreId = app.getBlobStoreId(((BlobStoreTarget) policy.getSource()).delegate());
-        assertThat(putMarkerOp.get(1)).isEqualTo(HttpMethod.PUT);
-        assertThat(putOp.get(2)).isEqualTo(blobStoreId);
-        assertThat(putMarkerOp.get(3)).isEqualTo(containerName);
-        assertThat(putMarkerOp.get(4)).isEqualTo(blobName + WriteBackPolicy.LOG_MARKER_SUFFIX);
-        assertThat(putOp.get(1)).isEqualTo(HttpMethod.PUT);
-        assertThat(putOp.get(2)).isEqualTo(blobStoreId);
-        assertThat(putOp.get(3)).isEqualTo(containerName);
-        assertThat(putOp.get(4)).isEqualTo(blobName);
-        assertThat(putOp.get(5)).isEqualTo(getBlob.getMetadata().getSize());
-        assertThat(getOp.get(1)).isEqualTo(HttpMethod.GET);
-        assertThat(putOp.get(2)).isEqualTo(blobStoreId);
-        assertThat(getOp.get(3)).isEqualTo(containerName);
-        assertThat(getOp.get(4)).isEqualTo(blobName);
-        assertThat(getOp.get(5)).isEqualTo(getBlob.getMetadata().getSize());
+        String namePrefix = BounceStats.DBSeries.OPS_SERIES +
+                ".provider." + blobStoreId +
+                ".container." + containerName +
+                ".op.";
+        assertThat(putMarkerEntry.getDbSeries().getName()).isEqualTo(namePrefix + HttpMethod.PUT);
+        assertThat(putMarkerOp.get(1)).isEqualTo(blobName + WriteBackPolicy.LOG_MARKER_SUFFIX);
+        assertThat(putEntry.getDbSeries().getName()).isEqualTo(namePrefix + HttpMethod.PUT);
+        assertThat(putOp.get(1)).isEqualTo(blobName);
+        assertThat(putOp.get(2)).isEqualTo(getBlob.getMetadata().getSize());
+        assertThat(getEntry.getDbSeries().getName()).isEqualTo(namePrefix + HttpMethod.GET);
+        assertThat(getOp.get(1)).isEqualTo(blobName);
+        assertThat(getOp.get(2)).isEqualTo(getBlob.getMetadata().getSize());
     }
 
     private void assertEqualBlobStores(BlobStore one, BlobStore two) throws Exception {
