@@ -60,15 +60,6 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
     };
 }]);
 
-function findStore(stores, id) {
-  for (var i = 0; i < stores.length; i++) {
-    if (stores[i].id === id) {
-      return stores[i];
-    }
-  }
-  return undefined;
-}
-
 function createNewVirtualContainer(store, container) {
   var newVirtualContainer = { name: container.name };
   angular.forEach(bounceConstants.tiers, function(tier) {
@@ -150,7 +141,8 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       $scope.stores = results;
       var redirect = true;
       if ($routeParams.id !== null) {
-        $scope.store = findStore($scope.stores, Number($routeParams.id));
+        $scope.store = bounceConstants.findStore($scope.stores,
+            Number($routeParams.id));
         if ($scope.store !== undefined) {
           redirect = false;
         }

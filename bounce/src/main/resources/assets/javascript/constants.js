@@ -210,3 +210,12 @@ bounceConstants.translateLocations = function(locationMap, object) {
   }
   return result.join(", ");
 };
+
+bounceConstants.findStore = function(stores, id) {
+  for (var i = 0; i < stores.length; i++) {
+    if (stores[i].id === id) {
+      return stores[i];
+    }
+  }
+  return undefined;
+};
