@@ -287,7 +287,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
                         name: container.name
                       },
                       function(result) {
-                        for (var i = 0; i < result.objects.length; i++) { 
+                        for (var i = 0; i < result.objects.length; i++) {
                           result.objects[i].locations =
                               BounceUtils.tiers.ORIGIN.displayName;
                           result.objects[i].size = BounceUtils.toHumanSize(

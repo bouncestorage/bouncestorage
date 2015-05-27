@@ -1,40 +1,11 @@
 var dashboardControllers = angular.module('dashboardControllers', ['bounce',
     'nvd3ChartDirectives']);
 
-var DB_NAME = "bounce";
-var DB_URL = "http://" + window.location.hostname + ":8086";
-var DB_USER = "bounce";
-var DB_PASSWORD = "bounce";
-var SERIES_URL = DB_URL + "/db/" + DB_NAME + "/series?u=" + DB_USER +
-    "&p=" + DB_PASSWORD;
-
-var TRACKED_METHODS = { 'PUT': 0,
-                        'GET': 1,
-                        'DELETE': 2
-                      };
-
-var OPS_SERIES_PREFIX = "ops";
-var OPS_QUERY = "select count(object) from merge(/^" + OPS_SERIES_PREFIX +
-    "\\./i) group by time(30s) fill(0)";
-var DURATION_QUERY = "select mean(duration) from merge(/^" + OPS_SERIES_PREFIX;
-var DURATION_PARAMETERS = " group by time(30s) fill(0) where time > now() - 1h";
-
-var OBJECT_STORE_SERIES = "object_stores";
-var OBJECT_STORES_QUERY = "select sum(objects), sum(object_size) from " +
-    OBJECT_STORE_SERIES + " group by provider";
-
-function opCountQuery(op) {
-  return OP_COUNT_SIZE_QUERY + "'" + op + "'";
-}
-
-function durationQuery(opName) {
-  return DURATION_QUERY + "\\..*\.op\." + opName + "$/) " +
-      DURATION_PARAMETERS;
-}
-
-dashboardControllers.controller('DashboardCtrl', ['$scope', '$location',
-    '$http', '$interval', '$filter', 'ObjectStore',
-    function($scope, $location, $http, $interval, $filter, ObjectStore) {
+dashboardControllers.controller('DashboardCtrl', ['$rootScope', '$scope',
+    '$location', '$http', '$interval', '$filter', 'ObjectStore',
+    'objectStoreStats',
+    function($rootScope, $scope, $location, $http, $interval, $filter,
+        ObjectStore, objectStoreStats) {
   $scope.opsData = [{ key: "Number of operations",
                       values: []
                     }];
@@ -43,7 +14,7 @@ dashboardControllers.controller('DashboardCtrl', ['$scope', '$location',
   $scope.totalObjectStoreData = [];
 
   $scope.durationData = [];
-  for (var i in TRACKED_METHODS) {
+  for (var i in BounceUtils.TRACKED_METHODS) {
     $scope.durationData.push({ key: i,
                                values: []
                              });
@@ -61,16 +32,60 @@ dashboardControllers.controller('DashboardCtrl', ['$scope', '$location',
     };
   };
 
+  $rootScope.$on('objectStoreStatsComplete', function() {
+    console.log("stats done!");
+    $scope.totalObjectStoreData = objectStoreStats.result;
+  });
+
+  ObjectStore.query(
+    function(result) {
+      $scope.objectStores = result;
+      objectStoreStats.getStats(result);
+    },
+    function(error) {
+      console.log("Error fetching object stores: ");
+      console.log(error);
+    }
+  );
+
+  $scope.updatePieChart = function() {
+    $scope.pieChartRequests--;
+    if ($scope.pieChartRequests === 0) {
+      $scope.totalObjectStoreData = $scope.updatedPieChart;
+    }
+  };
+
+  $scope.getObjectStoreData = function() {
+    // We aggregate the pie chart data into this array
+    $scope.updatedPieChart = [];
+    // We need to keep track of the outstanding requests and only update the
+    // chart when the last one completes
+    $scope.pieChartRequests = 0;
+  };
+
+  $scope.objectStoreName = function() {
+    return function(d) {
+      return d.key;
+    };
+  };
+
+  $scope.objectStoreSize = function() {
+    return function(d) {
+      return d.data.size;
+    };
+  };
+
   $scope.getDurationData = function() {
-    for (var i in TRACKED_METHODS) {
-      $http.get(SERIES_URL, { params: { q: durationQuery(i) } })
+    for (var i in BounceUtils.TRACKED_METHODS) {
+      $http.get(BounceUtils.SERIES_URL,
+          { params: { q: BounceUtils.durationQuery(i) }
+          })
         .success((function(method) {
           return function(results) {
             if (results.length === 0 || results[0].points.length === 0) {
               return;
             }
-            console.log(results);
-            $scope.durationData[TRACKED_METHODS[method]].values =
+            $scope.durationData[BounceUtils.TRACKED_METHODS[method]].values =
                 results[0].points;
           };
         })(i))
@@ -82,11 +97,12 @@ dashboardControllers.controller('DashboardCtrl', ['$scope', '$location',
   };
 
   $scope.getOpsData = function() {
-    var query = OPS_QUERY;
-    query += " where time > now()-1h";
-    $http.get(SERIES_URL, { params: { q: query }
+    $http.get(BounceUtils.SERIES_URL, { params: { q: BounceUtils.OPS_QUERY }
                           })
       .success(function(results) {
+        if (results.length === 0 || results[0].points.length === 0) {
+          return;
+        }
         $scope.opsData[0].values = results[0].points;
       }).error(function(error) {
         console.log(error);
