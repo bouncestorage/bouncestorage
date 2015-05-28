@@ -21,6 +21,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.bouncestorage.bounce.utils.KeyStoreUtils;
 import com.bouncestorage.swiftproxy.SwiftProxy;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -46,8 +47,11 @@ public class SettingsResource {
         Settings res = new Settings();
         res.s3Domain = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_VIRTUAL_HOST);
         if (!Strings.isNullOrEmpty(res.s3Domain)) {
-            X509Certificate cert = app.getKeyStoreUtils().ensureCertificate("*." + res.s3Domain);
-            res.domainCertificate = app.getKeyStoreUtils().exportToPem(cert);
+            KeyStoreUtils keystore = app.getKeyStoreUtils();
+            if (keystore != null) {
+                X509Certificate cert = keystore.ensureCertificate("*." + res.s3Domain);
+                res.domainCertificate = keystore.exportToPem(cert);
+            }
         }
 
         String s3URL = app.getConfiguration().getString(S3ProxyConstants.PROPERTY_ENDPOINT);
