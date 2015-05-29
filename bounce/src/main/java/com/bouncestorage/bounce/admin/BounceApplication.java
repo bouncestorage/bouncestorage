@@ -36,6 +36,8 @@ import com.bouncestorage.bounce.utils.KeyStoreUtils;
 import com.bouncestorage.swiftproxy.SwiftProxy;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.inject.CreationException;
@@ -77,7 +79,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private boolean useRandomPorts;
     private S3Proxy s3Proxy;
     private SwiftProxy swiftProxy;
-    private Map<Integer, BlobStore> providers = new HashMap<>();
+    private BiMap<Integer, BlobStore> providers = HashBiMap.create();
     private Map<String, BouncePolicy> virtualContainers = new HashMap<>();
     private Map<String, VirtualContainer> vContainerConfig = new HashMap<>();
     private final Pattern providerConfigPattern = Pattern.compile("(bounce.backend.\\d+).jclouds.provider");
@@ -307,6 +309,17 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             return null;
         }
         return virtualContainers.get(containerName);
+    }
+
+    public int getBlobStoreId(BlobStore blobStore) {
+        if (blobStore instanceof BlobStoreTarget) {
+            blobStore = ((BlobStoreTarget) blobStore).delegate();
+        }
+        Integer result = providers.inverse().get(blobStore);
+        if (result == null) {
+            throw new IllegalArgumentException("BlobStore does not exist");
+        }
+        return result;
     }
 
     public BounceStats getBounceStats() {
