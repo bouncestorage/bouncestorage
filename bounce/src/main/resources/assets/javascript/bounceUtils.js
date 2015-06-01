@@ -169,19 +169,24 @@ BounceUtils.getCloudContext = function(provider, store) {
          BounceUtils.getRegionName(search_regions, store.region);
 };
 
-BounceUtils.tiers = {};
-BounceUtils.tiers.ORIGIN = { name: "originLocation",
-                                 displayName: "primary"
-                               };
-BounceUtils.tiers.ARCHIVE = { name: "archiveLocation",
-                                  displayName: "archive"
-                                };
-BounceUtils.tiers.MIGRATION = { name: "migrationTargetLocation",
-                                    displayName: "migration target"
-                                  };
-BounceUtils.tiers.CACHE = { name: "cacheLocation",
-                                displayName: "cache"
-                              };
+BounceUtils.tiers = {
+  ORIGIN:
+    { name: "originLocation",
+      displayName: "primary"
+    },
+  ARCHIVE:
+    { name: "archiveLocation",
+      displayName: "archive"
+    },
+  MIGRATION:
+    { name: "migrationTargetLocation",
+      displayName: "migration target"
+    },
+  CACHE:
+    { name: "cacheLocation",
+      displayName: "cache"
+    }
+};
 
 BounceUtils.createLocationMap = function(virtualContainer) {
   var locationMap = {};
