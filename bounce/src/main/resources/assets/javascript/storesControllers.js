@@ -124,6 +124,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     $scope.refreshBounce = null;
     $scope.newContainer = null;
     $scope.providerLabel = null;
+    $scope.durationUnits = BounceUtils.durationUnits;
 
     $scope.getProviderLabel = function() {
       if ($scope.store.region === null) {
@@ -290,7 +291,12 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
 
     $scope.actions.prompt = function(locationObject) {
       $scope.editLocation = locationObject;
+      BounceUtils.parseDurations($scope.editLocation);
       $('#configureTierModal').modal('show');
+    };
+
+    $scope.actions.updateDuration = function() {
+      BounceUtils.setDuration($scope.editLocation);
     };
 
     $scope.actions.saveContainer = function() {
