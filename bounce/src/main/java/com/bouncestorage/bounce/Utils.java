@@ -36,10 +36,13 @@ import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.StorageType;
 import org.jclouds.blobstore.options.ListContainerOptions;
+import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.io.ContentMetadata;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 
 public final class Utils {
+    private static final PutOptions MULTIPART_PUT = new PutOptions().multipart(true);
+
     private Utils() {
         throw new AssertionError("intentionally unimplemented");
     }
@@ -211,7 +214,7 @@ public final class Utils {
             builder.expires(expires);
         }
 
-        to.putBlob(containerNameTo, builder.build());
+        to.putBlob(containerNameTo, builder.build(), MULTIPART_PUT);
         return blobFrom;
     }
 

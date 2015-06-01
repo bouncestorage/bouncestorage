@@ -9,6 +9,7 @@
   </appender>
 
   <logger name="org.eclipse.jetty" level="${JETTY_LOG_LEVEL:-info}" />
+  <logger name="jclouds.wire" level="info"/>
 
   <root level="${LOG_LEVEL:-debug}">
     <appender-ref ref="STDOUT" />
