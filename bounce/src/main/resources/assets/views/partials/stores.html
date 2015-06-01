@@ -125,19 +125,34 @@
             </div>
             <div class="form-group">
               <label class="control-label">Copy to {{enhanceContainer.name}} after:</label>
-              <input class="form-control" type="text" ng-model="editLocation.object.copyDelay"
-                placeholder="Delay before copying to the primary store"/>
+              <div class="form-inline">
+                <input class="form-control" type="text" ng-model="editLocation.copyDuration"
+                    placeholder="duration" />
+                <select class="form-control" ng-model="editLocation.copyUnits"
+                    ng-options="d as d for d in durationUnits">
+                  <option value="">Select time unit&hellip;</option>
+                </select>
+              </div>
             </div>
             <div class="form-group">
               <label class="control-label">Move to {{enhanceContainer.name}} after:</label>
-              <input class="form-control" type="text" ng-model="editLocation.object.moveDelay"
-                placeholder="Delay before moving to the primary store"/>
+              <div class="form-inline">
+                <input class="form-control" type="text" ng-model="editLocation.moveDuration"
+                    placeholder="duration" />
+                <select class="form-control" ng-model="editLocation.moveUnits"
+                    ng-options="d as d for d in durationUnits">
+                  <option value="">Select time unit&hellip;</option>
+                </select>
+              </div>
             </div>
           </form>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal"
+            ng-click="actions.updateDuration()">
+          Close
+        </button>
       </div>
     </div>
   </div>

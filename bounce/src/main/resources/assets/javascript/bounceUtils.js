@@ -224,3 +224,57 @@ BounceUtils.findStore = function(stores, id) {
   }
   return undefined;
 };
+
+BounceUtils.durationUnits = ['seconds', 'minutes', 'hours', 'days', 'months',
+    'years'];
+
+BounceUtils.isSet = function(x) {
+  return (x !== undefined) && (x !== null);
+};
+
+BounceUtils.toDuration = function(value, units) {
+  var durationSetting = {};
+  durationSetting[units] = value;
+  return moment.duration(durationSetting).toJSON();
+};
+
+BounceUtils.setDuration = function(tier) {
+  if (BounceUtils.isSet(tier.moveDuration) &&
+      BounceUtils.isSet(tier.moveUnits)) {
+    tier.object.moveDelay = BounceUtils.toDuration(tier.moveDuration,
+        tier.moveUnits);
+  }
+  if (BounceUtils.isSet(tier.copyDuration) &&
+      BounceUtils.isSet(tier.copyUnits)) {
+    tier.object.copyDelay = BounceUtils.toDuration(tier.copyDuration,
+        tier.copyUnits);
+  }
+};
+
+BounceUtils.parseDuration = function(durationString, object, valueField,
+    unitsField) {
+  if (!BounceUtils.isSet(durationString) || durationString === '') {
+    return;
+  }
+
+  var duration = moment.duration(durationString);
+  for (var i = 0; i < BounceUtils.durationUnits.length; i++) {
+    var index = BounceUtils.durationUnits.length - i - 1;
+    var unit = BounceUtils.durationUnits[index];
+    if (duration[unit]() > 0) {
+      var nextUnit = BounceUtils.durationUnits[index + 1];
+      if (duration[nextUnit]() === 0) {
+        object[valueField] = duration[unit]();
+        object[unitsField] = unit;
+        return;
+      }
+    }
+  }
+};
+
+BounceUtils.parseDurations = function(tierLocation) {
+  BounceUtils.parseDuration(tierLocation.object.copyDelay, tierLocation,
+      'copyDuration', 'copyUnits');
+  BounceUtils.parseDuration(tierLocation.object.moveDelay, tierLocation,
+      'moveDuration', 'moveUnits');
+};
