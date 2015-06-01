@@ -1,3 +1,5 @@
+/*global angular*/
+
 var welcomeControllers = angular.module('welcomeControllers', []);
 
 welcomeControllers.controller('WelcomeCtrl', ['$location', 'ObjectStore',

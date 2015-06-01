@@ -1,3 +1,6 @@
+/*global angular*/
+/*global bounce*/
+
 var settingsControllers = angular.module('settingsControllers', ['bounce']);
 
 settingsControllers.controller('SettingsCtrl', ['$scope', '$location',

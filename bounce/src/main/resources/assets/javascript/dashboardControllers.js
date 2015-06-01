@@ -1,3 +1,5 @@
+/*global angular*/
+
 var dashboardControllers = angular.module('dashboardControllers', ['bounce',
     'nvd3ChartDirectives']);
 
@@ -19,12 +21,13 @@ var OPS_QUERY = "select count(op) from " + SERIES_NAME +
 dashboardControllers.controller('DashboardCtrl', ['$scope', '$location',
     '$http', '$interval', '$filter', function($scope, $location, $http, $interval,
     $filter) {
+  var i;
   $scope.opsData = [{ key: "Number of operations",
                       values: []
                     }];
 
   $scope.durationData = [];
-  for (var i in DURATION_SERIES) {
+  for (i in DURATION_SERIES) {
     $scope.durationData.push({ key: i,
                                values: []
                              });
@@ -47,6 +50,7 @@ dashboardControllers.controller('DashboardCtrl', ['$scope', '$location',
     $http.get(SERIES_URL, { params: { q: query }
                           })
       .success(function(results) {
+        var key;
         if (results.length === 0 || results[0].points.length === 0) {
           return;
         }
