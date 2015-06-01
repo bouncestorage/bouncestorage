@@ -79,14 +79,17 @@ function createNewVirtualContainer(store, container) {
 function extractLocations(vContainer) {
   return [{ name: 'a cache',
             edit_name: 'cache',
+            tier: BounceUtils.tiers.CACHE,
             object: vContainer.cacheLocation
           },
           { name: 'an archive',
             edit_name: 'archive',
+            tier: BounceUtils.tiers.ARCHIVE,
             object: vContainer.archiveLocation
           },
           { name: 'a migration target',
             edit_name: 'migration',
+            tier: BounceUtils.tiers.MIGRATION,
             object: vContainer.migrationTargetLocation
           }];
 }
@@ -219,6 +222,24 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
                            }
                           );
       return;
+    };
+
+    $scope.isLocationConfigurable = function(vLocation) {
+      if (vLocation.tier === BounceUtils.tiers.MIGRATION) {
+        var archive = $scope.enhanceContainer[BounceUtils.tiers.ARCHIVE.name];
+        if (archive.blobStoreId >= 0) {
+          return true;
+        }
+        var cache = $scope.enhanceContainer[BounceUtils.tiers.CACHE.name];
+        if (cache.blobStoreId >= 0) {
+          return true;
+        }
+
+        return false;
+      }
+
+      var migration = $scope.enhanceContainer[BounceUtils.tiers.MIGRATION.name];
+      return migration.blobStoreId >= 0;
     };
 
     $scope.listVirtualContainer = function(virtualContainer) {
