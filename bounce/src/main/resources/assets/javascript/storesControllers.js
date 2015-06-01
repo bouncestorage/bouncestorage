@@ -5,7 +5,7 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
   function ($scope, $rootScope, $location, $routeParams, ObjectStore) {
     $scope.actions = {};
     $scope.provider = {};
-    $scope.providers = bounceConstants.providers;
+    $scope.providers = BounceUtils.providers;
 
     if (typeof($routeParams.objectStoreId) === 'string') {
       $scope.edit = true;
@@ -62,13 +62,13 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
 
 function createNewVirtualContainer(store, container) {
   var newVirtualContainer = { name: container.name };
-  angular.forEach(bounceConstants.tiers, function(tier) {
+  angular.forEach(BounceUtils.tiers, function(tier) {
     newVirtualContainer[tier.name] = { blobStoreId: -1,
                                        containerName: '',
                                        copyDelay: '',
                                        moveDelay: ''
                                      };
-    if (tier === bounceConstants.tiers.ORIGIN) {
+    if (tier === BounceUtils.tiers.ORIGIN) {
       newVirtualContainer[tier.name].blobStoreId = store.id;
       newVirtualContainer[tier.name].containerName = container.name;
     }
@@ -127,7 +127,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
         return $scope.provider.name;
       } else {
         return $scope.provider.name + " (" +
-          bounceConstants.getCloudContext($scope.provider, $scope.store) + ")";
+          BounceUtils.getCloudContext($scope.provider, $scope.store) + ")";
       }
     };
 
@@ -141,7 +141,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       $scope.stores = results;
       var redirect = true;
       if ($routeParams.id !== null) {
-        $scope.store = bounceConstants.findStore($scope.stores,
+        $scope.store = BounceUtils.findStore($scope.stores,
             Number($routeParams.id));
         if ($scope.store !== undefined) {
           redirect = false;
@@ -154,7 +154,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
           $location.path('/create_store');
         }
       } else {
-        $scope.provider = bounceConstants.getProvider($scope.store.provider);
+        $scope.provider = BounceUtils.getProvider($scope.store.provider);
         $scope.providerLabel = $scope.getProviderLabel();
         $scope.refreshContainersMap();
       }
@@ -222,15 +222,15 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     };
 
     $scope.listVirtualContainer = function(virtualContainer) {
-      var tierName = bounceConstants.tiers.ORIGIN.name;
+      var tierName = BounceUtils.tiers.ORIGIN.name;
       var id = virtualContainer[tierName].blobStoreId;
       var container = virtualContainer[tierName].containerName;
       Container.get({ id: id, name: container },
                     function(result) {
-                      var map = bounceConstants.createLocationMap(virtualContainer);
+                      var map = BounceUtils.createLocationMap(virtualContainer);
                       for (var i = 0; i < result.objects.length; i++) {
                         var object = result.objects[i];
-                        object.locations = bounceConstants.translateLocations(map, object);
+                        object.locations = BounceUtils.translateLocations(map, object);
                       }
                       $scope.listedContainer = result;
                     },
@@ -256,7 +256,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
                       },
                       function(result) {
                         for (var i = 0; i < result.objects.length; i++) { 
-                          result.objects[i].locations = bounceConstants.tiers.ORIGIN.displayName;
+                          result.objects[i].locations = BounceUtils.tiers.ORIGIN.displayName;
                         }
                         $scope.listedContainer = result;
                       },

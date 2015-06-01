@@ -1,5 +1,5 @@
-var bounceConstants = {};
-bounceConstants.awsRegions = [
+var BounceUtils = {};
+BounceUtils.awsRegions = [
     { name: "US Standard",
       value: "us-east-1"
     },
@@ -25,7 +25,7 @@ bounceConstants.awsRegions = [
       value: "sa-east-1"
     }
 ];
-bounceConstants.googleRegions = {
+BounceUtils.googleRegions = {
   'ZONAL': [
     { name: "Eastern Asia-Pacific",
       value: "ASIA-EAST1"
@@ -73,7 +73,7 @@ bounceConstants.googleRegions = {
   ]
 };
 
-bounceConstants.googleStorageClasses = [
+BounceUtils.googleStorageClasses = [
   { name: 'Standard',
     value: 'GLOBAL'
   },
@@ -85,10 +85,10 @@ bounceConstants.googleStorageClasses = [
   }
 ];
 
-bounceConstants.providers = [
+BounceUtils.providers = [
   { name: "Amazon S3",
     value: "aws-s3",
-    regions: bounceConstants.awsRegions,
+    regions: BounceUtils.awsRegions,
     hasRegion: true,
     hasEndpoint: false,
     region: null
@@ -97,9 +97,9 @@ bounceConstants.providers = [
     value: "google-cloud-storage",
     hasRegion: true,
     hasEndpoint: false,
-    regions: bounceConstants.googleRegions,
+    regions: BounceUtils.googleRegions,
     region: null,
-    storageClasses: bounceConstants.googleStorageClasses
+    storageClasses: BounceUtils.googleStorageClasses
   },
   /*
   { name: "Microsoft Azure",
@@ -126,16 +126,16 @@ bounceConstants.providers = [
   }
 ];
 
-bounceConstants.getProvider = function(providerValue) {
-  for (var i = 0; i < bounceConstants.providers.length; i++) {
-    if (bounceConstants.providers[i].value === providerValue) {
-      return bounceConstants.providers[i];
+BounceUtils.getProvider = function(providerValue) {
+  for (var i = 0; i < BounceUtils.providers.length; i++) {
+    if (BounceUtils.providers[i].value === providerValue) {
+      return BounceUtils.providers[i];
     }
   }
   return null;
 };
 
-bounceConstants.getRegionName = function(regions, search_region) {
+BounceUtils.getRegionName = function(regions, search_region) {
   for (var i = 0; i < regions.length; i++) {
     var region = regions[i];
     if (region.value === search_region) {
@@ -145,12 +145,12 @@ bounceConstants.getRegionName = function(regions, search_region) {
   return null;
 };
 
-bounceConstants.getCloudContext = function(provider, store) {
+BounceUtils.getCloudContext = function(provider, store) {
   if (provider.regions === null) {
     return null;
   }
   if (store.storageClass === null) {
-    return bounceConstants.getRegionName(provider.regions, store.region);
+    return BounceUtils.getRegionName(provider.regions, store.region);
   }
 
   var search_regions = null;
@@ -166,44 +166,44 @@ bounceConstants.getCloudContext = function(provider, store) {
     return null;
   }
   return storage_class.name + " - " +
-         bounceConstants.getRegionName(search_regions, store.region);
+         BounceUtils.getRegionName(search_regions, store.region);
 };
 
-bounceConstants.tiers = {};
-bounceConstants.tiers.ORIGIN = { name: "originLocation",
+BounceUtils.tiers = {};
+BounceUtils.tiers.ORIGIN = { name: "originLocation",
                                  displayName: "primary"
                                };
-bounceConstants.tiers.ARCHIVE = { name: "archiveLocation",
+BounceUtils.tiers.ARCHIVE = { name: "archiveLocation",
                                   displayName: "archive"
                                 };
-bounceConstants.tiers.MIGRATION = { name: "migrationTargetLocation",
+BounceUtils.tiers.MIGRATION = { name: "migrationTargetLocation",
                                     displayName: "migration target"
                                   };
-bounceConstants.tiers.CACHE = { name: "cacheLocation",
+BounceUtils.tiers.CACHE = { name: "cacheLocation",
                                 displayName: "cache"
                               };
 
-bounceConstants.createLocationMap = function(virtualContainer) {
+BounceUtils.createLocationMap = function(virtualContainer) {
   var locationMap = {};
   if (virtualContainer.cacheLocation.blobStoreId > 0) {
-    locationMap['NEAR'] = bounceConstants.tiers.CACHE.displayName;
-    locationMap['FAR'] = bounceConstants.tiers.ORIGIN.displayName;
+    locationMap['NEAR'] = BounceUtils.tiers.CACHE.displayName;
+    locationMap['FAR'] = BounceUtils.tiers.ORIGIN.displayName;
     if (virtualContainer.archiveLocation.blobStoreId > 0) {
-      locationMap['FARTHER'] = bounceConstants.tiers.ARCHIVE.displayName;
+      locationMap['FARTHER'] = BounceUtils.tiers.ARCHIVE.displayName;
     }
   } else if (virtualContainer.migrationTargetLocation.blobStoreId > 0) {
-    locationMap['NEAR'] = bounceConstants.tiers.MIGRATION.displayName;
-    locationMap['FAR'] = bounceConstants.tiers.ORIGIN.displayName;
+    locationMap['NEAR'] = BounceUtils.tiers.MIGRATION.displayName;
+    locationMap['FAR'] = BounceUtils.tiers.ORIGIN.displayName;
   } else {
-    locationMap['NEAR'] = bounceConstants.tiers.ORIGIN.displayName;
+    locationMap['NEAR'] = BounceUtils.tiers.ORIGIN.displayName;
     if (virtualContainer.archiveLocation.blobStoreId > 0) {
-      locationMap['FAR'] = bounceConstants.tiers.ARCHIVE.displayName;
+      locationMap['FAR'] = BounceUtils.tiers.ARCHIVE.displayName;
     }
   }
   return locationMap;
 };
 
-bounceConstants.translateLocations = function(locationMap, object) {
+BounceUtils.translateLocations = function(locationMap, object) {
   var result = [];
   for (var i = 0; i < object.regions.length; i++) {
     result.push(locationMap[object.regions[i]]);
@@ -211,7 +211,7 @@ bounceConstants.translateLocations = function(locationMap, object) {
   return result.join(", ");
 };
 
-bounceConstants.findStore = function(stores, id) {
+BounceUtils.findStore = function(stores, id) {
   for (var i = 0; i < stores.length; i++) {
     if (stores[i].id === id) {
       return stores[i];
