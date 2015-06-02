@@ -385,10 +385,19 @@ public class WriteBackPolicyTest {
         putLargeObject(blobName, size);
     }
 
+    private void skipIfTransient(BlobStore blobStore) {
+        if (blobStore instanceof BouncePolicy) {
+            BouncePolicy bouncePolicy = (BouncePolicy) blobStore;
+            skipIfTransient(bouncePolicy.getSource());
+            skipIfTransient(bouncePolicy.getDestination());
+        } else {
+            assumeThat(blobStore.getContext().unwrap().getId(), not(is("transient")));
+        }
+    }
+
     private void putLargeObject(String blobName, long size) throws Exception {
         /* running 4GB through transient blob store is asking for trouble */
-        assumeThat(policy.getSource().getContext().unwrap().getId(), not(is("transient")));
-        assumeThat(policy.getDestination().getContext().unwrap().getId(), not(is("transient")));
+        skipIfTransient(policy);
 
         Blob blob = policy.blobBuilder(blobName)
                 .payload(new ByteSourcePayload(new ByteSource() {
@@ -415,6 +424,8 @@ public class WriteBackPolicyTest {
 
     @Test
     public void testBounceLargeObject() throws Exception {
+        skipIfTransient(policy);
+
         String blobName = UtilsTest.createRandomBlobName();
         final long size = 5L * 1024 * 1024 * 1024 /* 5GB */ + 1;
         putLargeObject(blobName, size);
