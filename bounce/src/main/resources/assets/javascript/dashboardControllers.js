@@ -7,24 +7,43 @@ var DB_USER = "bounce";
 var DB_PASSWORD = "bounce";
 var SERIES_URL = DB_URL + "/db/" + DB_NAME + "/series?u=" + DB_USER +
     "&p=" + DB_PASSWORD;
-var SERIES_NAME = "ops";
-var DURATION_QUERY = "select mean(duration) from " + SERIES_NAME +
-    " group by time(30s), op fill(0)";
-var DURATION_SERIES = { 'PUT': 0,
-                        'GET': 1
+
+var TRACKED_METHODS = { 'PUT': 0,
+                        'GET': 1,
+                        'DELETE': 2
                       };
-var OPS_QUERY = "select count(op) from " + SERIES_NAME +
-    " group by time(30s) fill(0)";
+
+var OPS_SERIES_PREFIX = "ops";
+var OPS_QUERY = "select count(object) from merge(/^" + OPS_SERIES_PREFIX +
+    "\\./i) group by time(30s) fill(0)";
+var DURATION_QUERY = "select mean(duration) from merge(/^" + OPS_SERIES_PREFIX;
+var DURATION_PARAMETERS = " group by time(30s) fill(0) where time > now() - 1h";
+
+var OBJECT_STORE_SERIES = "object_stores";
+var OBJECT_STORES_QUERY = "select sum(objects), sum(object_size) from " +
+    OBJECT_STORE_SERIES + " group by provider";
+
+function opCountQuery(op) {
+  return OP_COUNT_SIZE_QUERY + "'" + op + "'";
+}
+
+function durationQuery(opName) {
+  return DURATION_QUERY + "\\..*\.op\." + opName + "$/) " +
+      DURATION_PARAMETERS;
+}
 
 dashboardControllers.controller('DashboardCtrl', ['$scope', '$location',
-    '$http', '$interval', '$filter', function($scope, $location, $http, $interval,
-    $filter) {
+    '$http', '$interval', '$filter', 'ObjectStore',
+    function($scope, $location, $http, $interval, $filter, ObjectStore) {
   $scope.opsData = [{ key: "Number of operations",
                       values: []
                     }];
+  $scope.objectStores = null;
+  $scope.total_space = null;
+  $scope.totalObjectStoreData = [];
 
   $scope.durationData = [];
-  for (var i in DURATION_SERIES) {
+  for (var i in TRACKED_METHODS) {
     $scope.durationData.push({ key: i,
                                values: []
                              });
@@ -42,27 +61,28 @@ dashboardControllers.controller('DashboardCtrl', ['$scope', '$location',
     };
   };
 
+  $scope.getObjectStoreData = function() {
+    var query = OBJECT_STORES_QUERY;
+  };
+
   $scope.getDurationData = function() {
-    var query = DURATION_QUERY + " where time > now()-1h";
-    $http.get(SERIES_URL, { params: { q: query }
-                          })
-      .success(function(results) {
-        if (results.length === 0 || results[0].points.length === 0) {
-          return;
+    for (var i in TRACKED_METHODS) {
+      $http.get(SERIES_URL, { params: { q: durationQuery(i) } })
+        .success((function(method) {
+          return function(results) {
+            if (results.length === 0 || results[0].points.length === 0) {
+              return;
+            }
+            console.log(results);
+            $scope.durationData[TRACKED_METHODS[method]].values =
+                results[0].points;
+          };
+        })(i))
+        .error(function(error) {
+          console.log(error);
         }
-        for (key in DURATION_SERIES) {
-          var series_id = DURATION_SERIES[key];
-          var keySeries = results[0].points.filter(function(e) {
-            return e[2] === key;
-          });
-          if (keySeries.length !== 0) {
-            $scope.durationData[series_id].values = keySeries;
-          }
-        }
-      }).error(function(error) {
-        console.log(error);
-      }
-    );
+      );
+    }
   };
 
   $scope.getOpsData = function() {

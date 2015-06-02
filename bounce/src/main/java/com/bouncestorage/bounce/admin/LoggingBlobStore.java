@@ -13,6 +13,7 @@ import com.bouncestorage.bounce.ForwardingBlobStore;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.PutOptions;
 
@@ -46,7 +47,18 @@ public final class LoggingBlobStore extends ForwardingBlobStore {
         return result;
     }
 
-    private String getProviderId() {
-        return this.getContext().unwrap().getProviderMetadata().getId();
+    @Override
+    public void removeBlob(String containerName, String blobName) {
+        Date startTime = new Date();
+        BlobMetadata meta = delegate().blobMetadata(containerName, blobName);
+        if (meta != null) {
+            delegate().removeBlob(containerName, blobName);
+            app.getBounceStats().logOperation(HttpMethod.DELETE, getProviderId(), containerName, blobName,
+                    meta.getSize(), startTime.getTime());
+        }
+    }
+
+    private int getProviderId() {
+        return app.getBlobStoreId(this);
     }
 }
