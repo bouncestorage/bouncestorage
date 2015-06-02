@@ -238,6 +238,7 @@ public class WriteBackPolicyTest {
 
         // Copy the blob
         BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
+        assertStatus(status, status::getTotalObjectCount).isNotEqualTo(0);
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(blobFoo, farBlob);
         if (policy.getDestination() instanceof BouncePolicy) {

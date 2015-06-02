@@ -141,6 +141,8 @@ public final class UtilsTest {
 
     public static void assertEqualBlobs(Blob one, Blob two) throws Exception {
         if (one != two) {
+            assertThat(one).isNotNull();
+            assertThat(two).isNotNull();
             try (InputStream is = one.getPayload().openStream();
                  InputStream is2 = two.getPayload().openStream()) {
                 assertThat(is2).hasContentEqualTo(is);
