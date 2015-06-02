@@ -68,7 +68,7 @@ public final class ObjectStoreResource {
         try {
             validateObjectStore(objectStore.provider, properties);
         } catch (Exception e) {
-            if (objectStore.provider.equals("openstack-swift")) {
+            if (objectStore.provider.equals("openstack-swift") || objectStore.provider.equals("swift")) {
                 // try again with v1 auth
                 properties.put(PROPERTIES_PREFIX + "keystone.credential-type", "tempAuthCredentials");
                 validateObjectStore(objectStore.provider, properties);
