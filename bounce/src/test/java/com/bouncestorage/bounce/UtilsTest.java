@@ -337,4 +337,11 @@ public final class UtilsTest {
 
         return connection;
     }
+
+    public static BounceService.BounceTaskStatus runBounce(BounceService service, String container) throws Exception {
+        BounceService.BounceTaskStatus status = service.bounce(container);
+        status.future().get();
+        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        return status;
+    }
 }
