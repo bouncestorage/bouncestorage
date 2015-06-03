@@ -61,11 +61,19 @@ bounce.factory('BounceService', ['$resource', function($resource) {
   return $resource('/api/bounce/:name', { name: "@name" });
 }]);
 
+bounce.factory('AboutBuild', ['$resource', function($resource) {
+    return $resource('/api/about/build');
+}]);
+
 bounce.controller('NavBarCtrl', ['$scope', '$rootScope', '$location',
-    'ObjectStore', function ($scope, $rootScope, $location, ObjectStore) {
+    'ObjectStore', 'AboutBuild',
+    function ($scope, $rootScope, $location, ObjectStore, AboutBuild) {
   $scope.stores = {};
   ObjectStore.query(function(results) {
     $scope.stores = results;
+  });
+  AboutBuild.get(function(results) {
+      $scope.about = results;
   });
 
   $rootScope.$on('addedStore', function(event, store) {

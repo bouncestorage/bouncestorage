@@ -459,6 +459,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         environment.jersey().register(new ObjectStoreResource(this));
         environment.jersey().register(new VirtualContainerResource(this));
         environment.jersey().register(new SettingsResource(this));
+        environment.jersey().register(new AboutResource());
         if (useRandomPorts) {
             configuration.useRandomPorts();
         }
