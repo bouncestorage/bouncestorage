@@ -188,7 +188,7 @@ def get_java_properties(provider_details, swift_port):
                     map(lambda key: "-D%s%s" % (BLOBSTORE_1_PROPERTY_PREFIX, key), get_swift_properties(swift_port)))
 
 def get_swift_properties(swift_port):
-    return [ ".provider=swift", ".endpoint=http://127.0.0.1:%s/auth/v1.0/" % swift_port,
+    return [ ".provider=openstack-swift", ".endpoint=http://127.0.0.1:%s/auth/v1.0/" % swift_port,
              ".identity=test:tester", ".credential=testing", ".keystone.credential-type=tempAuthCredentials" ]
 
 def run_test(provider_details, swift_port, test="all"):
@@ -258,7 +258,7 @@ def main():
 
         saio_near_container, swift_near_port = start_docker_swift(SWIFT_DATA_DIR + "-near")
         saio_far_container, swift_far_port = start_docker_swift(SWIFT_DATA_DIR + "-far")
-        all_creds += [ { "provider" : "swift",
+        all_creds += [ { "provider" : "openstack-swift",
                          "identity" : "test:tester",
                          "credential" : "testing",
                          "keystone.credential-type" : "tempAuthCredentials",

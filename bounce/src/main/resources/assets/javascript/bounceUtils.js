@@ -106,7 +106,7 @@ BounceUtils.providers = [
       value: "azure"
     } */
   { name: "OpenStack Swift",
-    value: "swift",
+    value: "openstack-swift",
     hasRegion: true,
     regions: [],
     hasEndpoint: true,
