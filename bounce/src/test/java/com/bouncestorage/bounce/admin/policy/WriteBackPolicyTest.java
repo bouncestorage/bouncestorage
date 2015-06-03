@@ -6,6 +6,7 @@
 package com.bouncestorage.bounce.admin.policy;
 
 import static com.bouncestorage.bounce.UtilsTest.assertStatus;
+import static com.bouncestorage.bounce.UtilsTest.runBounce;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -120,8 +121,7 @@ public class WriteBackPolicyTest {
         assertThat(policy.getDestination().blobExists(containerName, blobName)).isFalse();
         assertThat(policy.getSource().blobExists(containerName, blobName)).isTrue();
 
-        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
+        BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         if (policy.getDestination() instanceof BouncePolicy) {
             assertStatus(status, status::getCopiedObjectCount).isEqualTo(2);
         } else {
@@ -141,16 +141,14 @@ public class WriteBackPolicyTest {
         policy.putBlob(containerName, blob);
 
         // Copy the blob over
-        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
+        BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
         Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(nearBlob, farBlob);
 
         // Evict the blob and ensure that a link is created
         UtilsTest.advanceServiceClock(app, duration.plusHours(1));
-        status = bounceService.bounce(containerName);
-        status.future().get();
+        status = runBounce(bounceService, containerName);
         BlobMetadata source = policy.getSource().blobMetadata(containerName, blobName);
         assertThat(BounceLink.isLink(source)).isTrue();
         assertStatus(status, status::getLinkedObjectCount).isEqualTo(1);
@@ -167,8 +165,7 @@ public class WriteBackPolicyTest {
 
         // Move the blob over
         UtilsTest.advanceServiceClock(app, duration.plusHours(1));
-        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
+        BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(blob, farBlob);
         if (policy.getDestination() instanceof BouncePolicy) {
@@ -182,8 +179,7 @@ public class WriteBackPolicyTest {
         farBlob = policy.getDestination().getBlob(containerName, blobName);
         assertThat(policy.getBlob(containerName, blobName)).isNull();
         UtilsTest.assertEqualBlobs(farBlob, blob);
-        status = bounceService.bounce(containerName);
-        status.future().get();
+        status = runBounce(bounceService, containerName);
         if (policy.getDestination() instanceof BouncePolicy) {
             assertStatus(status, status::getRemovedObjectCount).isEqualTo(2);
         } else {
@@ -202,8 +198,7 @@ public class WriteBackPolicyTest {
 
         // Move the blob
         UtilsTest.advanceServiceClock(app, duration.plusHours(1));
-        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
+        BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(blobFoo, farBlob);
         if (policy.getDestination() instanceof BouncePolicy) {
@@ -223,8 +218,7 @@ public class WriteBackPolicyTest {
 
         // Run the write back policy and ensure that the blob is updated
         UtilsTest.advanceServiceClock(app, duration.plusHours(1));
-        status = bounceService.bounce(containerName);
-        status.future().get();
+        status = runBounce(bounceService, containerName);
         if (policy.getDestination() instanceof BouncePolicy) {
             assertStatus(status, status::getMovedObjectCount).isEqualTo(2);
         } else {
@@ -243,8 +237,7 @@ public class WriteBackPolicyTest {
         policy.putBlob(containerName, blobFoo);
 
         // Copy the blob
-        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
+        BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(blobFoo, farBlob);
         if (policy.getDestination() instanceof BouncePolicy) {
@@ -263,8 +256,7 @@ public class WriteBackPolicyTest {
         UtilsTest.assertEqualBlobs(canonicalBlob, blobBar);
 
         // Run the write back policy and ensure that the blob is updated
-        status = bounceService.bounce(containerName);
-        status.future().get();
+        status = runBounce(bounceService, containerName);
         if (policy.getDestination() instanceof BouncePolicy) {
             assertStatus(status, status::getCopiedObjectCount).isEqualTo(2);
         } else {
@@ -321,8 +313,7 @@ public class WriteBackPolicyTest {
         }
 
         assertEqualBlobStores(reference, policy);
-        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
+        BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         if (policy.getDestination() instanceof BouncePolicy) {
             assertStatus(status, status::getTotalObjectCount).isLessThanOrEqualTo(numBlobsInStore * 2);
         } else {
@@ -333,8 +324,7 @@ public class WriteBackPolicyTest {
         assertEqualBlobStores(reference, policy);
 
         UtilsTest.advanceServiceClock(app, duration.plusSeconds(1));
-        status = bounceService.bounce(containerName);
-        status.future().get();
+        status = runBounce(bounceService, containerName);
         assertStatus(status, status::getTotalObjectCount).isEqualTo(numBlobsInStore);
         assertThat(status.getLinkedObjectCount() + status.getMovedObjectCount()).isEqualTo(numBlobsInStore);
     }
