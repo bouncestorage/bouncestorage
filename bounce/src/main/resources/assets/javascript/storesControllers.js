@@ -31,7 +31,8 @@ storesControllers.controller('CreateStoreCtrl', ['$scope', '$rootScope',
                        identity: $scope.provider.identity,
                        credential: $scope.provider.credential,
                        region: $scope.provider.region,
-                       endpoint: $scope.provider.endpoint
+                       endpoint: $scope.provider.endpoint,
+                       storageClass: $scope.provider.class
                      };
       ObjectStore.save(newStore, function (successStore) {
         $rootScope.$emit('addedStore', successStore);

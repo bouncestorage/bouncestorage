@@ -345,6 +345,9 @@ public final class ObjectStoreResource {
                 properties.put(propertiesPrefix + "region", region);
             }
             properties.put(propertiesPrefix + "nickname", nickname);
+            if (storageClass != null) {
+                properties.put(propertiesPrefix + "storageClass", storageClass.toString());
+            }
 
             return properties;
         }
