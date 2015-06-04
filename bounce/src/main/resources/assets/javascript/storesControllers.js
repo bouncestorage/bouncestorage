@@ -257,6 +257,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
                       for (var i = 0; i < result.objects.length; i++) {
                         var object = result.objects[i];
                         object.locations = BounceUtils.translateLocations(map, object);
+                        object.size = BounceUtils.toHumanSize(object.size);
                       }
                       $scope.listedContainer = result;
                     },
@@ -282,7 +283,10 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
                       },
                       function(result) {
                         for (var i = 0; i < result.objects.length; i++) { 
-                          result.objects[i].locations = BounceUtils.tiers.ORIGIN.displayName;
+                          result.objects[i].locations =
+                              BounceUtils.tiers.ORIGIN.displayName;
+                          result.objects[i].size = BounceUtils.toHumanSize(
+                              result.objects[i].size);
                         }
                         $scope.listedContainer = result;
                       },
