@@ -112,7 +112,7 @@
         <div class="container-fluid">
           <form class="form">
             <div class="form-group">
-              <label class="control-label">Cache container</label>
+              <label class="control-label">Container for the {{editLocation.edit_name}}</label>
               <div class="form-inline">
                 <select class="form-control" ng-model="editLocation.object.blobStoreId"
                     ng-options="store.id as store.nickname for store in stores">
@@ -126,7 +126,7 @@
               </div>
             </div>
             <div class="form-group">
-              <label class="control-label">Copy to {{enhanceContainer.name}} after:</label>
+              <label class="control-label">Copy {{editLocation.action_label}} after:</label>
               <div class="form-inline">
                 <input class="form-control" type="text" ng-model="editLocation.copyDuration"
                     placeholder="duration" />
@@ -137,7 +137,7 @@
               </div>
             </div>
             <div class="form-group">
-              <label class="control-label">Move to {{enhanceContainer.name}} after:</label>
+              <label class="control-label">Move {{editLocation.action_label}} after:</label>
               <div class="form-inline">
                 <input class="form-control" type="text" ng-model="editLocation.moveDuration"
                     placeholder="duration" />

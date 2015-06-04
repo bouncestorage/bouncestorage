@@ -80,16 +80,19 @@ function createNewVirtualContainer(store, container) {
 function extractLocations(vContainer) {
   return [{ name: 'a cache',
             edit_name: 'cache',
+            action_label: 'from the cache',
             tier: BounceUtils.tiers.CACHE,
             object: vContainer.cacheLocation
           },
           { name: 'an archive',
             edit_name: 'archive',
+            action_label: 'to the archive',
             tier: BounceUtils.tiers.ARCHIVE,
             object: vContainer.archiveLocation
           },
           { name: 'a migration target',
             edit_name: 'migration',
+            action_label: 'to the migration target',
             tier: BounceUtils.tiers.MIGRATION,
             object: vContainer.migrationTargetLocation
           }];
