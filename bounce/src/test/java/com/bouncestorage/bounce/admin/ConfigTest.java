@@ -15,12 +15,14 @@ import java.util.Map;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
+import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 
 import org.jclouds.blobstore.BlobStore;
+import org.jclouds.blobstore.domain.Blob;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -94,6 +96,8 @@ public final class ConfigTest {
     @Test
     public void testConfigMoveEverythingPolicy() throws Exception {
         setTransientBackend();
+        app.getBlobStore(0).createContainerInLocation(null, containerName);
+        app.getBlobStore(1).createContainerInLocation(null, containerName);
 
         BlobStore blobStore = app.getBlobStore(0);
         blobStore.createContainerInLocation(null, containerName);
@@ -101,6 +105,18 @@ public final class ConfigTest {
         blobStore.putBlob(containerName,
                 UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName()));
 
+        configureMoveEverythingPolicy();
+        blobStore = app.getBlobStore(containerName);
+        blobStore.createContainerInLocation(null, containerName);
+
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
+    }
+
+    private void configureMoveEverythingPolicy() {
         Properties properties = new Properties();
         String prefix = VirtualContainerResource.VIRTUAL_CONTAINER_PREFIX + ".0";
         String tier0prefix = prefix + "." + VirtualContainer.CACHE_TIER_PREFIX;
@@ -116,21 +132,14 @@ public final class ConfigTest {
                 .build();
         properties.putAll(m);
         new ConfigurationResource(app).updateConfig(properties);
-        blobStore = app.getBlobStore(containerName);
-        blobStore.createContainerInLocation(null, containerName);
-
-        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
-        status.future().get();
-        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
-        assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
-        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
     }
 
     @Test
     public void testConfigBounceLastModifiedPolicy() throws Exception {
         setTransientBackend();
+        app.getBlobStore(0).createContainerInLocation(null, containerName);
+        app.getBlobStore(1).createContainerInLocation(null, containerName);
         BlobStore blobStore = app.getBlobStore();
-        blobStore.createContainerInLocation(null, containerName);
 
         blobStore.putBlob(containerName,
                 UtilsTest.makeBlob(blobStore, UtilsTest.createRandomBlobName()));
@@ -153,7 +162,6 @@ public final class ConfigTest {
         properties.setProperty("bounce.containers", "0");
         new ConfigurationResource(app).updateConfig(properties);
         blobStore = app.getBlobStore(containerName);
-        blobStore.createContainerInLocation(null, containerName);
 
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         status.future().get();
@@ -171,6 +179,11 @@ public final class ConfigTest {
         p.put("bounce.backends", "0,1,2");
 
         new ConfigurationResource(app).updateConfig(p);
+
+        app.getBlobStore(0).createContainerInLocation(null, containerName);
+        app.getBlobStore(1).createContainerInLocation(null, containerName);
+        app.getBlobStore(2).createContainerInLocation(null, containerName);
+
         Map<Object, Object> m = ImmutableMap.builder()
                 .put("bounce.container.0.name", containerName)
                 .put("bounce.container.0.identity", "identity")
@@ -202,6 +215,23 @@ public final class ConfigTest {
         policy = (BouncePolicy) policy.getDestination();
         assertThat(policy.getSource()).isInstanceOf(BlobStoreTarget.class);
         assertThat(policy.getDestination()).isInstanceOf(BlobStoreTarget.class);
+    }
+
+    @Test
+    public void testConfigureTakeOver() throws Exception {
+        setTransientBackend();
+        app.getBlobStore(0).createContainerInLocation(null, containerName);
+        app.getBlobStore(1).createContainerInLocation(null, containerName);
+        String blobName = UtilsTest.createRandomBlobName();
+        Blob blob = UtilsTest.makeBlob(app.getBlobStore(1), blobName);
+        app.getBlobStore(1).putBlob(containerName, blob);
+        configureMoveEverythingPolicy();
+        assertThat(app.getBlobStore(containerName)).isInstanceOf(BouncePolicy.class);
+        BouncePolicy policy = (BouncePolicy) app.getBlobStore(containerName);
+        assertThat(policy.blobExists(containerName, blobName));
+        policy.waitForTakeOver();
+        assertThat(policy.blobExists(containerName, blobName)).isTrue();
+        assertThat(BounceLink.isLink(app.getBlobStore(0).blobMetadata(containerName, blobName))).isTrue();
     }
 
     private void setTransientBackend() throws Exception {

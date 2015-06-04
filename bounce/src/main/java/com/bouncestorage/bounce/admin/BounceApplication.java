@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -281,6 +282,15 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         if (lastPolicy == null) {
             throw new NoSuchElementException("not enough configured tiers");
         }
+
+        try {
+            if (!lastPolicy.sanityCheck(containerName)) {
+                lastPolicy.takeOver(containerName);
+            }
+        } catch (IOException | ExecutionException | InterruptedException e) {
+            throw propagate(e);
+        }
+
         virtualContainers.put(containerName, lastPolicy);
         if (c.containsKey("identity")) {
             virtualContainer.identity = c.getString("identity");

@@ -117,6 +117,7 @@ public final class BounceTest {
         assertThat(policy.sanityCheck(containerName)).isFalse();
 
         policy.takeOver(containerName);
+        policy.waitForTakeOver();
         assertThat(nearBlobStore.blobExists(containerName, blobName)).isTrue();
         assertThat(BounceLink.isLink(nearBlobStore.blobMetadata(
                 containerName, blobName))).isTrue();

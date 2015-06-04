@@ -242,6 +242,9 @@ public class WriteBackPolicy extends BouncePolicy {
     public Blob getBlob(String container, String blobName, GetOptions options) {
         Blob blob = super.getBlob(container, blobName, options);
         if (blob == null) {
+            if (takeOverInProcess) {
+                return getDestination().getBlob(container, blobName, options);
+            }
             return null;
         }
         BlobMetadata meta = blob.getMetadata();
@@ -307,6 +310,9 @@ public class WriteBackPolicy extends BouncePolicy {
 
     @Override
     public final PageSet<? extends StorageMetadata> list(String s, ListContainerOptions listContainerOptions) {
+        if (takeOverInProcess) {
+            return getDestination().list(s, listContainerOptions);
+        }
         PeekingIterator<StorageMetadata> nearPage = Iterators.peekingIterator(
                 Utils.crawlBlobStore(getSource(), s, listContainerOptions).iterator());
         PeekingIterator<StorageMetadata> farPage = Iterators.peekingIterator(

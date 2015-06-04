@@ -9,11 +9,16 @@ import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
+import java.util.stream.StreamSupport;
 
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.IForwardingBlobStore;
 import com.bouncestorage.bounce.Utils;
+import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.commons.configuration.Configuration;
 import org.jclouds.blobstore.BlobStore;
@@ -36,6 +41,8 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
 
     protected Logger logger = LoggerFactory.getLogger(getClass());
     protected BounceApplication app;
+    protected boolean takeOverInProcess;
+    protected ForkJoinTask<?> takeOverFuture;
 
     private BlobStore sourceBlobStore;
     private BlobStore destinationBlobStore;
@@ -71,15 +78,27 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
     public abstract BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject);
 
-    public void takeOver(String containerName) throws IOException {
-        // TODO: hook into move service to enable parallelism and cancellation
-        for (StorageMetadata sm : Utils.crawlBlobStore(getDestination(),
-                containerName)) {
-            BlobMetadata metadata = getDestination().blobMetadata(containerName,
-                    sm.getName());
-            BounceLink link = new BounceLink(Optional.of(metadata));
-            getSource().putBlob(containerName, link.toBlob(getSource()));
-        }
+    public void takeOver(String containerName) {
+        takeOverInProcess = true;
+        ForkJoinPool fjp = new ForkJoinPool(100);
+        takeOverFuture = fjp.submit(() -> {
+            StreamSupport.stream(Utils.crawlBlobStore(getDestination(), containerName).spliterator(), true)
+                    .filter(sm -> !getSource().blobExists(containerName, sm.getName()))
+                    .forEach(sm -> {
+                        logger.debug("taking over blob {}", sm.getName());
+                        BlobMetadata metadata = getDestination().blobMetadata(containerName,
+                                sm.getName());
+                        BounceLink link = new BounceLink(Optional.of(metadata));
+                        getSource().putBlob(containerName, link.toBlob(getSource()));
+                    });
+            takeOverInProcess = false;
+        });
+        fjp.shutdown();
+    }
+
+    @VisibleForTesting
+    public void waitForTakeOver() throws ExecutionException, InterruptedException {
+        takeOverFuture.get();
     }
 
     @Override
@@ -94,15 +113,19 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
 
      * @return true if the near store and farstore are in sync
      */
-    public boolean sanityCheck(String containerName) throws IOException {
+    public boolean sanityCheck(String containerName) throws IOException, ExecutionException, InterruptedException {
         PageSet<? extends StorageMetadata> res = getDestination().list(containerName);
-        for (StorageMetadata sm : res) {
-            BlobMetadata meta = blobMetadata(containerName, sm.getName());
-            if (!Utils.equalsOtherThanTime(sm, meta)) {
-                return false;
-            }
-        }
 
-        return true;
+        ForkJoinPool fjp = new ForkJoinPool(100);
+        try {
+            return !fjp.submit(() -> {
+                return res.stream().parallel().map(sm -> {
+                    BlobMetadata meta = blobMetadata(containerName, sm.getName());
+                    return !Utils.equalsOtherThanTime(sm, meta);
+                }).anyMatch(Boolean::booleanValue);
+            }).get();
+        } finally {
+            fjp.shutdown();
+        }
     }
 }
