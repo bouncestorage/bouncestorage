@@ -15,6 +15,7 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.options.CopyOptions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,6 +60,21 @@ public final class WriteBackPolicyAutoWriteBackTest {
         app.drainBackgroundTasks();
         UtilsTest.assertEqualBlobs(policy.getSource().getBlob(containerName, blobName),
                 policy.getDestination().getBlob(containerName, blobName));
+    }
+
+    @Test
+    public void testAutoWriteBackCopy() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        String copyBlobName = UtilsTest.createRandomBlobName();
+        Blob blob = UtilsTest.makeBlob(policy, blobName);
+        policy.putBlob(containerName, blob);
+        policy.copyBlob(containerName, blobName, containerName, copyBlobName, CopyOptions.NONE);
+
+        app.drainBackgroundTasks();
+        UtilsTest.assertEqualBlobs(policy.getSource().getBlob(containerName, blobName),
+                policy.getDestination().getBlob(containerName, blobName));
+        UtilsTest.assertEqualBlobs(policy.getSource().getBlob(containerName, copyBlobName),
+                policy.getDestination().getBlob(containerName, copyBlobName));
     }
 
     @Test

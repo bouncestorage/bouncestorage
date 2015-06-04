@@ -36,6 +36,7 @@ import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.CopyOptions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -265,6 +266,58 @@ public class WriteBackPolicyTest {
         }
         farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(farBlob, blobBar);
+    }
+
+    @Test
+    public void testCopyAndThenBounce() throws Exception {
+        String fromBlobName = UtilsTest.createRandomBlobName();
+        String toBlobName = UtilsTest.createRandomBlobName();
+        Blob blob = UtilsTest.makeBlob(policy, fromBlobName, ByteSource.wrap("foo".getBytes()));
+        policy.putBlob(containerName, blob);
+        policy.copyBlob(containerName, fromBlobName, containerName, toBlobName, CopyOptions.NONE);
+
+        runBounce(bounceService, containerName);
+
+        BlobMetadata meta = policy.getDestination().blobMetadata(containerName, fromBlobName);
+        assertThat(BounceLink.isLink(meta)).isFalse();
+        meta = policy.getDestination().blobMetadata(containerName, toBlobName);
+        assertThat(BounceLink.isLink(meta)).isFalse();
+        meta = policy.getSource().blobMetadata(containerName, fromBlobName);
+        assertThat(BounceLink.isLink(meta)).isFalse();
+        meta = policy.getSource().blobMetadata(containerName, toBlobName);
+        assertThat(BounceLink.isLink(meta)).isFalse();
+    }
+
+    @Test
+    public void testCopyAfterCopyBounce() throws Exception {
+        String fromBlobName = UtilsTest.createRandomBlobName();
+        String toBlobName = UtilsTest.createRandomBlobName();
+        Blob blob = UtilsTest.makeBlob(policy, fromBlobName, ByteSource.wrap("foo".getBytes()));
+        policy.putBlob(containerName, blob);
+
+        runBounce(bounceService, containerName);
+
+        String etag = policy.copyBlob(containerName, fromBlobName, containerName, toBlobName, CopyOptions.NONE);
+        assertThat(etag).isNotNull();
+        Blob linkedBlob = policy.getBlob(containerName, toBlobName);
+        UtilsTest.assertEqualBlobs(linkedBlob, blob);
+    }
+
+    @Test
+    public void testCopyAfterMoveBounce() throws Exception {
+        String fromBlobName = UtilsTest.createRandomBlobName();
+        String toBlobName = UtilsTest.createRandomBlobName();
+        Blob blob = UtilsTest.makeBlob(policy, fromBlobName, ByteSource.wrap("foo".getBytes()));
+        policy.putBlob(containerName, blob);
+
+        UtilsTest.advanceServiceClock(app, duration.plusHours(1));
+        BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
+        assertStatus(status, status::getMovedObjectCount).isNotEqualTo(0);
+
+        String etag = policy.copyBlob(containerName, fromBlobName, containerName, toBlobName, CopyOptions.NONE);
+        assertThat(etag).isNotNull();
+        Blob linkedBlob = policy.getBlob(containerName, toBlobName);
+        UtilsTest.assertEqualBlobs(linkedBlob, blob);
     }
 
     @Test

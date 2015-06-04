@@ -18,6 +18,9 @@ import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import javax.ws.rs.ClientErrorException;
+import javax.ws.rs.core.Response;
+
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
@@ -37,6 +40,7 @@ import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.internal.BlobImpl;
 import org.jclouds.blobstore.domain.internal.PageSetImpl;
+import org.jclouds.blobstore.options.CopyOptions;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
@@ -62,9 +66,13 @@ public class WriteBackPolicy extends BouncePolicy {
         return marker.substring(0, marker.length() - LOG_MARKER_SUFFIX.length());
     }
 
+    private static String blobGetMarkerName(String blob) {
+        return blob + LOG_MARKER_SUFFIX;
+    }
+
     private void putMarkerBlob(String containerName, String key) {
         getSource().putBlob(containerName,
-                getSource().blobBuilder(key + LOG_MARKER_SUFFIX)
+                getSource().blobBuilder(blobGetMarkerName(key))
                         .payload(ByteSource.empty())
                         .contentLength(0)
                         .build());
@@ -101,10 +109,54 @@ public class WriteBackPolicy extends BouncePolicy {
         this.evict = !evictDelay.isNegative();
     }
 
+    @Override
+    public String copyBlob(String fromContainer, String fromName, String toContainer, String toName, CopyOptions options) {
+        if (!fromContainer.equals(toContainer)) {
+            // TODO we don't support cross container copy for now, since that may involve
+            // different policies
+            throw new UnsupportedOperationException("cross container copy");
+        }
+
+        BlobMetadata sourceMeta = getSource().blobMetadata(fromContainer, fromName);
+        if (sourceMeta == null) {
+            // nothing to copy
+            return null;
+        }
+
+        String etag;
+        if (BounceLink.isLink(sourceMeta)) {
+            // we know that the far store has a valid object
+            etag = getDestination().copyBlob(fromContainer, fromName, toContainer, toName, options);
+            if (etag != null) {
+                Utils.createBounceLink(getSource(), getDestination().blobMetadata(toContainer, toName));
+            }
+        } else {
+            putMarkerBlob(toContainer, toName);
+            etag = getSource().copyBlob(fromContainer, fromName, toContainer, toName, options);
+            if (!etag.equals(sourceMeta.getETag())) {
+                // another process just updated the source blob, we could have copied a link
+                // ideally copyBlob would return the copied metadata so that we don't have
+                // to do another call
+                sourceMeta = getSource().blobMetadata(toContainer, toName);
+                if (sourceMeta != null && BounceLink.isLink(sourceMeta) && etag.equals(sourceMeta.getETag())) {
+                    getSource().removeBlob(toContainer, toName);
+                    throw new ClientErrorException(Response.Status.CONFLICT);
+                } else {
+                    // we copied an old object, this is not ideal but ok for now
+                }
+            }
+
+            enqueueReconcile(toContainer, toName, copyDelay.getSeconds());
+        }
+
+        return etag;
+    }
+
     private BounceResult reconcileObject(String container, String blob)
             throws InterruptedException, ExecutionException {
+        logger.debug("reconciling {}", blob);
         BlobMetadata sourceMeta = getSource().blobMetadata(container, blob);
-        BlobMetadata sourceMarkerMeta = getSource().blobMetadata(container, blob + WriteBackPolicy.LOG_MARKER_SUFFIX);
+        BlobMetadata sourceMarkerMeta = getSource().blobMetadata(container, blobGetMarkerName(blob));
         BlobMetadata destMeta = getDestination().blobMetadata(container, blob);
 
         BounceStorageMetadata meta;
@@ -132,7 +184,7 @@ public class WriteBackPolicy extends BouncePolicy {
             return reconcileObject(container, meta, destMeta);
         } else {
             if (sourceMarkerMeta != null) {
-                getSource().removeBlob(container, blob + WriteBackPolicy.LOG_MARKER_SUFFIX);
+                getSource().removeBlob(container, blobGetMarkerName(blob));
             }
             return reconcileObject(container, null, destMeta);
         }
@@ -297,7 +349,7 @@ public class WriteBackPolicy extends BouncePolicy {
                 if (nearPage.hasNext()) {
                     StorageMetadata next = nearPage.peek();
                     logger.debug("next blob: {}", next.getName());
-                    if (next.getName().equals(name + WriteBackPolicy.LOG_MARKER_SUFFIX)) {
+                    if (next.getName().equals(blobGetMarkerName(name))) {
                         nextIsMarker = true;
                     }
                 }
