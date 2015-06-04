@@ -278,3 +278,36 @@ BounceUtils.parseDurations = function(tierLocation) {
   BounceUtils.parseDuration(tierLocation.object.moveDelay, tierLocation,
       'moveDuration', 'moveUnits');
 };
+
+BounceUtils.toHumanSize = function(dataSize) {
+  var sizes = [
+    { name: 'kB',
+      size: 1024
+    },
+    { name: 'MB',
+      size: 1024*1024
+    },
+    { name: 'GB',
+      size: 1024*1024*1024
+    },
+    { name: 'TB',
+      size: 1024*1024*1024*1024
+    }
+  ];
+
+  for (var i = 0; i < sizes.length; i++) {
+    var convertedSize = dataSize / sizes[i].size;
+    if (convertedSize > 1) {
+      // Keep at most three digits for each size
+      if (convertedSize > 100) {
+        return Math.round(convertedSize) + "  " + sizes[i].name;
+      } else if (convertedSize > 10) {
+        return Math.round(convertedSize * 10) / 10 + " " + sizes[i].name;
+      } else {
+        return Math.round(convertedSize * 100) / 100 + " " + sizes[i].name;
+      }
+    }
+  }
+
+  return dataSize;
+};
