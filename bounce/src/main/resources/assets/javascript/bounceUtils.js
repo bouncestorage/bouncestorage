@@ -239,12 +239,17 @@ BounceUtils.toDuration = function(value, units) {
 };
 
 BounceUtils.setDuration = function(tier) {
-  if (BounceUtils.isSet(tier.moveDuration) &&
+  if (tier.moveUnits === null) {
+    tier.object.moveDelay = '-P1D';
+  } else if (BounceUtils.isSet(tier.moveDuration) &&
       BounceUtils.isSet(tier.moveUnits)) {
     tier.object.moveDelay = BounceUtils.toDuration(tier.moveDuration,
         tier.moveUnits);
   }
-  if (BounceUtils.isSet(tier.copyDuration) &&
+
+  if (tier.copyUnits === null) {
+    tier.object.copyDelay = '-P1D';
+  } else if (BounceUtils.isSet(tier.copyDuration) &&
       BounceUtils.isSet(tier.copyUnits)) {
     tier.object.copyDelay = BounceUtils.toDuration(tier.copyDuration,
         tier.copyUnits);
@@ -261,6 +266,10 @@ BounceUtils.parseDuration = function(durationString, object, valueField,
   for (var i = 0; i < BounceUtils.durationUnits.length; i++) {
     var index = BounceUtils.durationUnits.length - i - 1;
     var unit = BounceUtils.durationUnits[index];
+    if (duration[unit]() < 0) {
+      object[valueField] = "";
+      object[unitsField] = null;
+    }
     if (duration[unit]() > 0) {
       var nextUnit = BounceUtils.durationUnits[index + 1];
       if (duration[nextUnit]() === 0) {

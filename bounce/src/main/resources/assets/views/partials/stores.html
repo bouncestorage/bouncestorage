@@ -128,22 +128,28 @@
             <div class="form-group">
               <label class="control-label">Copy {{editLocation.action_label}} after:</label>
               <div class="form-inline">
-                <input class="form-control" type="text" ng-model="editLocation.copyDuration"
-                    placeholder="duration" />
+                <input class="form-control" type="text"
+                    ng-model="editLocation.copyDuration"
+                    ng-disabled="editLocation.copyUnits === null"
+                    placeholder="duration"
+                />
                 <select class="form-control" ng-model="editLocation.copyUnits"
                     ng-options="d as d for d in durationUnits">
-                  <option value="">Select time unit&hellip;</option>
+                  <option value="">Never</option>
                 </select>
               </div>
             </div>
             <div class="form-group">
               <label class="control-label">Move {{editLocation.action_label}} after:</label>
               <div class="form-inline">
-                <input class="form-control" type="text" ng-model="editLocation.moveDuration"
-                    placeholder="duration" />
+                <input class="form-control" type="text"
+                    ng-model="editLocation.moveDuration"
+                    ng-disabled="editLocation.moveUnits === null"
+                    placeholder="duration"
+                />
                 <select class="form-control" ng-model="editLocation.moveUnits"
                     ng-options="d as d for d in durationUnits">
-                  <option value="">Select time unit&hellip;</option>
+                  <option value="">Never</option>
                 </select>
               </div>
             </div>
