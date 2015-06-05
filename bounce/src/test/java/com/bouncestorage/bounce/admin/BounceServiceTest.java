@@ -10,7 +10,10 @@ import static com.bouncestorage.bounce.UtilsTest.assertStatus;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.ZoneId;
+import java.util.Calendar;
 
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.Utils;
@@ -25,8 +28,11 @@ import org.jclouds.blobstore.domain.BlobMetadata;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class BounceServiceTest {
+    private Logger logger = LoggerFactory.getLogger(getClass());
     private BouncePolicy policy;
     private String containerName;
     private BounceService bounceService;
@@ -42,7 +48,7 @@ public final class BounceServiceTest {
         app.useRandomPorts();
         app.registerConfigurationListener();
         app.pauseBackgroundTasks();
-        bounceService = new BounceService(app);
+        bounceService = app.bounceService = new BounceService(app);
 
         UtilsTest.createTestProvidersConfig(app.getConfiguration());
     }
@@ -197,6 +203,35 @@ public final class BounceServiceTest {
         BlobMetadata nearBlob = policy.getSource().blobMetadata(containerName, blob.getMetadata().getName());
         assertThat(BounceLink.isLink(nearBlob)).isTrue();
     }
+
+
+    @Test
+    public void testScheduledBounce() throws Exception {
+        toggleMoveEverything();
+
+        String blobName = UtilsTest.createRandomBlobName();
+        policy.putBlob(containerName, UtilsTest.makeBlob(policy, blobName));
+        Blob blob = policy.getBlob(containerName, blobName);
+
+        Calendar calendar = new Calendar.Builder()
+                .setInstant(app.getClock().instant().getEpochSecond() * 1000)
+                .build();
+        calendar.set(Calendar.HOUR_OF_DAY, BounceApplication.BOUNCE_SCHEDULE_TIME);
+        app.setClock(Clock.fixed(calendar.toInstant(), ZoneId.systemDefault()));
+
+        app.startBounceScheduler();
+        BounceTaskStatus status;
+        while ((status = bounceService.status(containerName)) == null) {
+            // wait until we start
+            Thread.sleep(100);
+        }
+        status.future().get();
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
+        UtilsTest.assertEqualBlobs(blob, policy.getBlob(containerName, blobName));
+    }
+
 
     private void checkCopiedBlob(String blobName) throws Exception {
         Blob nearBlob = policy.getSource().getBlob(containerName, blobName);

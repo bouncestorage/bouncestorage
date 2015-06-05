@@ -164,7 +164,7 @@ public class WriteBackPolicy extends BouncePolicy {
                 }
             }
 
-            enqueueReconcile(toContainer, toName, copyDelay.getSeconds());
+            enqueueReconcile(toContainer, toName);
         }
 
         return etag;

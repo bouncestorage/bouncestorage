@@ -15,6 +15,9 @@ import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -24,11 +27,14 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
@@ -72,12 +78,19 @@ import ch.qos.logback.classic.Level;
 
 
 public final class BounceApplication extends Application<BounceDropWizardConfiguration> {
+    @VisibleForTesting
+    public static final int BOUNCE_SCHEDULE_TIME = 21;
+
+    @VisibleForTesting
+    int scheduleCheckMinutes = 30;
+    @VisibleForTesting
+    BounceService bounceService;
+
     private Logger logger = LoggerFactory.getLogger(getClass());
 
     private final BounceConfiguration config;
     private final Properties configView;
 
-    private BounceService bounceService;
     private int port = -1;
     private boolean useRandomPorts;
     private S3Proxy s3Proxy;
@@ -92,6 +105,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private PausableThreadPoolExecutor backgroundTasks = new PausableThreadPoolExecutor(4);
     private BounceStats bounceStats;
     private KeyStoreUtils keyStoreUtils;
+    private volatile Instant scheduledBounceRanAt = Instant.EPOCH;
 
     public BounceApplication() {
         this.config = new BounceConfiguration();
@@ -491,6 +505,54 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         bounceService = new BounceService(this);
         initFromConfig();
         bounceStats.start();
+        startBounceScheduler();
+    }
+
+    @VisibleForTesting
+    void startBounceScheduler() {
+        new Thread(() -> {
+            try {
+                scheduledBounce();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            try {
+                Thread.sleep(scheduleCheckMinutes * 60 * 1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private void scheduledBounce() throws ExecutionException, InterruptedException {
+        Instant now = Instant.now(clock);
+        logger.debug("checking to see if we should bounce, time is now {}", now);
+        // make sure that it's more than an hour since we last ran
+        if (now.minus(Duration.ofHours(1)).isBefore(scheduledBounceRanAt)) {
+            logger.debug("last ran bounce at {}", scheduledBounceRanAt);
+            return;
+        }
+        Calendar calendar = new Calendar.Builder().setInstant(now.getEpochSecond() * 1000).build();
+        if (calendar.get(Calendar.HOUR_OF_DAY) == BOUNCE_SCHEDULE_TIME) {
+            scheduledBounceRanAt = now;
+            logger.debug("starting scheduled bounce at {}", now);
+            ForkJoinPool fjp = new ForkJoinPool(100);
+            List<BounceService.BounceTaskStatus> statuses = virtualContainers.keySet().stream()
+                    .peek(container -> logger.debug("bouncing {}", container))
+                    .map(container -> bounceService.bounce(container, fjp))
+                    .collect(Collectors.toList());
+            logger.debug("waiting for bounce to finish");
+            statuses.forEach(s -> {
+                try {
+                    s.future().get();
+                } catch (InterruptedException | ExecutionException e) {
+                    e.printStackTrace();
+                }
+            });
+            fjp.shutdown();
+            logger.debug("scheduled bounce done");
+        }
     }
 
     public void stop() throws Exception {
