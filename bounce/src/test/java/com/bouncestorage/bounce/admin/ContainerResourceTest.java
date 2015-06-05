@@ -105,6 +105,26 @@ public class ContainerResourceTest {
     }
 
     @Test
+    public void testRecursiveList() throws Exception {
+        String container = UtilsTest.createRandomContainerName();
+        BlobStore blobStore = app.getBlobStore(objectStoreId);
+        blobStore.createContainerInLocation(null, container);
+        String blob = "foo/bar";
+        String blob2 = "foo/baz";
+        blobStore.putBlob(container, UtilsTest.makeBlob(blobStore, blob));
+        blobStore.putBlob(container, UtilsTest.makeBlob(blobStore, blob2));
+        HttpURLConnection connection = UtilsTest.submitRequest(containerAPI + "/" + container, HttpMethod.GET, null);
+        assertThat(connection.getResponseCode()).isEqualTo(Response.Status.OK.getStatusCode());
+        try (InputStream stream = connection.getInputStream()) {
+            ContainerResource.Container resultContainer = new ObjectMapper().readValue(stream,
+                    ContainerResource.Container.class);
+            assertThat(resultContainer.objects).hasSize(2);
+            assertThat(resultContainer.objects.get(0).name).isEqualTo(blob);
+            assertThat(resultContainer.objects.get(1).name).isEqualTo(blob2);
+        }
+    }
+
+    @Test
     public void testListWithVirtualContainer() throws Exception {
         String cacheContainer = UtilsTest.createRandomContainerName();
         String originContainer = UtilsTest.createRandomContainerName();

@@ -117,7 +117,7 @@ public final class ContainerResource {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
         }
         List<ContainerObject> objects = blobStore.list(containerName,
-                ListContainerOptions.Builder.maxResults(MAX_OBJECTS))
+                ListContainerOptions.Builder.maxResults(MAX_OBJECTS).recursive())
                 .stream()
                 .map(sm -> {
                     ImmutableSet<BounceStorageMetadata.Region> regions;
