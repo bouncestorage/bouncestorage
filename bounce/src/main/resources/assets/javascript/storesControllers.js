@@ -129,6 +129,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     $scope.newContainer = null;
     $scope.providerLabel = null;
     $scope.durationUnits = BounceUtils.durationUnits;
+    $scope.tiers = BounceUtils.tiers;
 
     $scope.getProviderLabel = function() {
       if ($scope.store.region === null) {

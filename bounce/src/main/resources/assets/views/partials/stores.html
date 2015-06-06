@@ -125,7 +125,7 @@
                 </select>
               </div>
             </div>
-            <div class="form-group">
+            <div class="form-group" ng-if="editLocation.tier !== tiers.MIGRATION">
               <label class="control-label">Copy {{editLocation.action_label}} after:</label>
               <div class="form-inline">
                 <input class="form-control" type="text" ng-model="editLocation.copyDuration"
@@ -136,7 +136,7 @@
                 </select>
               </div>
             </div>
-            <div class="form-group">
+            <div class="form-group" ng-if="editLocation.tier !== tiers.MIGRATION">
               <label class="control-label">Move {{editLocation.action_label}} after:</label>
               <div class="form-inline">
                 <input class="form-control" type="text" ng-model="editLocation.moveDuration"
