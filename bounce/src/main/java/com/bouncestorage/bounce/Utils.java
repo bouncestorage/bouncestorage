@@ -20,6 +20,7 @@ import javax.annotation.Nullable;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
+import com.bouncestorage.bounce.utils.BlobStoreByteSource;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.PeekingIterator;
 import com.google.common.hash.HashCode;
@@ -36,10 +37,13 @@ import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.StorageType;
 import org.jclouds.blobstore.options.ListContainerOptions;
+import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.io.ContentMetadata;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 
 public final class Utils {
+    private static final PutOptions MULTIPART_PUT = new PutOptions().multipart(true);
+
     private Utils() {
         throw new AssertionError("intentionally unimplemented");
     }
@@ -174,6 +178,12 @@ public final class Utils {
                 .userMetadata(blobFrom.getMetadata().getUserMetadata())
                 .payload(is);
 
+        copyToBlobBuilder(metadata, builder);
+        to.putBlob(containerNameTo, builder.build(), MULTIPART_PUT);
+        return blobFrom;
+    }
+
+    private static void copyToBlobBuilder(ContentMetadata metadata, PayloadBlobBuilder builder) {
         String contentDisposition = metadata.getContentDisposition();
         if (contentDisposition != null) {
             builder.contentDisposition(contentDisposition);
@@ -210,10 +220,27 @@ public final class Utils {
         if (expires != null) {
             builder.expires(expires);
         }
+    }
 
-        to.putBlob(containerNameTo, builder.build());
+    public static Blob copyBlob(BlobStore from, BlobStore to, String containerNameTo, Blob blobFrom)
+            throws IOException {
+        if (blobFrom == null || BounceLink.isLink(blobFrom.getMetadata())) {
+            return null;
+        }
+
+        ContentMetadata metadata = blobFrom.getMetadata().getContentMetadata();
+        PayloadBlobBuilder builder = to.blobBuilder(blobFrom.getMetadata().getName())
+                .userMetadata(blobFrom.getMetadata().getUserMetadata())
+                .payload(new BlobStoreByteSource(from, blobFrom, blobFrom.getMetadata().getSize()));
+
+        copyToBlobBuilder(metadata, builder);
+
+        // TODO: swift object semantic changes if we do multipart upload,
+        // if both sides are swift, we may want to just copy the individual parts
+        to.putBlob(containerNameTo, builder.build(), MULTIPART_PUT);
         return blobFrom;
     }
+
 
     // TODO: eventually this should support parallel copies, cancellation, and
     // multi-part uploads
@@ -224,9 +251,8 @@ public final class Utils {
         if (blobFrom == null) {
             return null;
         }
-        try (InputStream is = blobFrom.getPayload().openStream()) {
-            return copyBlob(to, containerNameTo, blobFrom, is);
-        }
+
+        return copyBlob(from, to, containerNameTo, blobFrom);
     }
 
     static void moveBlob(BlobStore from, BlobStore to,

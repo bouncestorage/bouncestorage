@@ -9,7 +9,12 @@ import static com.bouncestorage.bounce.UtilsTest.assertStatus;
 import static com.bouncestorage.bounce.UtilsTest.runBounce;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsNot.not;
+import static org.junit.Assume.assumeThat;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -28,15 +33,21 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.bouncestorage.bounce.admin.BounceStats;
 import com.bouncestorage.bounce.admin.StatsQueueEntry;
+import com.bouncestorage.bounce.utils.ZeroInputStream;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
+
+import org.apache.commons.io.input.BoundedInputStream;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.CopyOptions;
+import org.jclouds.blobstore.options.PutOptions;
+import org.jclouds.io.payloads.ByteSourcePayload;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -117,10 +128,11 @@ public class WriteBackPolicyTest {
     @Test
     public void testCopyObject() throws Exception {
         String blobName = UtilsTest.createRandomBlobName();
-        Blob blob = UtilsTest.makeBlob(policy, blobName);
+        Blob blob = UtilsTest.makeBlob(policy, blobName, ByteSource.wrap("blob".getBytes()));
         policy.putBlob(containerName, blob);
         assertThat(policy.getDestination().blobExists(containerName, blobName)).isFalse();
         assertThat(policy.getSource().blobExists(containerName, blobName)).isTrue();
+        UtilsTest.assertEqualBlobs(blob, policy.getSource().getBlob(containerName, blobName));
 
         BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         if (policy.getDestination() instanceof BouncePolicy) {
@@ -411,6 +423,72 @@ public class WriteBackPolicyTest {
         assertThat(getEntry.getDbSeries().getName()).isEqualTo(namePrefix + HttpMethod.GET);
         assertThat(getOp.get(1)).isEqualTo(blobName);
         assertThat(getOp.get(2)).isEqualTo(getBlob.getMetadata().getSize());
+    }
+
+    @Test
+    public void testPutLargeObject() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        final long size = 5L * 1024 * 1024 * 1024 /* 5GB */ + 1;
+        putLargeObject(blobName, size);
+    }
+
+    private void skipIfTransient(BlobStore blobStore) {
+        if (blobStore instanceof BouncePolicy) {
+            BouncePolicy bouncePolicy = (BouncePolicy) blobStore;
+            skipIfTransient(bouncePolicy.getSource());
+            skipIfTransient(bouncePolicy.getDestination());
+        } else {
+            assumeThat(blobStore.getContext().unwrap().getId(), not(is("transient")));
+        }
+    }
+
+    private void putLargeObject(String blobName, long size) throws Exception {
+        /* running 5GB through transient blob store is asking for trouble */
+        skipIfTransient(policy);
+
+        Blob blob = policy.blobBuilder(blobName)
+                .payload(new ByteSourcePayload(new ByteSource() {
+                    /* ByteSource by default keeps reading the stream to figure out the size */
+                    @Override
+                    public long size() throws IOException {
+                        return size;
+                    }
+
+                    @Override
+                    public InputStream openStream() throws IOException {
+                        return new BoundedInputStream(new ZeroInputStream(), size);
+                    }
+                }))
+                .contentLength(size)
+                .build();
+
+        logger.info("putting large object {}", blobName);
+        policy.putBlob(containerName, blob, new PutOptions().multipart());
+        logger.info("done putting large object {}", blobName);
+        assertThat(policy.getDestination().blobExists(containerName, blobName)).isFalse();
+        assertThat(policy.getSource().blobExists(containerName, blobName)).isTrue();
+        BlobMetadata nearBlob = policy.getSource().blobMetadata(containerName, blobName);
+        assertThat(nearBlob.getContentMetadata().getContentLength()).isEqualTo(size);
+    }
+
+    @Test
+    public void testBounceLargeObject() throws Exception {
+        skipIfTransient(policy);
+
+        String blobName = UtilsTest.createRandomBlobName();
+        final long size = 5L * 1024 * 1024 * 1024 /* 5GB */ + 1;
+        putLargeObject(blobName, size);
+
+        logger.info("bouncing {}", blobName);
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
+        logger.info("done bouncing {}", blobName);
+
+        BlobMetadata farBlob = policy.getDestination().blobMetadata(containerName, blobName);
+        BlobMetadata nearBlob = policy.getSource().blobMetadata(containerName, blobName);
+        assertThat(farBlob.getContentMetadata().getContentLength()).isEqualTo(size);
+        assertThat(nearBlob.getContentMetadata().getContentLength()).isEqualTo(size);
     }
 
     private void assertEqualBlobStores(BlobStore one, BlobStore two) throws Exception {

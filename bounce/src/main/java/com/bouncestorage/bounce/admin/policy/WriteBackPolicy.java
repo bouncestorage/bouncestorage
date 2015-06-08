@@ -20,6 +20,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import javax.ws.rs.ClientErrorException;
 import javax.ws.rs.core.Response;
@@ -60,6 +62,8 @@ public class WriteBackPolicy extends BouncePolicy {
     public static final String INTERNAL_PREFIX = ".bounce internal reserved prefix/";
     @VisibleForTesting
     public static final String TAKEOVER_MARKER = INTERNAL_PREFIX + "need_take_over";
+    private static final Predicate<String> SWIFT_SEGMENT_PATTERN =
+            Pattern.compile(".*/slo/\\d{10}\\.\\d{6}/\\d+/\\d+/\\d{8}$").asPredicate();
     protected Duration copyDelay;
     protected Duration evictDelay;
     private boolean copy;
@@ -211,6 +215,7 @@ public class WriteBackPolicy extends BouncePolicy {
     @Override
     public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject) {
+        logger.debug("reconciling {}", sourceObject == null ? destinationObject.getName() : sourceObject.getName());
         if (sourceObject != null) {
             logger.debug("reconciling {} {}", sourceObject.getName(),
                     destinationObject == null ? "null" : destinationObject.getName());
@@ -390,6 +395,10 @@ public class WriteBackPolicy extends BouncePolicy {
         return BounceResult.MOVE;
     }
 
+    private boolean isSwiftSegmentBlob(String name) {
+        return SWIFT_SEGMENT_PATTERN.test(name);
+    }
+
     @Override
     public final PageSet<? extends StorageMetadata> list(String s, ListContainerOptions listContainerOptions) {
         if (takeOverInProcess) {
@@ -407,7 +416,7 @@ public class WriteBackPolicy extends BouncePolicy {
             StorageMetadata nearMeta = nearPage.next();
             String name = nearMeta.getName();
 
-            if (name.startsWith(INTERNAL_PREFIX)) {
+            if (name.startsWith(INTERNAL_PREFIX) || isSwiftSegmentBlob(name)) {
                 continue;
             }
 
@@ -432,6 +441,10 @@ public class WriteBackPolicy extends BouncePolicy {
                     farPage.next();
                     logger.debug("skipping far blob: {}", farMeta.getName());
                 }
+            }
+
+            if (farMeta != null && isSwiftSegmentBlob(farMeta.getName())) {
+                continue;
             }
 
             if (compare == 0) {
