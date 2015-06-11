@@ -233,6 +233,7 @@ def maybe_update(log):
 def main():
     ec2 = len(sys.argv) == 1
     test = "all"
+    os.environ['LOG_LEVEL'] = 'info'
 
     if ec2:
         log = open(OUTPUT_LOG, 'w')
