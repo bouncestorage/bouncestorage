@@ -54,10 +54,15 @@ public final class BounceService {
 
     @VisibleForTesting
     public synchronized BounceTaskStatus bounce(String container) {
+        return bounce(container, executor);
+    }
+
+    @VisibleForTesting
+    public synchronized BounceTaskStatus bounce(String container, ExecutorService exe) {
         BounceTaskStatus status = bounceStatus.get(container);
         if (status == null || status.done()) {
             status = new BounceTaskStatus();
-            status.future = executor.submit(new BounceTask(container, status));
+            status.future = exe.submit(new BounceTask(container, status));
             bounceStatus.put(container, status);
         }
         return status;

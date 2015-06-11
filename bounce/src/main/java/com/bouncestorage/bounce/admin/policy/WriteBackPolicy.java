@@ -94,7 +94,7 @@ public class WriteBackPolicy extends BouncePolicy {
         putMarkerBlob(containerName, blob.getMetadata().getName());
         String etag = getSource().putBlob(containerName, blob, options);
         String blobName = blob.getMetadata().getName();
-        enqueueReconcile(containerName, blobName, copyDelay.getSeconds());
+        enqueueReconcile(containerName, blobName);
         return etag;
     }
 
@@ -104,13 +104,17 @@ public class WriteBackPolicy extends BouncePolicy {
             throw new UnsupportedOperationException("illegal prefix");
         }
         super.removeBlob(container, name);
-        enqueueReconcile(container, name, 0);
+        enqueueReconcile(container, name);
     }
 
-    private void enqueueReconcile(String containerName, String blobName, long delaySecond) {
+    private void enqueueReconcile(String containerName, String blobName) {
         if (app != null) {
             app.executeBackgroundReconcileTask(() -> reconcileObject(containerName, blobName),
-                    delaySecond, TimeUnit.SECONDS);
+                    copyDelay.getSeconds(), TimeUnit.SECONDS);
+            if (evict && !copyDelay.equals(evictDelay)) {
+                app.executeBackgroundReconcileTask(() -> reconcileObject(containerName, blobName),
+                        evictDelay.getSeconds(), TimeUnit.SECONDS);
+            }
         }
     }
 
@@ -160,7 +164,7 @@ public class WriteBackPolicy extends BouncePolicy {
                 }
             }
 
-            enqueueReconcile(toContainer, toName, copyDelay.getSeconds());
+            enqueueReconcile(toContainer, toName);
         }
 
         return etag;
