@@ -28,6 +28,53 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>com.github.klieber</groupId>
+                <artifactId>phantomjs-maven-plugin</artifactId>
+                <version>0.7</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>install</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <version>1.9.8</version>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.github.searls</groupId>
+                <artifactId>jasmine-maven-plugin</artifactId>
+                <version>1.3.1.6</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <jsSrcDir>${project.basedir}/src/main/resources/assets/javascript</jsSrcDir>
+                    <sourceIncludes>
+                        <include>**/angularjs-1.2.5/angular.js</include>
+                        <include>**/angularjs-1.2.5/angular-resource.js</include>
+                        <include>**/angularjs-1.2.5/angular-route.js</include>
+                        <include>**/*.js</include>
+                    </sourceIncludes>>
+                    <specIncludes>
+                        <include>**/lib/angular-mocks.js</include>
+                        <include>**/*.js</include>
+                    </specIncludes>
+                    <webDriverClassName>org.openqa.selenium.phantomjs.PhantomJSDriver</webDriverClassName>
+                    <webDriverCapabilities>
+                        <capability>
+                            <name>phantomjs.binary.path</name>
+                            <value>${phantomjs.binary}</value>
+                        </capability>
+                    </webDriverCapabilities>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>2.14</version>
