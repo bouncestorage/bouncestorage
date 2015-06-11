@@ -281,7 +281,7 @@ BounceUtils.parseDurations = function(tierLocation) {
 
 BounceUtils.toHumanSize = function(dataSize) {
   var sizes = [
-    { name: 'kB',
+    { name: 'KB',
       size: 1024
     },
     { name: 'MB',
@@ -296,15 +296,16 @@ BounceUtils.toHumanSize = function(dataSize) {
   ];
 
   for (var i = 0; i < sizes.length; i++) {
-    var convertedSize = dataSize / sizes[i].size;
+    var sizeEntry = sizes[sizes.length - i - 1];
+    var convertedSize = dataSize / sizeEntry.size;
     if (convertedSize > 1) {
       // Keep at most three digits for each size
       if (convertedSize > 100) {
-        return Math.round(convertedSize) + "  " + sizes[i].name;
+        return Math.round(convertedSize) + "  " + sizeEntry.name;
       } else if (convertedSize > 10) {
-        return Math.round(convertedSize * 10) / 10 + " " + sizes[i].name;
+        return Math.round(convertedSize * 10) / 10 + " " + sizeEntry.name;
       } else {
-        return Math.round(convertedSize * 100) / 100 + " " + sizes[i].name;
+        return Math.round(convertedSize * 100) / 100 + " " + sizeEntry.name;
       }
     }
   }
