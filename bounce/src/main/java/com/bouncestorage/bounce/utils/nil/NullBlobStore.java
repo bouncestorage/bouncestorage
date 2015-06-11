@@ -171,7 +171,7 @@ public final class NullBlobStore implements BlobStore {
         Date now = Date.from(Instant.now());
         MutableContentMetadata meta = new BaseMutableContentMetadata();
         meta.setContentLength(0L);
-        String mode = Integer.valueOf(0100777).toString();
+        String mode = Integer.toString(0100777);
         return new BlobMetadataImpl(context.unwrap().getId(), name, null, null, "",
                 now, now, ImmutableMap.of("mode", mode), null, container, meta);
     }

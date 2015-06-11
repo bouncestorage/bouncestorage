@@ -154,7 +154,9 @@ public final class KeyStoreUtils {
         Pair<Key, X509Certificate> entry = generateKey(name);
         keyStore.setKeyEntry(name, entry.getLeft(), password, new X509Certificate[]{entry.getRight()});
         if (path != null) {
-            keyStore.store(new FileOutputStream(path), password);
+            try (FileOutputStream os = new FileOutputStream(path)) {
+                keyStore.store(os, password);
+            }
         }
         return entry.getRight();
     }

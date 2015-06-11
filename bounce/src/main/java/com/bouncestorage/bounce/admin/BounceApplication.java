@@ -242,7 +242,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             throw new IllegalArgumentException(prefix);
         }
 
-        return Integer.valueOf(prefix.substring(dot + 1));
+        return Integer.parseInt(prefix.substring(dot + 1));
     }
 
     private void addContainerFromConfig(String prefix, String containerName) {

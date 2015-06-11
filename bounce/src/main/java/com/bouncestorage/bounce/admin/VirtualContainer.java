@@ -59,7 +59,7 @@ public final class VirtualContainer {
             case 3:
                 return migrationTargetLocation;
             default:
-                throw new IllegalArgumentException(Integer.valueOf(tierId).toString());
+                throw new IllegalArgumentException(Integer.toString(tierId));
         }
     }
 
