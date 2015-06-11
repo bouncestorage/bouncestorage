@@ -281,6 +281,11 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         if (lastPolicy == null) {
             throw new NoSuchElementException("not enough configured tiers");
         }
+
+        if (!lastPolicy.sanityCheck(containerName)) {
+            lastPolicy.takeOver(containerName);
+        }
+
         virtualContainers.put(containerName, lastPolicy);
         if (c.containsKey("identity")) {
             virtualContainer.identity = c.getString("identity");

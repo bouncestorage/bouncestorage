@@ -44,6 +44,10 @@ public class VirtualContainerResourceTest {
 
     @Test
     public void testVirtualContainerPut() throws Exception {
+        app.getBlobStore(0).createContainerInLocation(null, "cache");
+        app.getBlobStore(0).createContainerInLocation(null, "container");
+        app.getBlobStore(0).createContainerInLocation(null, "archive");
+
         String jsonInput = "{\"cacheLocation\":{\"blobStoreId\":0,\"containerName\":\"cache\"," +
                 "\"copyDelay\":\"P0D\",\"moveDelay\":\"P0D\"},\"originLocation\":{\"blobStoreId\":0," +
                 "\"containerName\":\"container\",\"copyDelay\":\"P90D\",\"moveDelay\":\"P180D\"}," +
@@ -69,6 +73,10 @@ public class VirtualContainerResourceTest {
 
     @Test
     public void testEnablingMigration() throws Exception {
+        app.getBlobStore(0).createContainerInLocation(null, "other");
+        app.getBlobStore(0).createContainerInLocation(null, "container");
+        app.getBlobStore(0).createContainerInLocation(null, "target");
+        app.getBlobStore(0).createContainerInLocation(null, "cache");
         String jsonInput = "{\"cacheLocation\":{\"blobStoreId\":0,\"containerName\":\"other\"," +
                 "\"copyDelay\":\"P0D\",\"moveDelay\":\"P0D\"},\"originLocation\":{\"blobStoreId\":0," +
                 "\"containerName\":\"container\",\"copyDelay\":null,\"moveDelay\":null}," +

@@ -14,9 +14,12 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.StreamSupport;
 
 import javax.ws.rs.ClientErrorException;
 import javax.ws.rs.core.Response;
@@ -27,6 +30,7 @@ import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.google.auto.service.AutoService;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
@@ -52,6 +56,10 @@ public class WriteBackPolicy extends BouncePolicy {
     public static final String COPY_DELAY = "copyDelay";
     public static final String EVICT_DELAY = "evictDelay";
     public static final String LOG_MARKER_SUFFIX = "     bounce!log";
+    @VisibleForTesting
+    public static final String INTERNAL_PREFIX = ".bounce internal reserved prefix/";
+    @VisibleForTesting
+    public static final String TAKEOVER_MARKER = INTERNAL_PREFIX + "need_take_over";
     protected Duration copyDelay;
     protected Duration evictDelay;
     private boolean copy;
@@ -80,6 +88,9 @@ public class WriteBackPolicy extends BouncePolicy {
 
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions options) {
+        if (blob.getMetadata().getName().startsWith(INTERNAL_PREFIX)) {
+            throw new UnsupportedOperationException("illegal prefix");
+        }
         putMarkerBlob(containerName, blob.getMetadata().getName());
         String etag = getSource().putBlob(containerName, blob, options);
         String blobName = blob.getMetadata().getName();
@@ -89,6 +100,9 @@ public class WriteBackPolicy extends BouncePolicy {
 
     @Override
     public void removeBlob(String container, String name) {
+        if (name.startsWith(INTERNAL_PREFIX)) {
+            throw new UnsupportedOperationException("illegal prefix");
+        }
         super.removeBlob(container, name);
         enqueueReconcile(container, name, 0);
     }
@@ -210,6 +224,57 @@ public class WriteBackPolicy extends BouncePolicy {
         return maybeRemoveDestinationObject(container, destinationObject);
     }
 
+    @Override
+    public void takeOver(String containerName) {
+        takeOverInProcess = true;
+        ForkJoinPool fjp = new ForkJoinPool(100);
+        takeOverFuture = fjp.submit(() -> {
+            StreamSupport.stream(Utils.crawlBlobStore(getDestination(), containerName).spliterator(), true)
+                    .filter(sm -> !getSource().blobExists(containerName, sm.getName()))
+                    .forEach(sm -> {
+                        logger.debug("taking over blob {}", sm.getName());
+                        BlobMetadata metadata = getDestination().blobMetadata(containerName,
+                                sm.getName());
+                        BounceLink link = new BounceLink(Optional.of(metadata));
+                        getSource().putBlob(containerName, link.toBlob(getSource()));
+                    });
+            getSource().removeBlob(containerName, TAKEOVER_MARKER);
+            takeOverInProcess = false;
+        });
+        fjp.shutdown();
+    }
+
+    @Override
+    public boolean sanityCheck(String containerName) {
+        if (getSource().blobExists(containerName, TAKEOVER_MARKER)) {
+            return false;
+        }
+
+        PageSet<? extends StorageMetadata> res = getDestination().list(containerName);
+
+        ForkJoinPool fjp = new ForkJoinPool(100);
+        try {
+            boolean sane = !fjp.submit(() -> {
+                return res.stream().parallel().map(sm -> {
+                    BlobMetadata meta = blobMetadata(containerName, sm.getName());
+                    return !Utils.equalsOtherThanTime(sm, meta);
+                }).anyMatch(Boolean::booleanValue);
+            }).get();
+
+            if (!sane) {
+                Blob b = getSource().blobBuilder(TAKEOVER_MARKER)
+                        .payload(ByteSource.empty())
+                        .build();
+                getSource().putBlob(containerName, b);
+            }
+            return sane;
+        } catch (InterruptedException | ExecutionException e) {
+            throw propagate(e);
+        } finally {
+            fjp.shutdown();
+        }
+    }
+
     protected boolean isObjectExpired(StorageMetadata metadata, Duration duration) {
         Instant now = app.getClock().instant();
         Instant then = metadata.getLastModified().toInstant();
@@ -240,8 +305,15 @@ public class WriteBackPolicy extends BouncePolicy {
 
     @Override
     public Blob getBlob(String container, String blobName, GetOptions options) {
+        if (blobName.startsWith(INTERNAL_PREFIX)) {
+            throw new UnsupportedOperationException("illegal prefix");
+        }
+
         Blob blob = super.getBlob(container, blobName, options);
         if (blob == null) {
+            if (takeOverInProcess) {
+                return getDestination().getBlob(container, blobName, options);
+            }
             return null;
         }
         BlobMetadata meta = blob.getMetadata();
@@ -266,6 +338,10 @@ public class WriteBackPolicy extends BouncePolicy {
 
     @Override
     public BlobMetadata blobMetadata(String container, String blobName) {
+        if (blobName.startsWith(INTERNAL_PREFIX)) {
+            throw new UnsupportedOperationException("illegal prefix");
+        }
+
         BlobMetadata meta = getSource().blobMetadata(container, blobName);
         if (meta != null) {
             if (BounceLink.isLink(meta)) {
@@ -307,6 +383,9 @@ public class WriteBackPolicy extends BouncePolicy {
 
     @Override
     public final PageSet<? extends StorageMetadata> list(String s, ListContainerOptions listContainerOptions) {
+        if (takeOverInProcess) {
+            return getDestination().list(s, listContainerOptions);
+        }
         PeekingIterator<StorageMetadata> nearPage = Iterators.peekingIterator(
                 Utils.crawlBlobStore(getSource(), s, listContainerOptions).iterator());
         PeekingIterator<StorageMetadata> farPage = Iterators.peekingIterator(
@@ -318,6 +397,10 @@ public class WriteBackPolicy extends BouncePolicy {
         while (nearPage.hasNext() && contents.size() < maxResults) {
             StorageMetadata nearMeta = nearPage.next();
             String name = nearMeta.getName();
+
+            if (name.startsWith(INTERNAL_PREFIX)) {
+                continue;
+            }
 
             logger.debug("found near blob: {}", name);
             if (WriteBackPolicy.isMarkerBlob(name)) {

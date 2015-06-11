@@ -37,6 +37,7 @@ public final class ThreeTierWriteBackPolicyTest extends WriteBackPolicyTest {
         p.put("bounce.backend.2.jclouds.provider", "transient");
         p.put("bounce.backends", "0,1,2");
         new ConfigurationResource(app).updateConfig(p);
+        app.getBlobStore(2).createContainerInLocation(null, containerName);
         String prefix = "bounce.container.0.";
         Map<Object, Object> m = ImmutableMap.builder()
                 .put(prefix + "name", containerName)

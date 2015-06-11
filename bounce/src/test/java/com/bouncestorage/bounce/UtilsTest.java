@@ -82,6 +82,8 @@ public final class UtilsTest {
             Class<? extends BouncePolicy> policy, Map<String, String> policyConfig) {
         BounceConfiguration config = app.getConfiguration();
         assertThat(config.getList("bounce.backends").size() >= 2).isTrue();
+        app.getBlobStore(0).createContainerInLocation(null, container);
+        app.getBlobStore(1).createContainerInLocation(null, container + "-dest");
         String containerPrefix = Joiner.on(".").join(VirtualContainerResource.VIRTUAL_CONTAINER_PREFIX, "0");
         String cacheTierPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.CACHE_TIER_PREFIX);
         Properties newProperties = new Properties();
