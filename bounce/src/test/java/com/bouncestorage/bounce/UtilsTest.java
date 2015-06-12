@@ -141,21 +141,21 @@ public final class UtilsTest {
         return ContextBuilder.newBuilder("transient").build(BlobStoreContext.class).getBlobStore();
     }
 
-    public static void assertEqualBlobs(Blob one, Blob two) throws Exception {
-        if (one != two) {
-            assertThat(one).isNotNull();
-            assertThat(two).isNotNull();
-            try (InputStream is = one.getPayload().openStream();
-                 InputStream is2 = two.getPayload().openStream()) {
-                assertThat(is2).hasContentEqualTo(is);
+    public static void assertEqualBlobs(Blob actual, Blob expected) throws Exception {
+        if (actual != expected) {
+            assertThat(actual).isNotNull();
+            assertThat(expected).isNotNull();
+            try (InputStream is = actual.getPayload().openStream();
+                 InputStream is2 = expected.getPayload().openStream()) {
+                assertThat(is).hasContentEqualTo(is2);
             }
             // TODO: assert more metadata, including user metadata
-            ContentMetadata metadata = one.getMetadata().getContentMetadata();
-            ContentMetadata metadata2 = two.getMetadata().getContentMetadata();
-            assertThat(metadata2.getContentMD5AsHashCode()).isEqualTo(
-                    metadata.getContentMD5AsHashCode());
-            assertThat(metadata2.getContentType()).isEqualTo(
-                    metadata.getContentType());
+            ContentMetadata metadata = actual.getMetadata().getContentMetadata();
+            ContentMetadata metadata2 = expected.getMetadata().getContentMetadata();
+            assertThat(metadata.getContentMD5AsHashCode()).isEqualTo(
+                    metadata2.getContentMD5AsHashCode());
+            assertThat(metadata.getContentType()).isEqualTo(
+                    metadata2.getContentType());
         }
     }
 
