@@ -69,6 +69,7 @@ import org.jclouds.Constants;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.blobstore.ContainerNotFoundException;
 import org.jclouds.blobstore.reference.BlobStoreConstants;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.slf4j.Logger;
@@ -296,8 +297,12 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             throw new NoSuchElementException("not enough configured tiers");
         }
 
-        if (!lastPolicy.sanityCheck(containerName)) {
-            lastPolicy.takeOver(containerName);
+        try {
+            if (!lastPolicy.sanityCheck(containerName)) {
+                lastPolicy.takeOver(containerName);
+            }
+        } catch (ContainerNotFoundException e) {
+            // ignore
         }
 
         virtualContainers.put(containerName, lastPolicy);

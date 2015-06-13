@@ -348,4 +348,25 @@ public final class UtilsTest {
         assertThat(status.getErrorObjectCount()).isEqualTo(0);
         return status;
     }
+
+    public static void sleepIfNotTransient(BlobStore blobStore) {
+        if (!policyHasTransient(blobStore)) {
+            try {
+                Thread.sleep(30000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static boolean policyHasTransient(BlobStore blobStore) {
+        if (blobStore instanceof BouncePolicy) {
+            BouncePolicy bouncePolicy = (BouncePolicy) blobStore;
+            return policyHasTransient(bouncePolicy.getSource()) ||
+                    policyHasTransient(bouncePolicy.getDestination());
+        } else {
+            return blobStore.getContext().unwrap().getId().equals("transient");
+        }
+    }
+
 }
