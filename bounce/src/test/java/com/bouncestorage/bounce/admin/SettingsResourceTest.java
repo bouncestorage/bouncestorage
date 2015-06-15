@@ -46,9 +46,9 @@ public class SettingsResourceTest {
         Random r = new Random();
         SettingsResource.Settings settings = new SettingsResource.Settings();
         settings.s3Address = "127.0.0.42";
-        settings.s3Port = r.nextInt(65536);
+        settings.s3Port = randomPort(r);
         settings.s3SSLAddress = "127.0.0.42";
-        settings.s3SSLPort = r.nextInt(65536);
+        settings.s3SSLPort = randomPort(r);
         settings.s3Domain = "s3.amazonaws.com";
 
         assertThat(resource.updateSettings(settings).getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -66,10 +66,15 @@ public class SettingsResourceTest {
         Random r = new Random();
         SettingsResource.Settings settings = new SettingsResource.Settings();
         settings.swiftAddress = "127.0.0.24";
-        settings.swiftPort = r.nextInt(65536);
+        settings.swiftPort = randomPort(r);
         assertThat(resource.updateSettings(settings).getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
         SettingsResource.Settings updated = resource.getSettings();
         assertThat(updated.swiftAddress).isEqualTo(settings.swiftAddress);
         assertThat(updated.swiftPort).isEqualTo(settings.swiftPort);
+    }
+
+    private static int randomPort(Random r) {
+        int reserved = 1024;
+        return r.nextInt(65536 - reserved) + reserved;
     }
 }
