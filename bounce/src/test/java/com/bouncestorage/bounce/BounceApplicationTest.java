@@ -57,7 +57,7 @@ public final class BounceApplicationTest {
 
     @Test
     public void testSwiftProxyStartup() throws Exception {
-        app = new BounceApplication();
+        app = UtilsTest.newBounceApplication();
         BounceConfiguration config = app.getConfiguration();
         config.setProperty(SwiftProxy.PROPERTY_ENDPOINT, "http://127.0.0.1:0");
         startApp();
@@ -104,7 +104,7 @@ public final class BounceApplicationTest {
         try (InputStream is = BounceApplicationTest.class.getResourceAsStream("/bounce.properties")) {
             properties.load(is);
         }
-        app = new BounceApplication();
+        app = UtilsTest.newBounceApplication();
         app.getConfiguration().setAll(properties);
     }
 

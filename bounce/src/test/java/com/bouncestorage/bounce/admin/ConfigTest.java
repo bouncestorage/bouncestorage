@@ -46,7 +46,7 @@ public final class ConfigTest {
         }
 
         synchronized (BounceApplication.class) {
-            app = new BounceApplication();
+            app = UtilsTest.newBounceApplication();
         }
         app.getConfiguration().setAll(properties);
         app.useRandomPorts();
@@ -56,15 +56,17 @@ public final class ConfigTest {
 
     @After
     public void tearDown() throws Exception {
-        BlobStore blobStore = app.getBlobStore();
-        if (blobStore != null) {
-            blobStore.deleteContainer(containerName);
-        }
-        if (blobStore != null && blobStore.getContext() != null) {
-            blobStore.getContext().close();
-        }
+        if (app != null) {
+            BlobStore blobStore = app.getBlobStore();
+            if (blobStore != null) {
+                blobStore.deleteContainer(containerName);
+            }
+            if (blobStore != null && blobStore.getContext() != null) {
+                blobStore.getContext().close();
+            }
 
-        app.stop();
+            app.stop();
+        }
     }
 
     @Test

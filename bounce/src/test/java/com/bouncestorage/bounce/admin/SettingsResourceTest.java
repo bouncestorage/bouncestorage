@@ -11,6 +11,8 @@ import java.util.Random;
 
 import javax.ws.rs.core.Response;
 
+import com.bouncestorage.bounce.UtilsTest;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,7 +23,7 @@ public class SettingsResourceTest {
 
     @Before
     public void setUp() throws Exception {
-        app = new BounceApplication();
+        app = UtilsTest.newBounceApplication();
         app.useRandomPorts();
         app.initTestingKeyStore();
         String webConfig = SettingsResourceTest.class.getResource("/bounce.yml").toExternalForm();

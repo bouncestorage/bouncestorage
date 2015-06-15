@@ -13,7 +13,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.BlobStore;
-import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.options.GetOptions;
@@ -23,7 +22,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 public final class BounceTest {
-    private BlobStoreContext bounceContext;
     private BlobStore nearBlobStore;
     private BlobStore farBlobStore;
     private BouncePolicy policy;
@@ -31,6 +29,7 @@ public final class BounceTest {
 
     @Before
     public void setUp() throws Exception {
+        UtilsTest.newBounceApplication();
         containerName = UtilsTest.createRandomContainerName();
 
         policy = new WriteBackPolicy();
@@ -45,9 +44,6 @@ public final class BounceTest {
     public void tearDown() throws Exception {
         if (policy != null) {
             policy.deleteContainer(containerName);
-        }
-        if (bounceContext != null) {
-            bounceContext.close();
         }
     }
 

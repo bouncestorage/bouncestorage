@@ -9,6 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Properties;
 
+import com.bouncestorage.bounce.UtilsTest;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -16,7 +18,8 @@ public final class AboutResourceTest {
     private AboutResource resource;
 
     @Before
-    public void setup() {
+    public void setup() throws Exception {
+        UtilsTest.newBounceApplication();
         resource = new AboutResource();
     }
 

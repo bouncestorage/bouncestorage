@@ -44,6 +44,8 @@ import com.google.common.io.ByteSource;
 import com.google.common.net.MediaType;
 import com.google.inject.Module;
 
+import io.dropwizard.logging.LoggingFactory;
+
 import org.apache.commons.configuration.Configuration;
 import org.assertj.core.api.AbstractLongAssert;
 import org.jclouds.Constants;
@@ -58,6 +60,7 @@ import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
 public final class UtilsTest {
     private BlobStoreContext nearContext;
@@ -147,15 +150,15 @@ public final class UtilsTest {
             assertThat(expected).isNotNull();
             try (InputStream is = actual.getPayload().openStream();
                  InputStream is2 = expected.getPayload().openStream()) {
-                assertThat(is).hasContentEqualTo(is2);
+                assertThat(is).as(actual.getMetadata().getName()).hasContentEqualTo(is2);
             }
             // TODO: assert more metadata, including user metadata
             ContentMetadata metadata = actual.getMetadata().getContentMetadata();
             ContentMetadata metadata2 = expected.getMetadata().getContentMetadata();
-            assertThat(metadata.getContentMD5AsHashCode()).isEqualTo(
-                    metadata2.getContentMD5AsHashCode());
-            assertThat(metadata.getContentType()).isEqualTo(
-                    metadata2.getContentType());
+            assertThat(metadata.getContentMD5AsHashCode()).as(actual.getMetadata().getName())
+                    .isEqualTo(metadata2.getContentMD5AsHashCode());
+            assertThat(metadata.getContentType()).as(actual.getMetadata().getName())
+                    .isEqualTo(metadata2.getContentType());
         }
     }
 
@@ -369,4 +372,13 @@ public final class UtilsTest {
         }
     }
 
+    public static BounceApplication newBounceApplication() throws Exception {
+        try {
+            return new BounceApplication();
+        } catch (Exception e) {
+            LoggingFactory.bootstrap();
+            assertThat(LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)).isNotNull();
+            throw e;
+        }
+    }
 }

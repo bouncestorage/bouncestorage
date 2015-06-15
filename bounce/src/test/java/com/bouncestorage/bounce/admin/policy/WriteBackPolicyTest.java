@@ -56,7 +56,7 @@ public class WriteBackPolicyTest {
         containerName = UtilsTest.createRandomContainerName();
 
         synchronized (BounceApplication.class) {
-            app = new BounceApplication();
+            app = UtilsTest.newBounceApplication();
             // need to initialize logger after dropwizard application init
             logger = LoggerFactory.getLogger(WriteBackPolicyTest.class);
         }
@@ -82,7 +82,9 @@ public class WriteBackPolicyTest {
             policy.deleteContainer(containerName);
         }
 
-        app.resumeBackgroundTasks();
+        if (app != null) {
+            app.resumeBackgroundTasks();
+        }
     }
 
     @Test

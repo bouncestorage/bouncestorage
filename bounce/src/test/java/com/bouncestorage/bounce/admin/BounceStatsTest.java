@@ -11,11 +11,20 @@ import java.util.List;
 
 import javax.ws.rs.HttpMethod;
 
+import com.bouncestorage.bounce.UtilsTest;
+
 import org.influxdb.dto.Serie;
+import org.junit.Before;
 import org.junit.Test;
 
 public class BounceStatsTest {
-    private BounceStats stats = new BounceStats();
+    private BounceStats stats;
+
+    @Before
+    public void setUp() throws Exception {
+        UtilsTest.newBounceApplication();
+        stats = new BounceStats();
+    }
 
     @Test
     public void testNoStats() {
