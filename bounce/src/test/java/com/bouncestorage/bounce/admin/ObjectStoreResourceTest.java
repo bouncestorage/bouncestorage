@@ -51,7 +51,9 @@ public class ObjectStoreResourceTest {
 
     @After
     public void tearDown() throws Exception {
-        app.stop();
+        if (app != null) {
+            app.stop();
+        }
         if (configFile != null) {
             configFile.delete();
         }

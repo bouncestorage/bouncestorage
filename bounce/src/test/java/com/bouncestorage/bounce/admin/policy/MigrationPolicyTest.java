@@ -47,7 +47,7 @@ public final class MigrationPolicyTest {
         containerName = UtilsTest.createRandomContainerName();
 
         synchronized (BounceApplication.class) {
-            app = new BounceApplication();
+            app = UtilsTest.newBounceApplication();
         }
         app.useRandomPorts();
         app.registerConfigurationListener();

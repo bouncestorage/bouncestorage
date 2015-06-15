@@ -34,6 +34,7 @@ public final class EncryptedBlobStoreTest {
 
     @Before
     public void setUp() throws Exception {
+        UtilsTest.newBounceApplication();
         containerName = UtilsTest.createRandomContainerName();
         Properties properties = new Properties();
         properties.putAll(ImmutableMap.of(

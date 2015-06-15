@@ -32,7 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class BounceServiceTest {
-    private Logger logger = LoggerFactory.getLogger(getClass());
+    private Logger logger;
     private BouncePolicy policy;
     private String containerName;
     private BounceService bounceService;
@@ -43,7 +43,8 @@ public final class BounceServiceTest {
         containerName = UtilsTest.createRandomContainerName();
 
         synchronized (BounceApplication.class) {
-            app = new BounceApplication();
+            app = UtilsTest.newBounceApplication();
+            logger = LoggerFactory.getLogger(getClass());
         }
         app.useRandomPorts();
         app.registerConfigurationListener();

@@ -28,7 +28,7 @@ public class VirtualContainerResourceTest {
 
     @Before
     public void setUp() throws Exception {
-        app = new BounceApplication();
+        app = UtilsTest.newBounceApplication();
         app.useRandomPorts();
         app.getConfiguration().setAll(getDefaultProperties());
         String webConfig = VirtualContainerResourceTest.class.getResource("/bounce.yml").toExternalForm();
