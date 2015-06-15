@@ -131,7 +131,7 @@
                 <version>2.18.1</version>
                 <configuration>
                     <parallel>methods</parallel>
-                    <threadCount>1</threadCount>
+                    <useUnlimitedThreads>true</useUnlimitedThreads>
                     <argLine>-Xmx128m</argLine>
                     <forkCount>0</forkCount>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
