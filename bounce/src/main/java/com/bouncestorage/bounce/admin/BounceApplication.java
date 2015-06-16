@@ -670,6 +670,15 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     }
 
     @VisibleForTesting
+    public void busyWaitForBackgroundReconcileTasks() throws Exception {
+        long completed = backgroundReconcileTasks.getCompletedTaskCount();
+        backgroundReconcileTasks.resume();
+        while (backgroundReconcileTasks.getCompletedTaskCount() <= completed) {
+            Thread.sleep(10);
+        }
+    }
+
+    @VisibleForTesting
     public void drainBackgroundTasks() throws InterruptedException {
         backgroundReconcileTasks.shutdown();
         backgroundReconcileTasks.awaitTermination(60, TimeUnit.SECONDS);
