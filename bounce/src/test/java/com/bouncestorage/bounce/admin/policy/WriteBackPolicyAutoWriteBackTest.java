@@ -13,19 +13,14 @@ import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
-import com.bouncestorage.bounce.utils.Repeat;
-import com.bouncestorage.bounce.utils.RepeatRule;
 
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.options.CopyOptions;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 public final class WriteBackPolicyAutoWriteBackTest {
-    @Rule
-    public final RepeatRule REPEAT_RULE = new RepeatRule();
     String containerName;
     BounceApplication app;
     BouncePolicy policy;
@@ -83,7 +78,6 @@ public final class WriteBackPolicyAutoWriteBackTest {
     }
 
     @Test
-    @Repeat(1)
     public void testAutoDelete() throws Exception {
         app.pauseBackgroundTasks();
 

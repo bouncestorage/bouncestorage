@@ -21,22 +21,17 @@ import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
 import com.bouncestorage.bounce.admin.policy.NoBouncePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
-import com.bouncestorage.bounce.utils.Repeat;
-import com.bouncestorage.bounce.utils.RepeatRule;
 import com.google.common.collect.ImmutableMap;
 
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class BounceServiceTest {
-    @Rule
-    public final RepeatRule REPEAT_RULE = new RepeatRule();
     private Logger logger;
     private BouncePolicy policy;
     private String containerName;
@@ -212,7 +207,6 @@ public final class BounceServiceTest {
 
 
     @Test
-    @Repeat(1)
     public void testScheduledBounce() throws Exception {
         toggleMoveEverything();
 
