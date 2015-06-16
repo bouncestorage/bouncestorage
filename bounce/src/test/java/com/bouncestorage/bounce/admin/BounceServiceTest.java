@@ -21,18 +21,23 @@ import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceService.BounceTaskStatus;
 import com.bouncestorage.bounce.admin.policy.NoBouncePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
+import com.bouncestorage.bounce.utils.Repeat;
+import com.bouncestorage.bounce.utils.RepeatRule;
 import com.google.common.collect.ImmutableMap;
 
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class BounceServiceTest {
-    private Logger logger = LoggerFactory.getLogger(getClass());
+    @Rule
+    public final RepeatRule REPEAT_RULE = new RepeatRule();
+    private Logger logger;
     private BouncePolicy policy;
     private String containerName;
     private BounceService bounceService;
@@ -44,6 +49,7 @@ public final class BounceServiceTest {
 
         synchronized (BounceApplication.class) {
             app = new BounceApplication();
+            logger = LoggerFactory.getLogger(getClass());
         }
         app.useRandomPorts();
         app.registerConfigurationListener();
@@ -206,6 +212,7 @@ public final class BounceServiceTest {
 
 
     @Test
+    @Repeat(1)
     public void testScheduledBounce() throws Exception {
         toggleMoveEverything();
 
@@ -217,6 +224,7 @@ public final class BounceServiceTest {
                 .setInstant(app.getClock().instant().getEpochSecond() * 1000)
                 .build();
         calendar.set(Calendar.HOUR_OF_DAY, BounceApplication.BOUNCE_SCHEDULE_TIME);
+        calendar.set(Calendar.DAY_OF_YEAR, calendar.get(Calendar.DAY_OF_YEAR) + 1);
         app.setClock(Clock.fixed(calendar.toInstant(), ZoneId.systemDefault()));
 
         app.startBounceScheduler();
