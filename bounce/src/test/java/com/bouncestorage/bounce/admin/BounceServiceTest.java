@@ -133,11 +133,10 @@ public final class BounceServiceTest {
 
     @Test
     public void testCopyBouncePolicy() throws Exception {
-        UtilsTest.switchPolicyforContainer(app, containerName, WriteBackPolicy.class,
+        containerName = UtilsTest.switchPolicyforContainer(app, WriteBackPolicy.class,
                 ImmutableMap.of(WriteBackPolicy.COPY_DELAY, Duration.ofSeconds(0).toString(),
                         WriteBackPolicy.EVICT_DELAY, Duration.ofSeconds(-1).toString()));
         policy = (BouncePolicy) app.getBlobStore(containerName);
-        policy.createContainerInLocation(null, containerName);
 
         Blob blob = UtilsTest.makeBlob(policy, UtilsTest.createRandomBlobName());
         policy.putBlob(containerName, blob);
@@ -150,12 +149,11 @@ public final class BounceServiceTest {
 
     @Test
     public void testCopyTwice() throws Exception {
-        UtilsTest.switchPolicyforContainer(app, containerName, WriteBackPolicy.class,
+        containerName = UtilsTest.switchPolicyforContainer(app, WriteBackPolicy.class,
                 ImmutableMap.of(WriteBackPolicy.COPY_DELAY, Duration.ofSeconds(0).toString(),
                         WriteBackPolicy.EVICT_DELAY, Duration.ofSeconds(-1).toString()));
 
         policy = (BouncePolicy) app.getBlobStore(containerName);
-        policy.createContainerInLocation(null, containerName);
 
         Blob blob = UtilsTest.makeBlob(policy, UtilsTest.createRandomBlobName());
         policy.putBlob(containerName, blob);
@@ -171,12 +169,11 @@ public final class BounceServiceTest {
 
     @Test
     public void testCopyAfterMove() throws Exception {
-        UtilsTest.switchPolicyforContainer(app, containerName, WriteBackPolicy.class,
+        containerName = UtilsTest.switchPolicyforContainer(app, WriteBackPolicy.class,
                 ImmutableMap.of(WriteBackPolicy.COPY_DELAY, Duration.ofSeconds(0).toString(),
                         WriteBackPolicy.EVICT_DELAY, Duration.ofSeconds(-1).toString()));
 
         policy = (BouncePolicy) app.getBlobStore(containerName);
-        policy.createContainerInLocation(null, containerName);
 
         Blob blob = UtilsTest.makeBlob(policy, UtilsTest.createRandomBlobName());
         policy.getSource().putBlob(containerName, blob);
@@ -245,9 +242,8 @@ public final class BounceServiceTest {
     }
 
     private void toggleBounceNothing() {
-        UtilsTest.switchPolicyforContainer(app, containerName, NoBouncePolicy.class);
+        containerName = UtilsTest.switchPolicyforContainer(app, containerName, NoBouncePolicy.class);
         policy = (BouncePolicy) app.getBlobStore(containerName);
-        policy.createContainerInLocation(null, containerName);
     }
 
     private void toggleMoveEverything() {
@@ -258,11 +254,10 @@ public final class BounceServiceTest {
     }
 
     private void lastModifiedTimePolicy(Duration duration) {
-        UtilsTest.switchPolicyforContainer(app, containerName, WriteBackPolicy.class,
+        containerName = UtilsTest.switchPolicyforContainer(app, WriteBackPolicy.class,
                 ImmutableMap.of(WriteBackPolicy.COPY_DELAY, Duration.ofSeconds(-1).toString(),
                         WriteBackPolicy.EVICT_DELAY, duration.toString()));
 
         policy = (BouncePolicy) app.getBlobStore(containerName);
-        policy.createContainerInLocation(null, containerName);
     }
 }

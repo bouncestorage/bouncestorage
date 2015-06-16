@@ -28,8 +28,6 @@ public final class WriteBackPolicyAutoWriteBackTest {
 
     @Before
     public void setUp() throws Exception {
-        containerName = UtilsTest.createRandomContainerName();
-
         synchronized (BounceApplication.class) {
             app = new BounceApplication();
         }
@@ -38,10 +36,9 @@ public final class WriteBackPolicyAutoWriteBackTest {
         bounceService = new BounceService(app);
 
         UtilsTest.createTestProvidersConfig(app.getConfiguration());
-        UtilsTest.useWriteBackPolicyForContainer(app, containerName,
+        containerName = UtilsTest.useWriteBackPolicyForContainer(app, containerName,
                 Duration.ofSeconds(0), Duration.ofSeconds(-1));
         policy = (BouncePolicy) app.getBlobStore(containerName);
-        policy.createContainerInLocation(null, containerName);
     }
 
     @After

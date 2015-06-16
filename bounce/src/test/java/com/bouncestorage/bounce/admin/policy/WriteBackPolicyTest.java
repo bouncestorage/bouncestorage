@@ -53,8 +53,6 @@ public class WriteBackPolicyTest {
 
     @Before
     public void setUp() throws Exception {
-        containerName = UtilsTest.createRandomContainerName();
-
         synchronized (BounceApplication.class) {
             app = new BounceApplication();
         }
@@ -64,11 +62,10 @@ public class WriteBackPolicyTest {
         bounceService = new BounceService(app);
 
         UtilsTest.createTestProvidersConfig(app.getConfiguration());
-        UtilsTest.switchPolicyforContainer(app, containerName, WriteBackPolicy.class,
+        containerName = UtilsTest.switchPolicyforContainer(app, WriteBackPolicy.class,
                 ImmutableMap.of(WriteBackPolicy.EVICT_DELAY, duration.toString(),
                         WriteBackPolicy.COPY_DELAY, Duration.ofSeconds(0).toString()));
         policy = (BouncePolicy) app.getBlobStore(containerName);
-        policy.createContainerInLocation(null, containerName);
 
         // need to initialize logger after dropwizard application init
         logger = LoggerFactory.getLogger(WriteBackPolicyTest.class);
@@ -119,7 +116,14 @@ public class WriteBackPolicyTest {
         String blobName = UtilsTest.createRandomBlobName();
         Blob blob = UtilsTest.makeBlob(policy, blobName);
         policy.putBlob(containerName, blob);
-        assertThat(policy.getDestination().blobExists(containerName, blobName)).isFalse();
+        String destinationContainer;
+        if (policy.getDestination() instanceof BouncePolicy) {
+            destinationContainer = ((BlobStoreTarget) ((BouncePolicy) policy.getDestination()).getSource())
+                    .mapContainer(null);
+        } else {
+            destinationContainer = ((BlobStoreTarget) policy.getDestination()).mapContainer(null);
+        }
+        assertThat(policy.getDestination().blobExists(destinationContainer, blobName)).isFalse();
         assertThat(policy.getSource().blobExists(containerName, blobName)).isTrue();
 
         BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
