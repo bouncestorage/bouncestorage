@@ -62,6 +62,7 @@ public final class BounceService {
         BounceTaskStatus status = bounceStatus.get(container);
         if (status == null || status.done()) {
             status = new BounceTaskStatus();
+            status.container = container;
             status.future = exe.submit(new BounceTask(container, status));
             bounceStatus.put(container, status);
         }
@@ -129,7 +130,7 @@ public final class BounceService {
         }
 
         private void processPolicy(BouncePolicy policy) {
-            logger.info("processing policy {}", policy.getClass());
+            logger.info("processing policy {} {}", policy.getClass(), status.container);
             ThreadPoolExecutor exe = new PausableThreadPoolExecutor(4);
 
             ListContainerOptions options = new ListContainerOptions().recursive();
@@ -208,6 +209,7 @@ public final class BounceService {
     }
 
     public static final class BounceTaskStatus {
+        String container;
         @JsonProperty
         final AtomicLong totalObjectCount = new AtomicLong();
         @JsonProperty
@@ -240,6 +242,10 @@ public final class BounceService {
         @JsonProperty
         private boolean done() {
             return future.isDone();
+        }
+
+        public String getContainer() {
+            return container;
         }
 
         public long getTotalObjectCount() {
