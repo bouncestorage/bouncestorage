@@ -147,15 +147,15 @@ public final class UtilsTest {
             assertThat(expected).isNotNull();
             try (InputStream is = actual.getPayload().openStream();
                  InputStream is2 = expected.getPayload().openStream()) {
-                assertThat(is).hasContentEqualTo(is2);
+                assertThat(is).as(actual.getMetadata().getName()).hasContentEqualTo(is2);
             }
             // TODO: assert more metadata, including user metadata
             ContentMetadata metadata = actual.getMetadata().getContentMetadata();
             ContentMetadata metadata2 = expected.getMetadata().getContentMetadata();
-            assertThat(metadata.getContentMD5AsHashCode()).isEqualTo(
-                    metadata2.getContentMD5AsHashCode());
-            assertThat(metadata.getContentType()).isEqualTo(
-                    metadata2.getContentType());
+            assertThat(metadata.getContentMD5AsHashCode()).as(actual.getMetadata().getName())
+                    .isEqualTo(metadata2.getContentMD5AsHashCode());
+            assertThat(metadata.getContentType()).as(actual.getMetadata().getName())
+                    .isEqualTo(metadata2.getContentType());
         }
     }
 
@@ -168,8 +168,7 @@ public final class UtilsTest {
     public static AbstractLongAssert<LongAssert> assertStatus(BounceService.BounceTaskStatus status,
             LongSupplier supplier) throws Exception {
         ObjectMapper mapper = new ObjectMapper();
-        return new LongAssert(supplier.getAsLong())
-                .as(mapper.writeValueAsString(status));
+        return new LongAssert(supplier.getAsLong()).as(mapper.writeValueAsString(status));
     }
 
     @Before
@@ -345,7 +344,7 @@ public final class UtilsTest {
     public static BounceService.BounceTaskStatus runBounce(BounceService service, String container) throws Exception {
         BounceService.BounceTaskStatus status = service.bounce(container);
         status.future().get();
-        assertThat(status.getErrorObjectCount()).isEqualTo(0);
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
         return status;
     }
 
