@@ -172,7 +172,7 @@ public class WriteBackPolicy extends BouncePolicy {
 
     private BounceResult reconcileObject(String container, String blob)
             throws InterruptedException, ExecutionException {
-        logger.debug("reconciling {}", blob);
+        logger.debug("auto reconciling {}", blob);
         BlobMetadata sourceMeta = getSource().blobMetadata(container, blob);
         BlobMetadata sourceMarkerMeta = getSource().blobMetadata(container, blobGetMarkerName(blob));
         BlobMetadata destMeta = getDestination().blobMetadata(container, blob);
@@ -212,6 +212,8 @@ public class WriteBackPolicy extends BouncePolicy {
     public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject) {
         if (sourceObject != null) {
+            logger.debug("reconciling {} {}", sourceObject.getName(),
+                    destinationObject == null ? "null" : destinationObject.getName());
             try {
                 if (evict && isObjectExpired(sourceObject, evictDelay)) {
                     return maybeMoveObject(container, sourceObject, destinationObject);
@@ -223,9 +225,11 @@ public class WriteBackPolicy extends BouncePolicy {
             }
 
             return BounceResult.NO_OP;
+        } else {
+            logger.debug("reconciling null {}", destinationObject.getName());
+            getDestination().removeBlob(container, destinationObject.getName());
+            return BounceResult.REMOVE;
         }
-
-        return maybeRemoveDestinationObject(container, destinationObject);
     }
 
     @Override
@@ -282,6 +286,7 @@ public class WriteBackPolicy extends BouncePolicy {
     protected boolean isObjectExpired(StorageMetadata metadata, Duration duration) {
         Instant now = app.getClock().instant();
         Instant then = metadata.getLastModified().toInstant();
+        logger.debug("now {} mtime {}", now, then);
         return !now.minus(duration).isBefore(then);
     }
 
@@ -508,25 +513,6 @@ public class WriteBackPolicy extends BouncePolicy {
         }
     }
 
-    protected final BounceResult maybeRemoveDestinationObject(String container, StorageMetadata object) {
-        requireNonNull(object);
-
-        BlobMetadata sourceMeta = getSource().blobMetadata(container, object.getName());
-        BlobMetadata destinationMeta = getDestination().blobMetadata(container, object.getName());
-        if (sourceMeta == null && destinationMeta != null) {
-            getDestination().removeBlob(container, object.getName());
-            return BounceResult.REMOVE;
-        }
-
-        if (sourceMeta != null && destinationMeta != null && !Utils.eTagsEqual(sourceMeta.getETag(),
-                destinationMeta.getETag())) {
-            getDestination().removeBlob(container, destinationMeta.getName());
-            return BounceResult.REMOVE;
-        }
-
-        return BounceResult.NO_OP;
-    }
-
     protected final BounceResult maybeCopyObject(String container, BounceStorageMetadata sourceObject,
             StorageMetadata destinationObject) throws IOException {
         if (sourceObject.getRegions().equals(BounceStorageMetadata.FAR_ONLY)) {
@@ -541,6 +527,7 @@ public class WriteBackPolicy extends BouncePolicy {
         }
 
         // Either the object does not exist in the far store or the ETags are not equal, so we should copy
+        logger.debug("copying {} to far store", sourceObject.getName());
         Utils.copyBlob(getSource(), getDestination(), container, container, sourceObject.getName());
         return BounceResult.COPY;
     }
