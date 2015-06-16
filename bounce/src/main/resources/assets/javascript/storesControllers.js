@@ -231,6 +231,10 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     };
 
     $scope.isLocationConfigurable = function(vLocation) {
+      if ($scope.enhanceContainer === null) {
+        return false;
+      }
+
       if (vLocation.tier === BounceUtils.tiers.MIGRATION) {
         var archive = $scope.enhanceContainer[BounceUtils.tiers.ARCHIVE.name];
         if (archive.blobStoreId >= 0) {
