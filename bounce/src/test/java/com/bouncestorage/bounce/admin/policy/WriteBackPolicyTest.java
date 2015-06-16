@@ -57,8 +57,6 @@ public class WriteBackPolicyTest {
 
         synchronized (BounceApplication.class) {
             app = new BounceApplication();
-            // need to initialize logger after dropwizard application init
-            logger = LoggerFactory.getLogger(WriteBackPolicyTest.class);
         }
         app.useRandomPorts();
         app.registerConfigurationListener();
@@ -70,10 +68,10 @@ public class WriteBackPolicyTest {
                 ImmutableMap.of(WriteBackPolicy.EVICT_DELAY, duration.toString(),
                         WriteBackPolicy.COPY_DELAY, Duration.ofSeconds(0).toString()));
         policy = (BouncePolicy) app.getBlobStore(containerName);
-        logger.debug("creating bucket {}", containerName);
         policy.createContainerInLocation(null, containerName);
-        UtilsTest.sleepIfNotTransient(policy);
-        logger.debug("slept for 10 seconds");
+
+        // need to initialize logger after dropwizard application init
+        logger = LoggerFactory.getLogger(WriteBackPolicyTest.class);
     }
 
     @After
@@ -86,9 +84,8 @@ public class WriteBackPolicyTest {
     }
 
     @Test
-    public void testDeleteContainer() throws Exception {
+    public void testDeleteContainer() {
         policy.deleteContainer(containerName);
-        UtilsTest.sleepIfNotTransient(policy);
         assertThat(policy.getSource().containerExists(containerName)).isFalse();
         assertThat(policy.getDestination().containerExists(containerName)).isFalse();
     }
@@ -131,8 +128,6 @@ public class WriteBackPolicyTest {
         } else {
             assertStatus(status, status::getCopiedObjectCount).isEqualTo(1);
         }
-        assertThat(policy.getDestination().blobExists(containerName, blobName)).isTrue();
-        assertThat(policy.getSource().blobExists(containerName, blobName)).isTrue();
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
         Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(blob, farBlob);
