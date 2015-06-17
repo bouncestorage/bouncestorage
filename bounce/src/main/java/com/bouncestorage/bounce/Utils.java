@@ -237,7 +237,11 @@ public final class Utils {
 
         // TODO: swift object semantic changes if we do multipart upload,
         // if both sides are swift, we may want to just copy the individual parts
-        to.putBlob(containerNameTo, builder.build(), MULTIPART_PUT);
+        PutOptions options = PutOptions.NONE;
+        if (blobFrom.getMetadata().getSize() >= to.getMinimumMultipartPartSize()) {
+            options = MULTIPART_PUT;
+        }
+        to.putBlob(containerNameTo, builder.build(), options);
         return blobFrom;
     }
 
