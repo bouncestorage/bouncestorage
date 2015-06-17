@@ -14,6 +14,18 @@
   <h1 class="page-header">Dashboard</h1>
   <div class="col-sm-12">
     <div class="row">
+      <h2 class="sub-header">Object store usage: {{total_space}}</h2>
+
+      <nvd3-pie-chart data="totalObjectStoreData" id="objectStoreChart"
+            height="280" width="515" x="objectStoreName()" y="objectStoreSize()"
+            showLabels="true" interactive="true" tooltips="true"
+            showLegend="true" labelType="percent"
+            margin="{left: 0, right: 0, top: 0, bottom: 0}"
+      >
+        <svg></svg>
+      </nvd3-pie-chart>
+    </div>
+    <div class="row">
       <div class="col-sm-6">
         <h2 class="sub-header">Number of operations</h2>
         <nvd3-line-chart data="opsData" showXAxis="true" showYAxis="true"

@@ -77,6 +77,21 @@ public class BounceStats {
         }
     }
 
+    public void logObjectStoreStats(int providerId, String containerName, long totalSize, long objectCount) {
+        synchronized (queue) {
+            Long timeStamp = new Date().getTime();
+            ArrayList<Object> values = new ArrayList<>();
+            values.add(timeStamp);
+            values.add(totalSize);
+            values.add(objectCount);
+            StringBuilder nameBuilder = new StringBuilder(DBSeries.OBJECT_STORE_SERIES);
+            nameBuilder.append(".provider.").append(Integer.toString(providerId))
+                    .append(".container.").append(containerName);
+            queue.add(StatsQueueEntry.create(new DBSeries(nameBuilder.toString(), DBSeries.OBJECT_STORE_COLUMNS),
+                    values));
+        }
+    }
+
     @VisibleForTesting
     public Queue<StatsQueueEntry> getQueue() {
         return queue;
@@ -134,6 +149,8 @@ public class BounceStats {
     public static final class DBSeries {
         public static final String OPS_SERIES = "ops";
         public static final List<String> OPS_COLUMNS = ImmutableList.of("time", "object", "size", "duration");
+        public static final String OBJECT_STORE_SERIES = "object_store_stats";
+        public static final List<String> OBJECT_STORE_COLUMNS = ImmutableList.of("time", "size", "objects");
 
         private final List<String> columns;
         private final String name;

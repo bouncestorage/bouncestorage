@@ -7,7 +7,7 @@ describe ('Test createStoreCtrl', function() {
     scope = $rootScope.$new();
     CreateStoreCtrl = $controller('CreateStoreCtrl',
       { $scope: scope });
-  }));  
+  }));
 
   it ('should set edit', function() {
     expect(scope.edit).toEqual(undefined);
@@ -32,7 +32,7 @@ describe ('Test createStoreCtrl -- edit', function() {
   };
 
   beforeEach(inject(function ($rootScope, $controller) {
-    scope = $rootScope.$new(); 
+    scope = $rootScope.$new();
 
     ObjectStore.get = function(params, success) {
       if (params.id !== undefined) {

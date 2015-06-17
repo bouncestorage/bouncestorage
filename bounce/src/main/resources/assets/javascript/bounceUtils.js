@@ -321,3 +321,76 @@ BounceUtils.toHumanSize = function(dataSize) {
 
   return dataSize;
 };
+
+BounceUtils.queryTagsMap = {
+  ops: {
+    serie: 0,
+    provider: 2,
+    container: 4,
+    op: 6
+  },
+  object_store_stats: {
+    serie: 0,
+    provider: 2,
+    container: 4
+  }
+};
+
+BounceUtils.parseSerieName = function (name) {
+  var tokens = name.split(".");
+  var map = BounceUtils.queryTagsMap[tokens[0]];
+  var keys = Object.keys(map);
+  var result = {};
+  for (var i = 0; i < keys.length; i++) {
+    result[keys[i]] = tokens[map[keys[i]]];
+  }
+  return result;
+};
+
+BounceUtils.DB_NAME = "bounce";
+BounceUtils.DB_URL = "http://" + window.location.hostname + ":8086";
+BounceUtils.DB_USER = "bounce";
+BounceUtils.DB_PASSWORD = "bounce";
+BounceUtils.SERIES_URL = BounceUtils.DB_URL + "/db/" + BounceUtils.DB_NAME +
+    "/series?u=" + BounceUtils.DB_USER + "&p=" + BounceUtils.DB_PASSWORD;
+
+BounceUtils.TRACKED_METHODS =
+  { 'PUT': 0,
+    'GET': 1,
+    'DELETE': 2
+  };
+
+BounceUtils.OPS_SERIES_PREFIX = "ops";
+BounceUtils.OPS_QUERY = "select count(object) from merge(/^" +
+    BounceUtils.OPS_SERIES_PREFIX + "./i) group by time(30s) fill(0) " +
+    "where time > now()-1h";
+BounceUtils.DURATION_QUERY = "select mean(duration) from merge(/^" +
+    BounceUtils.OPS_SERIES_PREFIX;
+BounceUtils.DURATION_PARAMETERS =
+    " group by time(30s) fill(0) where time > now() - 1h";
+
+BounceUtils.OBJECT_STORE_PREFIX = "object_store_stats"
+BounceUtils.OBJECT_STORE_QUERY =
+    "select * from /^" + BounceUtils.OBJECT_STORE_PREFIX;
+
+BounceUtils.OPS_QUERY_OBJECTS_SIZE = "select count(object), sum(size) from /^" +
+    BounceUtils.OPS_SERIES_PREFIX;
+
+BounceUtils.opCountQuery = function(op) {
+  return BounceUtils.OP_COUNT_SIZE_QUERY + "'" + op + "'";
+};
+
+BounceUtils.durationQuery = function(opName) {
+  return BounceUtils.DURATION_QUERY + "..*\.op\." + opName + "$/) " +
+      BounceUtils.DURATION_PARAMETERS;
+};
+
+BounceUtils.objectStoreStatsQuery = function(providerId) {
+  return BounceUtils.OBJECT_STORE_QUERY + "\.provider\." +
+      providerId + "..*/ limit 1";
+};
+
+BounceUtils.containerStatsQuery = function(providerId, containerName, method) {
+  return BounceUtils.OPS_QUERY_OBJECTS_SIZE + ".provider." + providerId +
+      ".container." + containerName + ".op." + method + '$/';
+};

@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.StreamSupport;
 
+import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.PausableThreadPoolExecutor;
 import com.bouncestorage.bounce.Utils;
@@ -89,10 +90,14 @@ public final class BounceService {
     class BounceTask implements Runnable {
         private String container;
         private BounceTaskStatus status;
+        private ContainerStats sourceStats;
+        private ContainerStats destinationStats;
 
         BounceTask(String container, BounceTaskStatus status) {
             this.container = requireNonNull(container);
             this.status = requireNonNull(status);
+            sourceStats = new ContainerStats();
+            destinationStats = new ContainerStats();
         }
 
         @Override
@@ -100,11 +105,23 @@ public final class BounceService {
             BlobStore blobStore = app.getBlobStore(container);
             BouncePolicy policy = (BouncePolicy) requireNonNull(blobStore);
             processPolicy(policy);
+            logStats(policy.getSource(), sourceStats);
             if (policy.getDestination() instanceof BouncePolicy) {
                 processPolicy((BouncePolicy) policy.getDestination());
+            } else if (policy.getDestination() != null) {
+                logStats(policy.getDestination(), destinationStats);
             }
 
             status.endTime = new Date();
+        }
+
+        private void logStats(BlobStore blobStore, ContainerStats stats) {
+            String targetContainer = container;
+            if (blobStore instanceof BlobStoreTarget) {
+                targetContainer = ((BlobStoreTarget) blobStore).mapContainer(null);
+            }
+            app.getBounceStats().logObjectStoreStats(app.getBlobStoreId(blobStore), targetContainer, stats.totalSize,
+                    stats.objectCount);
         }
 
         class ReconcileIterator implements Iterator<Pair<BounceStorageMetadata, StorageMetadata>> {
@@ -175,7 +192,9 @@ public final class BounceService {
         private void reconcileObject(BouncePolicy policy, BounceStorageMetadata source,
                                              StorageMetadata destination) {
             try {
-                adjustCount(policy.reconcileObject(container, source, destination));
+                BounceResult result = policy.reconcileObject(container, source, destination);
+                adjustContainerStats(result, source, destination);
+                adjustCount(result);
             } catch (Throwable e) {
                 e.printStackTrace();
                 logger.error("Failed to reconcile object {}, {} in {}: {}", source, destination, container,
@@ -183,6 +202,37 @@ public final class BounceService {
                 status.errorObjectCount.getAndIncrement();
             } finally {
                 status.totalObjectCount.getAndIncrement();
+            }
+        }
+
+        private void adjustContainerStats(BounceResult result, StorageMetadata source, StorageMetadata destination) {
+            if (source != null && result != BounceResult.REMOVE) {
+                // We may remove the object from the source during a migration operation
+                sourceStats.objectCount += 1;
+                switch (result) {
+                    case COPY:
+                        destinationStats.objectCount += 1;
+                        destinationStats.totalSize += source.getSize();
+                        sourceStats.totalSize += source.getSize();
+                        break;
+                    case NO_OP:
+                        sourceStats.totalSize += source.getSize();
+                        break;
+                    case MOVE:
+                    case LINK:
+                        // TODO: we should look up the link size
+                        sourceStats.totalSize += 0;
+                        destinationStats.objectCount += 1;
+                        destinationStats.totalSize += source.getSize();
+                        break;
+                    default:
+                        break;
+                }
+            }
+            if (destination != null && source == null && result != BounceResult.REMOVE) {
+                // This can only be a NO_OP at this point (COPY, LINK, or MOVE would be taken care of above.
+                destinationStats.objectCount += 1;
+                destinationStats.totalSize += destination.getSize();
             }
         }
 
@@ -287,5 +337,11 @@ public final class BounceService {
         public void abort() {
             aborted = true;
         }
+    }
+
+    public static final class ContainerStats {
+        // Can represent up to ~9 exabytes as bytes
+        long totalSize;
+        long objectCount;
     }
 }
