@@ -98,9 +98,9 @@ public class BounceStatsTest {
     @Test
     public void testLogContainerStatsAfterMove() throws Exception {
         setupApplication();
-        setupContainerAndUploadBlob();
-        UtilsTest.switchPolicyforContainer(app, container, WriteBackPolicy.class, ImmutableMap.of(
+        container = UtilsTest.switchPolicyforContainer(app, WriteBackPolicy.class, ImmutableMap.of(
                 WriteBackPolicy.COPY_DELAY, "P0D", WriteBackPolicy.EVICT_DELAY, "P0D"));
+        uploadSourceBlob();
         app.getBlobStore(container).createContainerInLocation(null, container);
         BounceService.BounceTaskStatus status = runBounce();
         assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
@@ -126,9 +126,9 @@ public class BounceStatsTest {
     @Test
     public void testLogContainerStatsAfterCopy() throws Exception {
         setupApplication();
-        setupContainerAndUploadBlob();
-        UtilsTest.switchPolicyforContainer(app, container, WriteBackPolicy.class, ImmutableMap.of(
+        container = UtilsTest.switchPolicyforContainer(app, WriteBackPolicy.class, ImmutableMap.of(
                 WriteBackPolicy.COPY_DELAY, "P0D", WriteBackPolicy.EVICT_DELAY, "P1D"));
+        uploadSourceBlob();
         app.getBlobStore(container).createContainerInLocation(null, container);
         BounceService.BounceTaskStatus status = runBounce();
         assertStatus(status, status::getCopiedObjectCount).isEqualTo(1);
@@ -153,8 +153,8 @@ public class BounceStatsTest {
     @Test
     public void testLogContainerStatsAfterMigrate() throws Exception {
         setupApplication();
-        setupContainerAndUploadBlob();
-        UtilsTest.switchPolicyforContainer(app, container, MigrationPolicy.class);
+        container = UtilsTest.switchPolicyforContainer(app, container, MigrationPolicy.class);
+        uploadSourceBlob();
         app.getBlobStore(container).createContainerInLocation(null, container);
         BounceService.BounceTaskStatus status = runBounce();
         assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
@@ -187,9 +187,8 @@ public class BounceStatsTest {
         UtilsTest.createTestProvidersConfig(app.getConfiguration());
     }
 
-    private void setupContainerAndUploadBlob() {
+    private void uploadSourceBlob() {
         BlobStore blobStore = app.getBlobStore(0);
-        container = UtilsTest.createRandomContainerName();
         String blobName = UtilsTest.createRandomBlobName();
         byte[] blobContent = "foo".getBytes();
         blob = UtilsTest.makeBlob(blobStore, blobName, ByteSource.wrap(blobContent));
