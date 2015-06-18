@@ -40,7 +40,8 @@ BOUNCE_REPO = "git@github.com:bouncestorage/bouncestorage.git"
 BOUNCE_SRC_DIR = "bouncestorage"
 SUREFIRE_DIR = os.path.join(BOUNCE_SRC_DIR, 'bounce', 'target')
 SUREFIRE_DIR_NAME = 'surefire-reports'
-SUREFIRE_ARCHIVE = '/tmp/surefire.tgz'
+SUREFIRE_ARCHIVE = '/tmp/surefire.tar'
+COMPRESSED_ARCHIVE = SUREFIRE_ARCHIVE + '.gz'
 BOUNCE_NIGHTLY_TEST_NAME = "nightly/bounce_tests.py"
 
 DOCKER_SWIFT_REPO = "https://github.com/timuralp/docker-swift"
@@ -55,7 +56,7 @@ BLOBSTORE_2_PROPERTY_PREFIX = 'bounce.backend.1.jclouds'
 
 SSH_KEY_NAME = "/home/admin/.ssh/id_rsa"
 
-PACKAGES = [ 'openjdk-8-jdk git maven' ]
+PACKAGES = [ 'openjdk-8-jdk git fortune cowsay docker.io' ]
 APT_SOURCES = "/etc/apt/sources.list"
 UNSTABLE_REPO = "deb http://cloudfront.debian.net/debian unstable main"
 
@@ -103,7 +104,7 @@ def setup_code():
             execute("echo \"%s\"| sudo tee -a %s" % (UNSTABLE_REPO, APT_SOURCES))
 
     execute("sudo apt-get update")
-    execute("sudo apt-get install -y openjdk-8-jdk git maven fortune cowsay docker.io")
+    execute("sudo apt-get install -y " + " ".join(PACKAGES))
     git_clone(BOUNCE_REPO, BOUNCE_SRC_DIR)
     git_update_submodule(BOUNCE_SRC_DIR)
     target_dir = os.path.join(os.environ['HOME'], BOUNCE_SRC_DIR)
@@ -137,10 +138,24 @@ def get_object(creds, object_name):
     bucket = conn.get_bucket(CONFIG_BUCKET, validate=False, headers=security_headers)
     return bucket.get_key(object_name, headers=security_headers)
 
-def archive_surefire():
+def remove_reports():
     target_dir = os.path.join(os.environ['HOME'], SUREFIRE_DIR)
-    execute("cd %s && tar -czf %s %s" % (target_dir, SUREFIRE_ARCHIVE,
-            SUREFIRE_DIR_NAME))
+    execute("cd %s && rm -f %s" % (target_dir, SUREFIRE_ARCHIVE))
+
+def archive_surefire(provider):
+    target_dir = os.path.join(os.environ['HOME'], SUREFIRE_DIR)
+    updated_name = SUREFIRE_DIR_NAME + "." + provider
+    execute("cd %s && mv %s %s" % (target_dir, SUREFIRE_DIR_NAME, updated_name))
+    execute("cd %s && tar -rvf %s %s" % (target_dir, SUREFIRE_ARCHIVE,
+            updated_name))
+
+def append_file_to_archive(path):
+    target_dir = os.path.join(os.environ['HOME'], SUREFIRE_DIR)
+    execute("cd %s && tar -rvf %s %s" % (target_dir, SUREFIRE_ARCHIVE, path))
+
+def compress_archive():
+    execute("cd %s && gzip -f %s" % (os.path.dirname(SUREFIRE_ARCHIVE),
+        SUREFIRE_ARCHIVE))
 
 def send_email(creds, subject, body, attachment = None):
     conn = boto.ses.connect_to_region("us-east-1",
@@ -202,19 +217,14 @@ def run_test(provider_details, swift_port, test="all"):
     execute(command)
 
 def notify_failure(creds, error, backtrace):
-    archive_surefire()
     message = "Exception message:\n%s\n" % error.message
     message += backtrace + "\n"
-    with open(OUTPUT_LOG) as log_file:
-        message += log_file.read()
-    send_email(creds, "Nightly failed!", message, SUREFIRE_ARCHIVE)
+    send_email(creds, "Nightly failed!", message, COMPRESSED_ARCHIVE)
 
 def notify_success(creds):
     message = "Success!\n%s" % subprocess.check_output(["/usr/games/cowsay",
                 subprocess.check_output("/usr/games/fortune")])
-    with open(OUTPUT_LOG) as log_file:
-        message += log_file.read()
-    send_email(creds, "Nightly passed", message)
+    send_email(creds, "Nightly passed", message, COMPRESSED_ARCHIVE)
 
 def hash_file(filename):
     with open(filename, 'rb') as f:
@@ -266,8 +276,12 @@ def main():
                          "endpoint" : "http://127.0.0.1:%s/auth/v1.0/" % swift_far_port } ]
 
         os.chdir("bounce")
+        if ec2:
+            remove_reports()
         for provider in all_creds:
             run_test(provider, swift_near_port, test)
+            if ec2:
+                archive_surefire(provider.provider)
     except:
         exception = sys.exc_info()[1]
         if not ec2:
@@ -284,6 +298,8 @@ def main():
         sys.stdout.flush()
         log.close()
         sys.stdout = open(os.devnull, 'w')
+        append_file_to_archive(OUTPUT_LOG)
+        compress_archive()
         notify_failure(creds, exception, traceback.format_exc()) if exception else notify_success(creds)
         execute("sudo poweroff")
     if exception:
