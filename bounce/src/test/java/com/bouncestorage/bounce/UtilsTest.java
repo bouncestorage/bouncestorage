@@ -30,6 +30,7 @@ import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceConfiguration;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
+import com.bouncestorage.bounce.admin.ContainerPool;
 import com.bouncestorage.bounce.admin.Location;
 import com.bouncestorage.bounce.admin.VirtualContainer;
 import com.bouncestorage.bounce.admin.VirtualContainerResource;
@@ -66,24 +67,23 @@ public final class UtilsTest {
     private BlobStore farBlobStore;
     private String containerName;
 
-    public static void switchPolicyforContainer(BounceApplication app, String container, Class<? extends BouncePolicy>
+    public static String switchPolicyforContainer(BounceApplication app, String container, Class<? extends BouncePolicy>
             policy) {
-        switchPolicyforContainer(app, container, policy, ImmutableMap.of());
+        return switchPolicyforContainer(app, policy, ImmutableMap.of());
     }
 
-    public static void useWriteBackPolicyForContainer(BounceApplication app, String containerName,
+    public static String useWriteBackPolicyForContainer(BounceApplication app, String containerName,
                                                       Duration copyDuration, Duration evictDuration) {
-        switchPolicyforContainer(app, containerName, WriteBackPolicy.class,
+        return switchPolicyforContainer(app, WriteBackPolicy.class,
                 ImmutableMap.of(WriteBackPolicy.COPY_DELAY, copyDuration.toString(),
                         WriteBackPolicy.EVICT_DELAY, evictDuration.toString()));
     }
 
-    public static void switchPolicyforContainer(BounceApplication app, String container,
+    public static String switchPolicyforContainer(BounceApplication app,
             Class<? extends BouncePolicy> policy, Map<String, String> policyConfig) {
         BounceConfiguration config = app.getConfiguration();
-        assertThat(config.getList("bounce.backends").size() >= 2).isTrue();
-        app.getBlobStore(0).createContainerInLocation(null, container);
-        app.getBlobStore(1).createContainerInLocation(null, container + "-dest");
+        String sourceContainer = createOrRequestContainer(app.getBlobStore(0));
+        String destinationContainer = createOrRequestContainer(app.getBlobStore(1));
         String containerPrefix = Joiner.on(".").join(VirtualContainerResource.VIRTUAL_CONTAINER_PREFIX, "0");
         String cacheTierPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.CACHE_TIER_PREFIX);
         Properties newProperties = new Properties();
@@ -103,11 +103,12 @@ public final class UtilsTest {
         String primaryTierPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.PRIMARY_TIER_PREFIX);
         newProperties.setProperty(Joiner.on(".").join(primaryTierPrefix, Location.BLOB_STORE_ID_FIELD), "1");
         newProperties.setProperty(Joiner.on(".").join(primaryTierPrefix, Location.CONTAINER_NAME_FIELD),
-                container + "-dest");
-        newProperties.setProperty(Joiner.on(".").join(containerPrefix, VirtualContainer.NAME), container);
+                destinationContainer);
+        newProperties.setProperty(Joiner.on(".").join(containerPrefix, VirtualContainer.NAME), sourceContainer);
 
         config.setProperty("bounce.containers", config.getList("bounce.containers").add(0));
         config.setAll(newProperties);
+        return sourceContainer;
     }
 
     public static void createTestProvidersConfig(BounceConfiguration config) {
@@ -157,6 +158,10 @@ public final class UtilsTest {
             assertThat(metadata.getContentType()).as(actual.getMetadata().getName())
                     .isEqualTo(metadata2.getContentType());
         }
+    }
+
+    public static boolean isTransient(BlobStore blobStore) {
+        return blobStore.getContext().unwrap().getId().equals("transient");
     }
 
     private static class LongAssert extends AbstractLongAssert<LongAssert> {
@@ -346,5 +351,16 @@ public final class UtilsTest {
         status.future().get();
         assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
         return status;
+    }
+
+    private static String createOrRequestContainer(BlobStore blobStore) {
+        String container;
+        if (!isTransient(blobStore)) {
+            container = ContainerPool.getContainerPool(blobStore).getContainer();
+        } else {
+            container = UtilsTest.createRandomContainerName();
+            blobStore.createContainerInLocation(null, container);
+        }
+        return container;
     }
 }

@@ -44,8 +44,6 @@ public final class MigrationPolicyTest {
 
     @Before
     public void setUp() throws Exception {
-        containerName = UtilsTest.createRandomContainerName();
-
         synchronized (BounceApplication.class) {
             app = new BounceApplication();
         }
@@ -54,9 +52,8 @@ public final class MigrationPolicyTest {
         bounceService = new BounceService(app);
 
         UtilsTest.createTestProvidersConfig(app.getConfiguration());
-        UtilsTest.switchPolicyforContainer(app, containerName, MigrationPolicy.class);
+        containerName = UtilsTest.switchPolicyforContainer(app, containerName, MigrationPolicy.class);
         policy = (BouncePolicy) app.getBlobStore(containerName);
-        policy.createContainerInLocation(null, containerName);
     }
 
     @After
@@ -226,15 +223,16 @@ public final class MigrationPolicyTest {
         StatsQueueEntry getEntry = q.remove();
         ArrayList<Object> getOp = getEntry.getValues();
         int blobStoreId = app.getBlobStoreId(((BlobStoreTarget) policy.getDestination()).delegate());
+        String destinationStore = ((BlobStoreTarget) policy.getDestination()).mapContainer(null);
         assertThat(putEntry.getDbSeries().getName()).isEqualTo(BounceStats.DBSeries.OPS_SERIES +
                 ".provider." + blobStoreId +
-                ".container." + containerName + "-dest" +
+                ".container." + destinationStore +
                 ".op." + HttpMethod.PUT);
         assertThat(putOp.get(1)).isEqualTo(blobName);
         assertThat(putOp.get(2)).isEqualTo(getBlob.getMetadata().getSize());
         assertThat(getEntry.getDbSeries().getName()).isEqualTo(BounceStats.DBSeries.OPS_SERIES +
                 ".provider." + blobStoreId +
-                ".container." + containerName + "-dest" +
+                ".container." + destinationStore +
                 ".op." + HttpMethod.GET);
         assertThat(getOp.get(1)).isEqualTo(blobName);
         assertThat(getOp.get(2)).isEqualTo(getBlob.getMetadata().getSize());

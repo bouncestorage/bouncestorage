@@ -184,6 +184,12 @@
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <forkedProcessTimeoutInSeconds>300</forkedProcessTimeoutInSeconds>
                     <runOrder>random</runOrder>
+                    <properties>
+                        <property>
+                            <name>listener</name>
+                            <value>com.bouncestorage.bounce.BounceTestListener</value>
+                        </property>
+                    </properties>
                 </configuration>
             </plugin>
             <plugin>

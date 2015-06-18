@@ -32,8 +32,6 @@ public final class AdminTest {
 
     @Before
     public void setUp() throws Exception {
-        containerName = UtilsTest.createRandomContainerName();
-
         Properties properties = new Properties();
         try (InputStream is = AdminTest.class.getResourceAsStream("/bounce.properties")) {
             properties.load(is);
@@ -53,11 +51,10 @@ public final class AdminTest {
         }
 
         UtilsTest.createTestProvidersConfig(app.getConfiguration());
-        UtilsTest.switchPolicyforContainer(app, containerName, WriteBackPolicy.class,
+        containerName = UtilsTest.switchPolicyforContainer(app, WriteBackPolicy.class,
                 ImmutableMap.of(WriteBackPolicy.COPY_DELAY, Duration.ofSeconds(-1).toString(),
                         WriteBackPolicy.EVICT_DELAY, Duration.ofSeconds(0).toString()));
         policy = (BouncePolicy) app.getBlobStore(containerName);
-        policy.createContainerInLocation(null, containerName);
     }
 
     @After
