@@ -279,9 +279,11 @@ def main():
         if ec2:
             remove_reports()
         for provider in all_creds:
-            run_test(provider, swift_near_port, test)
-            if ec2:
-                archive_surefire(provider.provider)
+            try:
+                run_test(provider, swift_near_port, test)
+            finally:
+                if ec2:
+                    archive_surefire(provider["provider"])
     except:
         exception = sys.exc_info()[1]
         if not ec2:
