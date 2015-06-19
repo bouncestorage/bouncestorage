@@ -242,7 +242,7 @@ public final class BounceServiceTest {
     }
 
     private void toggleBounceNothing() {
-        containerName = UtilsTest.switchPolicyforContainer(app, containerName, NoBouncePolicy.class);
+        containerName = UtilsTest.switchPolicyforContainer(app, NoBouncePolicy.class);
         policy = (BouncePolicy) app.getBlobStore(containerName);
     }
 

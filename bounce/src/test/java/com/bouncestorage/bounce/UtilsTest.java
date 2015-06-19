@@ -67,13 +67,12 @@ public final class UtilsTest {
     private BlobStore farBlobStore;
     private String containerName;
 
-    public static String switchPolicyforContainer(BounceApplication app, String container, Class<? extends BouncePolicy>
-            policy) {
+    public static String switchPolicyforContainer(BounceApplication app, Class<? extends BouncePolicy> policy) {
         return switchPolicyforContainer(app, policy, ImmutableMap.of());
     }
 
-    public static String useWriteBackPolicyForContainer(BounceApplication app, String containerName,
-                                                      Duration copyDuration, Duration evictDuration) {
+    public static String useWriteBackPolicyForContainer(BounceApplication app, Duration copyDuration,
+                                                        Duration evictDuration) {
         return switchPolicyforContainer(app, WriteBackPolicy.class,
                 ImmutableMap.of(WriteBackPolicy.COPY_DELAY, copyDuration.toString(),
                         WriteBackPolicy.EVICT_DELAY, evictDuration.toString()));

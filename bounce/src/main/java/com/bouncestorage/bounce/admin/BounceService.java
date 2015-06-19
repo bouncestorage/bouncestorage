@@ -25,7 +25,6 @@ import java.util.stream.StreamSupport;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.BounceStorageMetadata;
-import com.bouncestorage.bounce.PausableThreadPoolExecutor;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy.BounceResult;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -148,7 +147,6 @@ public final class BounceService {
 
         private void processPolicy(BouncePolicy policy) {
             logger.info("processing policy {} {}", policy.getClass(), status.container);
-            ThreadPoolExecutor exe = new PausableThreadPoolExecutor(4);
 
             ListContainerOptions options = new ListContainerOptions().recursive();
 

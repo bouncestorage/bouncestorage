@@ -36,7 +36,7 @@ public final class WriteBackPolicyAutoWriteBackTest {
         bounceService = new BounceService(app);
 
         UtilsTest.createTestProvidersConfig(app.getConfiguration());
-        containerName = UtilsTest.useWriteBackPolicyForContainer(app, containerName,
+        containerName = UtilsTest.useWriteBackPolicyForContainer(app,
                 Duration.ofSeconds(0), Duration.ofSeconds(-1));
         policy = (BouncePolicy) app.getBlobStore(containerName);
     }
