@@ -146,12 +146,11 @@ def archive_surefire(provider):
     target_dir = os.path.join(os.environ['HOME'], SUREFIRE_DIR)
     updated_name = SUREFIRE_DIR_NAME + "." + provider
     execute("cd %s && mv %s %s" % (target_dir, SUREFIRE_DIR_NAME, updated_name))
-    execute("cd %s && tar -rvf %s %s" % (target_dir, SUREFIRE_ARCHIVE,
+    execute("tar -C %s -rvf %s %s" % (target_dir, SUREFIRE_ARCHIVE,
             updated_name))
 
 def append_file_to_archive(path):
-    target_dir = os.path.join(os.environ['HOME'], SUREFIRE_DIR)
-    execute("cd %s && tar -rvf %s %s" % (target_dir, SUREFIRE_ARCHIVE, path))
+    execute("tar -rvf %s %s" % (SUREFIRE_ARCHIVE, path))
 
 def compress_archive():
     execute("cd %s && gzip -f %s" % (os.path.dirname(SUREFIRE_ARCHIVE),
