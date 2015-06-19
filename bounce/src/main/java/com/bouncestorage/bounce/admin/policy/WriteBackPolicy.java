@@ -545,14 +545,23 @@ public class WriteBackPolicy extends BouncePolicy {
     }
 
     private boolean isCopy() {
+        if (copyDelay == null) {
+            return false;
+        }
         return !copyDelay.isNegative();
     }
 
     private boolean isEvict() {
+        if (evictDelay == null) {
+            return false;
+        }
         return !evictDelay.isNegative();
     }
 
     private boolean isImmediateCopy() {
+        if (copyDelay == null) {
+            return false;
+        }
         return copyDelay.isZero();
     }
 }

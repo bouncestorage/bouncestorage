@@ -48,7 +48,8 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
         destinationBlobStore = destination;
     }
 
-    public final BlobStore getSource() {
+    // Not final as we need to use this method with Mockito
+    public BlobStore getSource() {
         return sourceBlobStore;
     }
 
