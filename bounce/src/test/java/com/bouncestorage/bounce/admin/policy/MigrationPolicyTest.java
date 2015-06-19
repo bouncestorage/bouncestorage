@@ -52,7 +52,7 @@ public final class MigrationPolicyTest {
         bounceService = new BounceService(app);
 
         UtilsTest.createTestProvidersConfig(app.getConfiguration());
-        containerName = UtilsTest.switchPolicyforContainer(app, containerName, MigrationPolicy.class);
+        containerName = UtilsTest.switchPolicyforContainer(app, MigrationPolicy.class);
         policy = (BouncePolicy) app.getBlobStore(containerName);
     }
 

@@ -153,7 +153,7 @@ public class BounceStatsTest {
     @Test
     public void testLogContainerStatsAfterMigrate() throws Exception {
         setupApplication();
-        container = UtilsTest.switchPolicyforContainer(app, container, MigrationPolicy.class);
+        container = UtilsTest.switchPolicyforContainer(app, MigrationPolicy.class);
         uploadSourceBlob();
         app.getBlobStore(container).createContainerInLocation(null, container);
         BounceService.BounceTaskStatus status = runBounce();
