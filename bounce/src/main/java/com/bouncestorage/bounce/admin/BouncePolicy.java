@@ -70,6 +70,9 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
     public abstract BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject);
 
+    public void prepareBounce(String containerName) {
+    }
+
     public void takeOver(String containerName) {
     }
 

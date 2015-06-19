@@ -157,6 +157,7 @@ public final class BounceService {
             PeekingIterator<StorageMetadata> sourceIterator = Iterators.peekingIterator(
                     Utils.crawlBlobStore(policy, container, options).iterator());
 
+            policy.prepareBounce(container);
             StreamSupport.stream(Spliterators.spliteratorUnknownSize(
                     new ReconcileIterator(sourceIterator, destinationIterator), Spliterator.CONCURRENT), true)
                     .forEach((p) -> {
