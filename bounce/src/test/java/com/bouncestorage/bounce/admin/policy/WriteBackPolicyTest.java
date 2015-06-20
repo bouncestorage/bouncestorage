@@ -211,10 +211,12 @@ public class WriteBackPolicyTest {
         String blobName = UtilsTest.createRandomBlobName();
         Blob blobFoo = UtilsTest.makeBlob(policy, blobName, ByteSource.wrap("foo".getBytes()));
         Blob blobBar = UtilsTest.makeBlob(policy, blobName, ByteSource.wrap("bar".getBytes()));
+        logger.info("PUT foo to {}", containerName);
         policy.putBlob(containerName, blobFoo);
 
         // Move the blob
         UtilsTest.advanceServiceClock(app, duration.plusHours(1));
+        logger.info("BOUNCE foo");
         BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
         UtilsTest.assertEqualBlobs(blobFoo, farBlob);
@@ -225,6 +227,7 @@ public class WriteBackPolicyTest {
         }
 
         // Update the object
+        logger.info("PUT bar to {}", containerName);
         policy.putBlob(containerName, blobBar);
         Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
         Blob canonicalBlob = policy.getBlob(containerName, blobName);
@@ -234,6 +237,7 @@ public class WriteBackPolicyTest {
         UtilsTest.assertEqualBlobs(canonicalBlob, blobBar);
 
         // Run the write back policy and ensure that the blob is updated
+        logger.info("BOUNCE bar");
         UtilsTest.advanceServiceClock(app, duration.plusHours(1));
         status = runBounce(bounceService, containerName);
         if (policy.getDestination() instanceof BouncePolicy) {

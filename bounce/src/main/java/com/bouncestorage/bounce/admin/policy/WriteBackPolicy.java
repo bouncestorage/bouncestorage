@@ -309,7 +309,7 @@ public class WriteBackPolicy extends BouncePolicy {
 
         app.executeBackgroundTask(() -> {
             try {
-                return Utils.copyBlob(getSource(), container, blob, tee);
+                return Utils.copyBlob(getDestination(), getSource(), container, blob, tee);
             } finally {
                 tee.close();
             }
@@ -390,6 +390,7 @@ public class WriteBackPolicy extends BouncePolicy {
             }
         }
 
+        logger.debug("moving {}", sourceObject.getName());
         Utils.copyBlobAndCreateBounceLink(getSource(), getDestination(), container,
                 sourceObject.getName());
         return BounceResult.MOVE;

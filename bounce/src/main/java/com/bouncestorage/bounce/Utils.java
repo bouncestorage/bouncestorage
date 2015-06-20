@@ -168,7 +168,7 @@ public final class Utils {
         }
     }
 
-    public static Blob copyBlob(BlobStore to, String containerNameTo, Blob blobFrom, InputStream is)
+    public static Blob copyBlob(BlobStore from, BlobStore to, String containerNameTo, Blob blobFrom, InputStream is)
         throws IOException {
         if (blobFrom == null || BounceLink.isLink(blobFrom.getMetadata())) {
             return null;
@@ -179,7 +179,12 @@ public final class Utils {
                 .payload(is);
 
         copyToBlobBuilder(metadata, builder);
-        to.putBlob(containerNameTo, builder.build(), MULTIPART_PUT);
+
+        if (isSwiftBlobStore(to)) {
+            copySwiftBlob(from, to, containerNameTo, builder.build());
+        } else {
+            to.putBlob(containerNameTo, builder.build(), MULTIPART_PUT);
+        }
         return blobFrom;
     }
 
@@ -222,6 +227,20 @@ public final class Utils {
         }
     }
 
+    private static boolean isSwiftBlobStore(BlobStore blobStore) {
+        return blobStore.getContext().unwrap().getId().equals("openstack-swift");
+    }
+
+    private static void copySwiftBlob(BlobStore from, BlobStore to, String containerNameTo, Blob blob) {
+        // TODO: swift object semantic changes if we do multipart upload,
+        // if both sides are swift, we may want to just copy the individual parts
+        PutOptions options = PutOptions.NONE;
+        if (blob.getMetadata().getContentMetadata().getContentLength() > to.getMaximumMultipartPartSize()) {
+            options = MULTIPART_PUT;
+        }
+        to.putBlob(containerNameTo, blob, options);
+    }
+
     public static Blob copyBlob(BlobStore from, BlobStore to, String containerNameTo, Blob blobFrom)
             throws IOException {
         if (blobFrom == null || BounceLink.isLink(blobFrom.getMetadata())) {
@@ -235,13 +254,15 @@ public final class Utils {
 
         copyToBlobBuilder(metadata, builder);
 
-        // TODO: swift object semantic changes if we do multipart upload,
-        // if both sides are swift, we may want to just copy the individual parts
-        PutOptions options = PutOptions.NONE;
-        if (blobFrom.getMetadata().getSize() >= to.getMinimumMultipartPartSize()) {
-            options = MULTIPART_PUT;
+        if (isSwiftBlobStore(to)) {
+            copySwiftBlob(from, to, containerNameTo, builder.build());
+        } else {
+            PutOptions options = PutOptions.NONE;
+            if (blobFrom.getMetadata().getSize() >= to.getMinimumMultipartPartSize()) {
+                options = MULTIPART_PUT;
+            }
+            to.putBlob(containerNameTo, builder.build(), options);
         }
-        to.putBlob(containerNameTo, builder.build(), options);
         return blobFrom;
     }
 
