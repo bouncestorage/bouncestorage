@@ -68,6 +68,8 @@ VERIFIER_RECIPIENTS = ["timuralp@bouncestorage.com",
 
 OUTPUT_LOG = '/tmp/bounce_verifier.log'
 
+JAVA_PROPERTIES = [ '-DLOG_LEVEL=info' ]
+
 class TestException(BaseException):
     pass
 
@@ -197,9 +199,11 @@ def get_all_blobstore_from_argv():
     return json.load(open(sys.argv[1]))
 
 def get_java_properties(provider_details, swift_port):
-    return ' '.join(map(lambda pair: "-D%s.%s=%s" % (BLOBSTORE_2_PROPERTY_PREFIX,
-                                                     pair[0], pair[1]), provider_details.items()) +
-                    map(lambda key: "-D%s%s" % (BLOBSTORE_1_PROPERTY_PREFIX, key), get_swift_properties(swift_port)))
+    blobstore_2 = map(lambda pair: "-D%s.%s=%s" % (BLOBSTORE_2_PROPERTY_PREFIX,
+            pair[0], pair[1]), provider_details.items())
+    blobstore_1 = map(lambda key: "-D%s%s" % (BLOBSTORE_1_PROPERTY_PREFIX, key),
+            get_swift_properties(swift_port))
+    return ' '.join(blobstore_2 + blobstore_1 + JAVA_PROPERTIES)
 
 def get_swift_properties(swift_port):
     return [ ".provider=openstack-swift", ".endpoint=http://127.0.0.1:%s/auth/v1.0/" % swift_port,
