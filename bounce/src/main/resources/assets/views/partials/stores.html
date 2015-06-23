@@ -130,7 +130,7 @@
               <div class="form-inline">
                 <input class="form-control" type="text"
                     ng-model="editLocation.copyDuration"
-                    ng-disabled="editLocation.copyUnits === null"
+                    ng-disabled="editLocation.copyUnits === undefined || editLocation.copyUnits === null"
                     placeholder="duration"
                 />
                 <select class="form-control" ng-model="editLocation.copyUnits"
@@ -144,7 +144,7 @@
               <div class="form-inline">
                 <input class="form-control" type="text"
                     ng-model="editLocation.moveDuration"
-                    ng-disabled="editLocation.moveUnits === null"
+                    ng-disabled="editLocation.moveUnits === undefined || editLocation.moveUnits === null"
                     placeholder="duration"
                 />
                 <select class="form-control" ng-model="editLocation.moveUnits"
@@ -153,12 +153,26 @@
                 </select>
               </div>
             </div>
+            <div class="form-group" ng-if="editLocation.tier !== tiers.MIGRATION">
+              <label class="control-label">Move {{editLocation.action_label}} if capacity exceeds:</label>
+              <div class="form-inline">
+                <input class="form-control" type="text"
+                    ng-model="editLocation.capacity"
+                    ng-disabled="editLocation.capacityUnits === undefined || editLocation.capacityUnits === null"
+                    placeholder="container capacity"
+                />
+                <select class="form-control" ng-model="editLocation.capacityUnits"
+                    ng-options="c as c for c in capacityUnits">
+                  <option value="">Unlimited</option>
+                </select>
+              </div>
+            </div>
           </form>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal"
-            ng-click="actions.updateDuration()">
+            ng-click="actions.updateTier()">
           Close
         </button>
       </div>

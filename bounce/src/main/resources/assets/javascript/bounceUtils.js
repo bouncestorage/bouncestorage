@@ -228,6 +228,12 @@ BounceUtils.findStore = function(stores, id) {
 BounceUtils.durationUnits = ['seconds', 'minutes', 'hours', 'days', 'months',
     'years'];
 
+BounceUtils.capacityUnits = ['GB', 'TB', 'PB'];
+BounceUtils.capacityMap = { GB: 1024*1024*1024,
+                            TB: 1024*1024*1024*1024,
+                            PB: 1024*1024*1024*1024*1024
+                          };
+
 BounceUtils.isSet = function(x) {
   return (x !== undefined) && (x !== null);
 };
@@ -239,7 +245,7 @@ BounceUtils.toDuration = function(value, units) {
 };
 
 BounceUtils.setDuration = function(tier) {
-  if (tier.moveUnits === null) {
+  if (tier.moveUnits === null || tier.moveUnits === undefined) {
     tier.object.moveDelay = '-P1D';
   } else if (BounceUtils.isSet(tier.moveDuration) &&
       BounceUtils.isSet(tier.moveUnits)) {
@@ -247,13 +253,34 @@ BounceUtils.setDuration = function(tier) {
         tier.moveUnits);
   }
 
-  if (tier.copyUnits === null) {
+  if (tier.copyUnits === null || tier.copyUnits === undefined) {
     tier.object.copyDelay = '-P1D';
   } else if (BounceUtils.isSet(tier.copyDuration) &&
       BounceUtils.isSet(tier.copyUnits)) {
     tier.object.copyDelay = BounceUtils.toDuration(tier.copyDuration,
         tier.copyUnits);
   }
+};
+
+BounceUtils.setCapacity = function(tier) {
+  if (tier.capacityUnits === null || tier.capacityUnits === undefined) {
+    tier.object.capacity = null;
+  } else if (BounceUtils.isSet(tier.capacityUnits) &&
+      BounceUtils.isSet(tier.capacity)) {
+    var unitMultiplier = BounceUtils.capacityMap[tier.capacityUnits];
+    tier.object.capacity = unitMultiplier * Number(tier.capacity);
+  }
+};
+
+BounceUtils.parseCapacity = function(tier) {
+  var capacity = tier.object.capacity;
+  if (!BounceUtils.isSet(capacity) || capacity === '') {
+    return;
+  }
+  var size = BounceUtils.toHumanSize(capacity);
+  var tokens = size.split(' ');
+  tier.capacity = tokens[0];
+  tier.capacityUnits = tokens[tokens.length - 1];
 };
 
 BounceUtils.parseDuration = function(durationString, object, valueField,
@@ -281,11 +308,12 @@ BounceUtils.parseDuration = function(durationString, object, valueField,
   }
 };
 
-BounceUtils.parseDurations = function(tierLocation) {
+BounceUtils.parseFields = function(tierLocation) {
   BounceUtils.parseDuration(tierLocation.object.copyDelay, tierLocation,
       'copyDuration', 'copyUnits');
   BounceUtils.parseDuration(tierLocation.object.moveDelay, tierLocation,
       'moveDuration', 'moveUnits');
+  BounceUtils.parseCapacity(tierLocation);
 };
 
 BounceUtils.toHumanSize = function(dataSize) {
@@ -301,6 +329,9 @@ BounceUtils.toHumanSize = function(dataSize) {
     },
     { name: 'TB',
       size: 1024*1024*1024*1024
+    },
+    { name: 'PB',
+      size: 1024*1024*1024*1024*1024
     }
   ];
 

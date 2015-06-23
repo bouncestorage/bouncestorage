@@ -98,7 +98,7 @@ function extractLocations(vContainer) {
           }];
 }
 
-function setArchiveDuration(vContainer, toPrimary) {
+function setArchiveFields(vContainer, toPrimary) {
   // HACK: We need to copy the copyDelay and moveDelay settings from the
   // archive location to the origin location (or vice versa) to present these
   // settings correctly on edits (and to save the edits correctly).
@@ -108,11 +108,14 @@ function setArchiveDuration(vContainer, toPrimary) {
     if (toPrimary) {
       primary.moveDelay = archive.moveDelay;
       primary.copyDelay = archive.copyDelay;
-      archive.moveDelay = '';
-      archive.copyDelay = '';
+      primary.capacity = archive.capacity;
+      archive.moveDelay = null;
+      archive.copyDelay = null;
+      archive.capacity = null;
     } else {
       archive.moveDelay = primary.moveDelay;
       archive.copyDelay = primary.copyDelay;
+      archive.capacity = primary.capacity;
     }
   }
   return;
@@ -129,6 +132,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     $scope.newContainer = null;
     $scope.providerLabel = null;
     $scope.durationUnits = BounceUtils.durationUnits;
+    $scope.capacityUnits = BounceUtils.capacityUnits;
     $scope.tiers = BounceUtils.tiers;
 
     $scope.getProviderLabel = function() {
@@ -191,7 +195,6 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       var editLocation = $scope.editLocation.object;
       var blobStoreId = editLocation.blobStoreId;
       if (!(blobStoreId in $scope.containersMap)) {
-        console.log("blob store ID not found");
         return [];
       }
       if (blobStoreId === $scope.enhanceContainer.originLocation.blobStoreId) {
@@ -222,7 +225,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       VirtualContainer.get({ id: container.virtualContainerId },
                            function(vContainer) {
                              $scope.enhanceContainer = vContainer;
-                             setArchiveDuration(vContainer, false);
+                             setArchiveFields(vContainer, false);
                              $scope.locations = extractLocations(vContainer);
                              $('#configureContainerModal').modal('show');
                            }
@@ -304,24 +307,25 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
 
     $scope.actions.prompt = function(locationObject) {
       $scope.editLocation = locationObject;
-      BounceUtils.parseDurations($scope.editLocation);
+      BounceUtils.parseFields($scope.editLocation);
       $('#configureTierModal').modal('show');
     };
 
-    $scope.actions.updateDuration = function() {
+    $scope.actions.updateTier = function() {
       BounceUtils.setDuration($scope.editLocation);
+      BounceUtils.setCapacity($scope.editLocation);
     };
 
     $scope.actions.saveContainer = function() {
-      setArchiveDuration($scope.enhanceContainer, true);
-      if (typeof($scope.enhanceContainer.id) === 'undefined') {
+      setArchiveFields($scope.enhanceContainer, true);
+      if ($scope.enhanceContainer.id === undefined) {
         VirtualContainer.save($scope.enhanceContainer,
         function(result) {
           console.log('Saved container: ' + result.status);
           $scope.refreshContainersMap();
         },
         function(error) {
-          console.log('Error: ' + error);
+          console.log(error);
         });
       } else {
         VirtualContainer.update($scope.enhanceContainer,
