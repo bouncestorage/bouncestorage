@@ -68,6 +68,8 @@ VERIFIER_RECIPIENTS = ["timuralp@bouncestorage.com",
 
 OUTPUT_LOG = '/tmp/bounce_verifier.log'
 
+JAVA_PROPERTIES = [ '-DLOG_LEVEL=info' ]
+
 class TestException(BaseException):
     pass
 
@@ -146,12 +148,11 @@ def archive_surefire(provider):
     target_dir = os.path.join(os.environ['HOME'], SUREFIRE_DIR)
     updated_name = SUREFIRE_DIR_NAME + "." + provider
     execute("cd %s && mv %s %s" % (target_dir, SUREFIRE_DIR_NAME, updated_name))
-    execute("cd %s && tar -rvf %s %s" % (target_dir, SUREFIRE_ARCHIVE,
+    execute("tar -C %s -rvf %s %s" % (target_dir, SUREFIRE_ARCHIVE,
             updated_name))
 
 def append_file_to_archive(path):
-    target_dir = os.path.join(os.environ['HOME'], SUREFIRE_DIR)
-    execute("cd %s && tar -rvf %s %s" % (target_dir, SUREFIRE_ARCHIVE, path))
+    execute("tar -rvf %s %s" % (SUREFIRE_ARCHIVE, path))
 
 def compress_archive():
     execute("cd %s && gzip -f %s" % (os.path.dirname(SUREFIRE_ARCHIVE),
@@ -198,9 +199,11 @@ def get_all_blobstore_from_argv():
     return json.load(open(sys.argv[1]))
 
 def get_java_properties(provider_details, swift_port):
-    return ' '.join(map(lambda pair: "-D%s.%s=%s" % (BLOBSTORE_2_PROPERTY_PREFIX,
-                                                     pair[0], pair[1]), provider_details.items()) +
-                    map(lambda key: "-D%s%s" % (BLOBSTORE_1_PROPERTY_PREFIX, key), get_swift_properties(swift_port)))
+    blobstore_2 = map(lambda pair: "-D%s.%s=%s" % (BLOBSTORE_2_PROPERTY_PREFIX,
+            pair[0], pair[1]), provider_details.items())
+    blobstore_1 = map(lambda key: "-D%s%s" % (BLOBSTORE_1_PROPERTY_PREFIX, key),
+            get_swift_properties(swift_port))
+    return ' '.join(blobstore_2 + blobstore_1 + JAVA_PROPERTIES)
 
 def get_swift_properties(swift_port):
     return [ ".provider=openstack-swift", ".endpoint=http://127.0.0.1:%s/auth/v1.0/" % swift_port,
@@ -279,9 +282,11 @@ def main():
         if ec2:
             remove_reports()
         for provider in all_creds:
-            run_test(provider, swift_near_port, test)
-            if ec2:
-                archive_surefire(provider.provider)
+            try:
+                run_test(provider, swift_near_port, test)
+            finally:
+                if ec2:
+                    archive_surefire(provider["provider"])
     except:
         exception = sys.exc_info()[1]
         if not ec2:
