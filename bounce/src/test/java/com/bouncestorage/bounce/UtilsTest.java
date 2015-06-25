@@ -52,6 +52,7 @@ import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.io.ContentMetadata;
@@ -145,17 +146,29 @@ public final class UtilsTest {
         if (actual != expected) {
             assertThat(actual).isNotNull();
             assertThat(expected).isNotNull();
+            BlobMetadata actualMeta = actual.getMetadata();
+            BlobMetadata expectMeta = expected.getMetadata();
+            String name = expectMeta.getName();
+
             try (InputStream is = actual.getPayload().openStream();
                  InputStream is2 = expected.getPayload().openStream()) {
-                assertThat(is).as(actual.getMetadata().getName()).hasContentEqualTo(is2);
+                assertThat(is).as(name).hasContentEqualTo(is2);
             }
             // TODO: assert more metadata, including user metadata
-            ContentMetadata metadata = actual.getMetadata().getContentMetadata();
-            ContentMetadata metadata2 = expected.getMetadata().getContentMetadata();
-            assertThat(metadata.getContentMD5AsHashCode()).as(actual.getMetadata().getName())
-                    .isEqualTo(metadata2.getContentMD5AsHashCode());
-            assertThat(metadata.getContentType()).as(actual.getMetadata().getName())
-                    .isEqualTo(metadata2.getContentType());
+            // just created blobs have no etags
+            if (expectMeta.getETag() != null) {
+                assertThat(actualMeta.getETag()).as(name).isEqualTo(expectMeta.getETag());
+            }
+            ContentMetadata actualContentMeta = actualMeta.getContentMetadata();
+            ContentMetadata expectContentMeta = expectMeta.getContentMetadata();
+            // s3 doesn't return content md5
+            if (actualContentMeta.getContentMD5AsHashCode() != null &&
+                    expectContentMeta.getContentMD5AsHashCode() != null) {
+                assertThat(actualContentMeta.getContentMD5AsHashCode()).as(name)
+                        .isEqualTo(expectContentMeta.getContentMD5AsHashCode());
+            }
+            assertThat(actualContentMeta.getContentType()).as(name)
+                    .isEqualTo(expectContentMeta.getContentType());
         }
     }
 

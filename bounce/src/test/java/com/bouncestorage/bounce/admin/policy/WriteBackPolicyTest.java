@@ -219,7 +219,7 @@ public class WriteBackPolicyTest {
         logger.info("BOUNCE foo");
         BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
-        UtilsTest.assertEqualBlobs(blobFoo, farBlob);
+        UtilsTest.assertEqualBlobs(farBlob, blobFoo);
         if (policy.getDestination() instanceof BouncePolicy) {
             assertStatus(status, status::getMovedObjectCount).isEqualTo(2);
         } else {
