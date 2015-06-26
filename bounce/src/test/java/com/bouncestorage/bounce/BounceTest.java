@@ -105,7 +105,7 @@ public final class BounceTest {
         assertThat((Object) meta2).isEqualToComparingFieldByField(meta1);
 
         Blob blob2 = policy.getBlob(containerName, blobName);
-        UtilsTest.assertEqualBlobs(blob, blob2);
+        UtilsTest.assertEqualBlobs(blob2, blob);
     }
 
     @Test
