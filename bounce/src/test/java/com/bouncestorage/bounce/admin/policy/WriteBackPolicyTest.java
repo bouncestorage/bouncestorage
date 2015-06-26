@@ -136,7 +136,7 @@ public class WriteBackPolicyTest {
         }
         assertThat(policy.getDestination().blobExists(destinationContainer, blobName)).isFalse();
         assertThat(policy.getSource().blobExists(containerName, blobName)).isTrue();
-        UtilsTest.assertEqualBlobs(blob, policy.getSource().getBlob(containerName, blobName));
+        UtilsTest.assertEqualBlobs(policy.getSource().getBlob(containerName, blobName), blob);
 
         BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         if (policy.getDestination() instanceof BouncePolicy) {
@@ -146,8 +146,8 @@ public class WriteBackPolicyTest {
         }
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
         Blob nearBlob = policy.getSource().getBlob(containerName, blobName);
-        UtilsTest.assertEqualBlobs(blob, farBlob);
-        UtilsTest.assertEqualBlobs(blob, nearBlob);
+        UtilsTest.assertEqualBlobs(farBlob, blob);
+        UtilsTest.assertEqualBlobs(nearBlob, blob);
     }
 
     @Test
@@ -184,7 +184,7 @@ public class WriteBackPolicyTest {
         UtilsTest.advanceServiceClock(app, duration.plusHours(1));
         BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
-        UtilsTest.assertEqualBlobs(blob, farBlob);
+        UtilsTest.assertEqualBlobs(farBlob, blob);
         if (policy.getDestination() instanceof BouncePolicy) {
             assertStatus(status, status::getMovedObjectCount).isEqualTo(2);
         } else {
@@ -261,7 +261,7 @@ public class WriteBackPolicyTest {
         BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
         assertStatus(status, status::getTotalObjectCount).isNotEqualTo(0);
         Blob farBlob = policy.getDestination().getBlob(containerName, blobName);
-        UtilsTest.assertEqualBlobs(blobFoo, farBlob);
+        UtilsTest.assertEqualBlobs(farBlob, blobFoo);
         if (policy.getDestination() instanceof BouncePolicy) {
             assertStatus(status, status::getCopiedObjectCount).isEqualTo(2);
         } else {
@@ -379,7 +379,7 @@ public class WriteBackPolicyTest {
                 // GET
                 Blob one = reference.getBlob(containerName, blobName);
                 Blob two = policy.getBlob(containerName, blobName);
-                UtilsTest.assertEqualBlobs(one, two);
+                UtilsTest.assertEqualBlobs(two, one);
             } else if (op == 2) {
                 // DELETE
                 blobStores.forEach(b -> b.removeBlob(containerName, blobName));

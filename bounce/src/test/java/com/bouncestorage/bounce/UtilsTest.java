@@ -155,10 +155,6 @@ public final class UtilsTest {
                 assertThat(is).as(name).hasContentEqualTo(is2);
             }
             // TODO: assert more metadata, including user metadata
-            // just created blobs have no etags
-            if (expectMeta.getETag() != null) {
-                assertThat(actualMeta.getETag()).as(name).isEqualTo(expectMeta.getETag());
-            }
             ContentMetadata actualContentMeta = actualMeta.getContentMetadata();
             ContentMetadata expectContentMeta = expectMeta.getContentMetadata();
             // s3 doesn't return content md5
