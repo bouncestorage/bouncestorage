@@ -113,8 +113,7 @@ public final class BounceApplicationTest {
         synchronized (BounceApplication.class) {
             app.run(new String[]{"server", webConfig});
         }
-        while (!app.getS3ProxyState().equals(AbstractLifeCycle.STARTED) && !app.isSwiftProxyStarted()) {
-            Thread.sleep(10);
-        }
+
+        Utils.waitUntil(() -> app.getS3ProxyState().equals(AbstractLifeCycle.STARTED) || app.isSwiftProxyStarted());
     }
 }

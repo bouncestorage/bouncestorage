@@ -220,10 +220,9 @@ public final class BounceServiceTest {
 
         app.startBounceScheduler();
         BounceTaskStatus status;
-        while ((status = bounceService.status(containerName)) == null) {
-            // wait until we start
-            Thread.sleep(100);
-        }
+
+        Utils.waitUntil(() -> bounceService.status(containerName) != null);
+        status = bounceService.status(containerName);
         status.future().get();
         assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
         assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
