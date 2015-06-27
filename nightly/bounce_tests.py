@@ -143,7 +143,7 @@ def get_object(creds, object_name):
 def remove_reports():
     target_dir = os.path.join(os.environ['HOME'], SUREFIRE_DIR)
     execute("rm -f %s" % (SUREFIRE_ARCHIVE))
-    execute("cd %s && rm -f %s.*" % (target_dir, SUREFIRE_DIR_NAME))
+    execute("cd %s && rm -rf %s.*" % (target_dir, SUREFIRE_DIR_NAME))
 
 def archive_surefire(provider):
     target_dir = os.path.join(os.environ['HOME'], SUREFIRE_DIR)
