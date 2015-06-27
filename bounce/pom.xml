@@ -180,8 +180,8 @@
                 <configuration>
                     <parallel>methods</parallel>
                     <threadCount>1</threadCount>
-                    <argLine>-Xmx128m</argLine>
-                    <forkCount>0</forkCount>
+                    <argLine>-Xmx512m</argLine>
+                    <forkCount>1</forkCount>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <forkedProcessTimeoutInSeconds>300</forkedProcessTimeoutInSeconds>
                     <runOrder>random</runOrder>
