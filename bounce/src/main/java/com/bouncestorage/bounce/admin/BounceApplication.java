@@ -266,6 +266,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             }
         }
 
+        boolean isTransient = false;
+
         for (int i = maxTierID; i >= 0; i--) {
             String tierPrefix = "tier." + i;
             int id = c.getInt(tierPrefix + "." + Location.BLOB_STORE_ID_FIELD, -1);
@@ -275,6 +277,9 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             BlobStore store = providers.get(id);
             if (store == null) {
                 throw new IllegalArgumentException(String.format("Blobstore %d not found", id));
+            }
+            if (store.getContext().unwrap().getId().equals("transient")) {
+                isTransient = true;
             }
             virtualContainer.getLocation(i).setBlobStoreId(id);
             String targetContainerName = c.getString(tierPrefix + "." + Location.CONTAINER_NAME_FIELD, containerName);
@@ -296,8 +301,11 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             throw new NoSuchElementException("not enough configured tiers");
         }
 
-        if (!lastPolicy.sanityCheck(containerName)) {
-            lastPolicy.takeOver(containerName);
+        // transient stores won't have any containers on startup
+        if (!isTransient || lastPolicy.containerExists(containerName)) {
+            if (!lastPolicy.sanityCheck(containerName)) {
+                lastPolicy.takeOver(containerName);
+            }
         }
 
         virtualContainers.put(containerName, lastPolicy);

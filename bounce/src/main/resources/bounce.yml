@@ -11,3 +11,5 @@ logging:
   loggers:
     org.eclipse.jetty: info
     jclouds.wire: info
+    com.codahale.metrics.JmxReporter: info
+    org.hibernate.validator.internal: info
