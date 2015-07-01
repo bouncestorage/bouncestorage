@@ -9,12 +9,15 @@ import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeoutException;
 
 import javax.annotation.Nullable;
 
@@ -42,6 +45,8 @@ import org.jclouds.io.ContentMetadata;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 
 public final class Utils {
+    public static final int WAIT_SLEEP_MS = 10;
+    public static final int WAIT_TIMEOUT_MS = 30 * 1000;
     private static final PutOptions MULTIPART_PUT = new PutOptions().multipart(true);
 
     private Utils() {
@@ -92,6 +97,20 @@ public final class Utils {
         blobStore.removeBlob(blobMetadata.getContainer(), blobMetadata.getName() +
                 WriteBackPolicy.LOG_MARKER_SUFFIX);
         return BouncePolicy.BounceResult.LINK;
+    }
+
+    public static void waitUntil(Callable<Boolean> test) throws Exception {
+        waitUntil(WAIT_SLEEP_MS, WAIT_TIMEOUT_MS, test);
+    }
+
+    public static void waitUntil(long waitMs, long timeoutMs, Callable<Boolean> test) throws Exception {
+        Instant timeStarted = Instant.now();
+        while (!test.call()) {
+            Thread.sleep(waitMs);
+            if (Instant.now().minusMillis(timeoutMs).isAfter(timeStarted)) {
+                throw new TimeoutException("Application took more than 30 seconds to start");
+            }
+        }
     }
 
     private static class CrawlBlobStoreIterable

@@ -40,6 +40,7 @@ import java.util.stream.StreamSupport;
 import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.PausableThreadPoolExecutor;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.utils.KeyStoreUtils;
 import com.bouncestorage.swiftproxy.SwiftProxy;
 import com.google.common.annotations.VisibleForTesting;
@@ -668,9 +669,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     public void busyWaitForBackgroundReconcileTasks() throws Exception {
         long completed = backgroundReconcileTasks.getCompletedTaskCount();
         backgroundReconcileTasks.resume();
-        while (backgroundReconcileTasks.getCompletedTaskCount() <= completed) {
-            Thread.sleep(10);
-        }
+        Utils.waitUntil(() -> backgroundReconcileTasks.getCompletedTaskCount() > completed);
     }
 
     @VisibleForTesting
