@@ -167,7 +167,7 @@ public final class MigrationPolicy extends BouncePolicy {
     }
 
     private ImmutableList<BlobStore> getCheckedStores() {
-        return ImmutableList.of(getSource(), getDestination());
+        return ImmutableList.of(getDestination(), getSource());
     }
 
     private BounceResult moveObject(String container, StorageMetadata objectMetadata) {
