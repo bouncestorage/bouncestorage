@@ -25,6 +25,8 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.bouncestorage.bounce.admin.policy.MigrationPolicy;
+import com.bouncestorage.bounce.admin.policy.StoragePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.base.Joiner;
@@ -83,7 +85,12 @@ public final class VirtualContainerResource {
     public String createContainer(VirtualContainer container) {
         container.setId(getNextContainerId());
         BounceConfiguration config = app.getConfiguration();
-        Properties newProperties = generatePropertiesFromRequest(container, null);
+        Properties newProperties;
+        try {
+            newProperties = generatePropertiesFromRequest(container, null);
+        } catch (IllegalArgumentException e) {
+            throw new WebApplicationException(e, Response.Status.BAD_REQUEST);
+        }
         if (config.getProperty(CONTAINERS_PREFIX) == null) {
             newProperties.setProperty(CONTAINERS_PREFIX, Integer.toString(container.getId()));
         } else {
@@ -107,7 +114,11 @@ public final class VirtualContainerResource {
         if (!current.getOriginLocation().equals(container.getOriginLocation())) {
             throw new WebApplicationException(Response.Status.BAD_REQUEST);
         }
-        config.setAll(generatePropertiesFromRequest(container, current));
+        try {
+            config.setAll(generatePropertiesFromRequest(container, current));
+        } catch (IllegalArgumentException e) {
+            throw new WebApplicationException(e, Response.Status.BAD_REQUEST);
+        }
 
         return "{\"status\":\"success\"}";
     }
@@ -121,39 +132,87 @@ public final class VirtualContainerResource {
             updateLocationConfig(properties, request.getOriginLocation(), locationPrefix);
         }
         if (current == null || current.getArchiveLocation().permittedChange(request.getArchiveLocation())) {
-            if ((current == null || current.getArchiveLocation().isUnset()) &&
-                    !request.getArchiveLocation().isUnset()) {
-                properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
-                        "WriteBackPolicy");
-            }
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.ARCHIVE_TIER_PREFIX);
             updateLocationConfig(properties, request.getArchiveLocation(), locationPrefix);
+            if (isPolicyUnset(current, request, VirtualContainer.TIER.ARCHIVE)) {
+                if (request.getOriginLocation().getCapacity() != null &&
+                        request.getOriginLocation().getCapacity() > 0) {
+                    properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
+                            StoragePolicy.class.getSimpleName());
+                } else {
+                    properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
+                            WriteBackPolicy.class.getSimpleName());
+                }
+            }
         }
         if (current == null || current.getCacheLocation().permittedChange(request.getCacheLocation())) {
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.CACHE_TIER_PREFIX);
-            if ((current == null || current.getCacheLocation().isUnset()) && !request.getCacheLocation().isUnset()) {
-                properties.setProperty(Joiner.on(".").join(locationPrefix, "policy"), "WriteBackPolicy");
-            }
             updateLocationConfig(properties, request.getCacheLocation(), locationPrefix);
+            if (isPolicyUnset(current, request, VirtualContainer.TIER.CACHE)) {
+                if (request.getCacheLocation().getCapacity() != null) {
+                    properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.CACHE_TIER_PREFIX, "policy"),
+                            StoragePolicy.class.getSimpleName());
+                } else {
+                    properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.CACHE_TIER_PREFIX, "policy"),
+                            WriteBackPolicy.class.getSimpleName());
+                }
+            }
         }
         if (current == null || current.getMigrationTargetLocation().permittedChange(
                 request.getMigrationTargetLocation())) {
             String locationPrefix = Joiner.on(".").join(prefix, VirtualContainer.MIGRATION_TIER_PREFIX);
-            if ((current == null || current.getMigrationTargetLocation().isUnset()) &&
-                    !request.getMigrationTargetLocation().isUnset()) {
-                properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
-                        "MigrationPolicy");
-            }
             updateLocationConfig(properties, request.getMigrationTargetLocation(), locationPrefix);
+            if (isPolicyUnset(current, request, VirtualContainer.TIER.MIGRATION)) {
+                properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
+                        MigrationPolicy.class.getSimpleName());
+            }
         }
 
         properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.NAME), request.getName());
         return properties;
     }
 
+    private boolean isPolicyUnset(VirtualContainer current, VirtualContainer newContainer, VirtualContainer.TIER tier) {
+        requireNonNull(newContainer);
+        Location currentLocation = null;
+        Location newLocation;
+        switch (tier) {
+            case ARCHIVE:
+                if (current != null) {
+                    currentLocation = current.getArchiveLocation();
+                }
+                newLocation = newContainer.getArchiveLocation();
+                break;
+            case CACHE:
+                if (current != null) {
+                    currentLocation = current.getCacheLocation();
+                }
+                newLocation = newContainer.getCacheLocation();
+                break;
+            case MIGRATION:
+                if (current != null) {
+                    currentLocation = current.getMigrationTargetLocation();
+                }
+                newLocation = newContainer.getMigrationTargetLocation();
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown tier");
+        }
+        return (currentLocation == null || currentLocation.isUnset()) && !newLocation.isUnset();
+    }
+
     private void updateLocationConfig(Properties properties, Location location, String prefix) {
         if (location.isUnset()) {
             return;
+        }
+        if (location.getCapacity() != null) {
+            if (location.getCopyDelay() != null && !location.getCopyDelay().startsWith("-")) {
+                throw new IllegalArgumentException("Cannot set both capacity and delay");
+            }
+            if (location.getMoveDelay() != null && !location.getMoveDelay().startsWith("-")) {
+                // Cannot configure an expiration or move policy, while also defining a storage policy
+                throw new IllegalArgumentException("Cannot set both capacity and delay");
+            }
         }
         properties.setProperty(Joiner.on(".").join(prefix, Location.BLOB_STORE_ID_FIELD),
                 Integer.toString(location.getBlobStoreId()));
@@ -163,6 +222,10 @@ public final class VirtualContainerResource {
         }
         if (location.getMoveDelay() != null) {
             properties.setProperty(Joiner.on(".").join(prefix, WriteBackPolicy.EVICT_DELAY), location.getMoveDelay());
+        }
+        if (location.getCapacity() != null && location.getCapacity() > 0) {
+            properties.setProperty(Joiner.on(".").join(prefix, StoragePolicy.CAPACITY_SETTING),
+                    location.getCapacity().toString());
         }
     }
 
