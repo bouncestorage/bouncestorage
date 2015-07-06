@@ -31,17 +31,28 @@ public final class ContainerPool {
 
     private BlobStore blobStore;
     private BlockingQueue<String> containerPool;
+    private boolean eventualConsistency = true;
 
     private ContainerPool(BlobStore blobStore) {
         this.blobStore = blobStore;
+        // this is probably a local swift which is always consistent
+        if ("test:tester".equals(blobStore.getContext().unwrap().getIdentity())) {
+            eventualConsistency = false;
+        }
         this.containerPool = new LinkedBlockingQueue<>();
         for (int i = 0; i < POOL_SIZE; i++) {
             createContainer(false);
         }
-        try {
-            Thread.sleep(CONTAINER_DELAY);
-        } catch (InterruptedException e) {
-            logger.error(e.getMessage(), e);
+        awaitConsistency();
+    }
+
+    private void awaitConsistency() {
+        if (eventualConsistency) {
+            try {
+                Thread.sleep(CONTAINER_DELAY);
+            } catch (InterruptedException e) {
+                logger.error(e.getMessage(), e);
+            }
         }
     }
 
@@ -63,11 +74,7 @@ public final class ContainerPool {
         String container = UtilsTest.createRandomContainerName();
         blobStore.createContainerInLocation(null, container);
         if (shouldSleep) {
-            try {
-                Thread.sleep(CONTAINER_DELAY);
-            } catch (InterruptedException e) {
-                logger.error(e.getMessage(), e);
-            }
+            awaitConsistency();
         }
         containerPool.add(container);
     }
