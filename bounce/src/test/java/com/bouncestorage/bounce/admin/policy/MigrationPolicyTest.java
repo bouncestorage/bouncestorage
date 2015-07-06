@@ -5,6 +5,7 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import static com.bouncestorage.bounce.UtilsTest.assertEqualBlobs;
 import static com.bouncestorage.bounce.UtilsTest.assertStatus;
 import static com.google.common.base.Throwables.propagate;
 
@@ -27,6 +28,7 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.bouncestorage.bounce.admin.BounceStats;
 import com.bouncestorage.bounce.admin.StatsQueueEntry;
+import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.PageSet;
@@ -127,6 +129,18 @@ public final class MigrationPolicyTest {
 
         assertStatus(status, status::getMovedObjectCount).isEqualTo(blobs.length);
         verifyList(blobs);
+    }
+
+    @Test
+    public void testOverwriteBlob() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        Blob blobFoo = UtilsTest.makeBlob(policy, blobName, ByteSource.wrap("foo".getBytes()));
+        Blob blobBar = UtilsTest.makeBlob(policy, blobName, ByteSource.wrap("bar".getBytes()));
+
+        policy.getSource().putBlob(containerName, blobFoo);
+        policy.putBlob(containerName, blobBar);
+
+        assertEqualBlobs(policy.getBlob(containerName, blobName), blobBar);
     }
 
     @Test
