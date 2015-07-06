@@ -296,6 +296,9 @@ public class WriteBackPolicy extends BouncePolicy {
     }
 
     private Blob pipeBlobAndReturn(String container, Blob blob) throws IOException {
+        String name = blob.getMetadata().getName();
+        logger.debug("piping {} from {} to {}", name, getDestStoreName(), getSourceStoreName());
+
         PipedInputStream pipeIn = new PipedInputStream();
         PipedOutputStream pipeOut = new PipedOutputStream(pipeIn);
 
@@ -309,12 +312,21 @@ public class WriteBackPolicy extends BouncePolicy {
 
         app.executeBackgroundTask(() -> {
             try {
+                logger.debug("copying {} to tee stream", name);
                 return Utils.copyBlob(getDestination(), getSource(), container, blob, tee);
             } finally {
                 tee.close();
             }
         });
         return retBlob;
+    }
+
+    private String getSourceStoreName() {
+        return getSource().getContext().unwrap().getId();
+    }
+
+    private String getDestStoreName() {
+        return getDestination().getContext().unwrap().getId();
     }
 
     @Override
@@ -338,7 +350,9 @@ public class WriteBackPolicy extends BouncePolicy {
                     return pipeBlobAndReturn(container, blob);
                 } else {
                     // fallback to the dumb thing and do double streaming
+                    logger.debug("unbouncing {} from {} to {}", blobName, getDestStoreName(), getSourceStoreName());
                     Utils.copyBlob(getDestination(), getSource(), container, container, blobName);
+                    logger.debug("returning unbounced blob {}", blobName);
                     return getSource().getBlob(container, blobName, options);
                 }
             } catch (IOException e) {

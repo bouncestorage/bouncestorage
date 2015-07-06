@@ -68,7 +68,8 @@ VERIFIER_RECIPIENTS = ["timuralp@bouncestorage.com",
 
 OUTPUT_LOG = '/tmp/bounce_verifier.log'
 
-JAVA_PROPERTIES = [ '-DLOG_LEVEL=info' ]
+#JAVA_PROPERTIES = [ '-DLOG_LEVEL=info' ]
+JAVA_PROPERTIES = [  ]
 
 class TestException(BaseException):
     pass
@@ -247,7 +248,7 @@ def maybe_update(log):
 def main():
     ec2 = len(sys.argv) == 1
     test = "all"
-    os.environ['LOG_LEVEL'] = 'info'
+    #os.environ['LOG_LEVEL'] = 'info'
 
     if ec2:
         log = open(OUTPUT_LOG, 'w')

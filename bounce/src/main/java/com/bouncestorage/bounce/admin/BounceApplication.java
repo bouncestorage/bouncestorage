@@ -635,7 +635,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     static {
         // DropWizard's Application class has a static initializer that forces the filter
         // to be at WARN, this overrides that
-        LoggingFactory.bootstrap(Level.toLevel(System.getProperty("LOG_LEVEL"), Level.INFO));
+        LoggingFactory.bootstrap(Level.toLevel(System.getProperty("LOG_LEVEL"), Level.DEBUG));
         try {
             Field f = BlobStoreConstants.class.getDeclaredField("DIRECTORY_SUFFIXES");
             f.setAccessible(true);
