@@ -95,7 +95,7 @@ public final class ContainerPool {
             containerPool.containerPool.forEach(container -> {
                 try {
                     containerPool.blobStore.deleteContainer(container);
-                    logger.info("deleted: " + container);
+                    logger.debug("deleted: " + container);
                 } catch (Exception e) {
                     logger.error("Failed to delete: " + container, e);
                 }
