@@ -8,7 +8,6 @@ package com.bouncestorage.bounce;
 import static java.util.Objects.requireNonNull;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
@@ -276,10 +275,6 @@ public final class BounceBlobStore implements BlobStore {
     @Override
     public long getMaximumMultipartPartSize() {
         throw new UnsupportedOperationException();
-    }
-
-    public void updateBlobMetadata(String containerName, String blobName, Map<String, String> userMetadata) {
-        policy.updateBlobMetadata(containerName, blobName, userMetadata);
     }
 
     @VisibleForTesting
