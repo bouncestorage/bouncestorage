@@ -14,6 +14,7 @@ import java.util.TreeMap;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.utils.ReconcileLocker;
 import com.google.auto.service.AutoService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
@@ -34,6 +35,7 @@ public final class MigrationPolicy extends BouncePolicy {
     // The policy implements migration from "source" to "destination"
     private static final Set<BounceStorageMetadata.Region> DESTINATION = BounceStorageMetadata.NEAR_ONLY;
     private static final Set<BounceStorageMetadata.Region> SOURCE = BounceStorageMetadata.FAR_ONLY;
+    private ReconcileLocker reconcileLocker = new ReconcileLocker();
 
     @Override
     public Blob getBlob(String container, String blobName, GetOptions options) {
@@ -48,7 +50,12 @@ public final class MigrationPolicy extends BouncePolicy {
 
     @Override
     public String putBlob(String container, Blob blob, PutOptions options) {
-        return getDestination().putBlob(container, blob, options);
+        Object lock = reconcileLocker.lockObject(container, blob.getMetadata().getName(), false);
+        try {
+            return getDestination().putBlob(container, blob, options);
+        } finally {
+            reconcileLocker.unlockObject(lock, false);
+        }
     }
 
     @Override
@@ -57,28 +64,44 @@ public final class MigrationPolicy extends BouncePolicy {
         if ((sourceObject == null) && (destinationObject == null)) {
             throw new AssertionError("At least one of source or destination objects must be non-null");
         }
+        String blobName = sourceObject == null ? destinationObject.getName() : sourceObject.getName();
+        logger.debug("reconciling {}", blobName);
 
         if (sourceObject.getRegions().equals(DESTINATION)) {
             return BounceResult.NO_OP;
         }
-        if (sourceObject.getRegions().equals(SOURCE)) {
-            return moveObject(container, sourceObject);
-        }
 
-        BlobMetadata sourceMeta = getSource().blobMetadata(container, sourceObject.getName());
-        BlobMetadata destinationMeta = getDestination().blobMetadata(container, destinationObject.getName());
-        if (sourceMeta == null && destinationMeta != null) {
+        Object lock = reconcileLocker.lockObject(container, blobName, true);
+        if (lock == null) {
+            // not able to lock key, another PUT is in operation, so we can just skip
+            // this. note that we should not delete the object from source store,
+            // because the PUT may fail
             return BounceResult.NO_OP;
-        } else if (sourceMeta != null && destinationMeta == null) {
-            return moveObject(container, sourceMeta);
         }
+        try {
+            if (sourceObject.getRegions().equals(SOURCE)) {
+                return moveObject(container, sourceObject);
+            }
 
-        if (Utils.eTagsEqual(sourceMeta.getETag(), destinationMeta.getETag())) {
-            getSource().removeBlob(container, sourceMeta.getName());
-            return BounceResult.REMOVE;
-        } else {
-            logger.warn("Different objects with the same name: {}", sourceMeta.getName());
-            return BounceResult.NO_OP;
+            BlobMetadata sourceMeta = getSource().blobMetadata(container, sourceObject.getName());
+            BlobMetadata destinationMeta = getDestination().blobMetadata(container, destinationObject.getName());
+            if (sourceMeta == null && destinationMeta != null) {
+                return BounceResult.NO_OP;
+            } else if (sourceMeta != null && destinationMeta == null) {
+                return moveObject(container, sourceMeta);
+            }
+
+            if (Utils.eTagsEqual(sourceMeta.getETag(), destinationMeta.getETag())) {
+                getSource().removeBlob(container, sourceMeta.getName());
+                return BounceResult.REMOVE;
+            } else {
+                if (sourceMeta.getLastModified().compareTo(destinationMeta.getLastModified()) > 0) {
+                    logger.warn("Different objects with the same name: {}", sourceMeta.getName());
+                }
+                return BounceResult.NO_OP;
+            }
+        } finally {
+            reconcileLocker.unlockObject(lock, true);
         }
     }
 
@@ -158,6 +181,7 @@ public final class MigrationPolicy extends BouncePolicy {
 
     private BounceResult moveObject(String container, StorageMetadata objectMetadata) {
         try {
+            logger.debug("copying blob {}", objectMetadata.getName());
             Blob blob = Utils.copyBlob(getSource(), getDestination(), container, container, objectMetadata.getName());
             if (blob == null) {
                 throw new RuntimeException("Failed to move the blob: " + objectMetadata.getName());
