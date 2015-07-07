@@ -66,9 +66,6 @@ public class WriteBackPolicy extends BouncePolicy {
             Pattern.compile(".*/slo/\\d{10}\\.\\d{6}/\\d+/\\d+/\\d{8}$").asPredicate();
     protected Duration copyDelay;
     protected Duration evictDelay;
-    private boolean copy;
-    private boolean immediateCopy;
-    private boolean evict;
 
     public static boolean isMarkerBlob(String name) {
         return name.endsWith(LOG_MARKER_SUFFIX);
@@ -115,20 +112,22 @@ public class WriteBackPolicy extends BouncePolicy {
         if (app != null) {
             app.executeBackgroundReconcileTask(() -> reconcileObject(containerName, blobName),
                     copyDelay.getSeconds(), TimeUnit.SECONDS);
-            if (evict && !copyDelay.equals(evictDelay)) {
+            if (isEvict() && !copyDelay.equals(evictDelay)) {
                 app.executeBackgroundReconcileTask(() -> reconcileObject(containerName, blobName),
                         evictDelay.getSeconds(), TimeUnit.SECONDS);
             }
         }
     }
 
+    @Override
     public void init(BounceApplication app, Configuration config) {
         super.init(app, config);
-        this.copyDelay = requireNonNull(Duration.parse(config.getString(COPY_DELAY)));
-        this.copy = !copyDelay.isNegative();
-        this.immediateCopy = copyDelay.isZero();
-        this.evictDelay = requireNonNull(Duration.parse(config.getString(EVICT_DELAY)));
-        this.evict = !evictDelay.isNegative();
+        if (config.getString(COPY_DELAY) != null) {
+            this.copyDelay = requireNonNull(Duration.parse(config.getString(COPY_DELAY)));
+        }
+        if (config.getString(EVICT_DELAY) != null) {
+            this.evictDelay = requireNonNull(Duration.parse(config.getString(EVICT_DELAY)));
+        }
     }
 
     @Override
@@ -220,9 +219,9 @@ public class WriteBackPolicy extends BouncePolicy {
             logger.debug("reconciling {} {}", sourceObject.getName(),
                     destinationObject == null ? "null" : destinationObject.getName());
             try {
-                if (evict && isObjectExpired(sourceObject, evictDelay)) {
+                if (isEvict() && isObjectExpired(sourceObject, evictDelay)) {
                     return maybeMoveObject(container, sourceObject, destinationObject);
-                } else if (copy && (immediateCopy || isObjectExpired(sourceObject, copyDelay))) {
+                } else if (isCopy() && (isImmediateCopy() || isObjectExpired(sourceObject, copyDelay))) {
                     return maybeCopyObject(container, sourceObject, destinationObject);
                 }
             } catch (IOException e) {
@@ -558,5 +557,26 @@ public class WriteBackPolicy extends BouncePolicy {
         logger.debug("copying {} to far store", sourceObject.getName());
         Utils.copyBlob(getSource(), getDestination(), container, container, sourceObject.getName());
         return BounceResult.COPY;
+    }
+
+    private boolean isCopy() {
+        if (copyDelay == null) {
+            return false;
+        }
+        return !copyDelay.isNegative();
+    }
+
+    private boolean isEvict() {
+        if (evictDelay == null) {
+            return false;
+        }
+        return !evictDelay.isNegative();
+    }
+
+    private boolean isImmediateCopy() {
+        if (copyDelay == null) {
+            return false;
+        }
+        return copyDelay.isZero();
     }
 }

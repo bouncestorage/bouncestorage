@@ -48,7 +48,8 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
         destinationBlobStore = destination;
     }
 
-    public final BlobStore getSource() {
+    // Not final as we need to use this method with Mockito
+    public BlobStore getSource() {
         return sourceBlobStore;
     }
 
@@ -69,6 +70,9 @@ public abstract class BouncePolicy implements IForwardingBlobStore {
 
     public abstract BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject);
+
+    public void prepareBounce(String containerName) {
+    }
 
     public void takeOver(String containerName) {
     }
