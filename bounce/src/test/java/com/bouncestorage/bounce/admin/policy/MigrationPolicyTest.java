@@ -28,11 +28,13 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.bouncestorage.bounce.admin.BounceStats;
 import com.bouncestorage.bounce.admin.StatsQueueEntry;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.CopyOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.junit.After;
 import org.junit.Before;
@@ -223,6 +225,30 @@ public final class MigrationPolicyTest {
             assertThat(results.get(i)).isEqualTo(blobs[i]);
         }
     }
+
+    @Test
+    public void testServerSideCopySource() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        String copyBlobName = blobName + "-copy";
+        Blob blob = UtilsTest.makeBlob(policy, blobName, ByteSource.empty());
+
+        policy.getSource().putBlob(containerName, blob);
+        policy.copyBlob(containerName, blobName, containerName, copyBlobName, CopyOptions.NONE);
+        assertEqualBlobs(policy.getBlob(containerName, copyBlobName), blob);
+    }
+
+    @Test
+    public void testServerSideCopyDestination() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        String copyBlobName = blobName + "-copy";
+        Blob blob = UtilsTest.makeBlob(policy, blobName, ByteSource.empty());
+
+        policy.getDestination().putBlob(containerName, blob);
+        policy.copyBlob(containerName, blobName, containerName, copyBlobName,
+                CopyOptions.builder().userMetadata(ImmutableMap.of("x", "1")).build());
+        assertEqualBlobs(policy.getBlob(containerName, copyBlobName), blob);
+    }
+
     @Test
     public void testLoggingPutGet() throws Exception {
         String blobName = UtilsTest.createRandomBlobName();
