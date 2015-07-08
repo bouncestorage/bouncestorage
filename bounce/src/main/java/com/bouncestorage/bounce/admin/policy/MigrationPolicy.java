@@ -168,4 +168,9 @@ public final class MigrationPolicy extends BouncePolicy {
             throw propagate(e);
         }
     }
+
+    @Override
+    public BlobStore delegate() {
+        return getDestination();
+    }
 }
