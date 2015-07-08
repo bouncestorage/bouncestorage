@@ -56,12 +56,9 @@ public class ReconcileLocker {
                 }
             } else {
                 if (lock.get() == 0) {
-                    // a reconciling task is working on this key, sleep for a while and retry
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                        // intentionally empty
-                    }
+                    // a reconciling task is working on this key, fail and let the caller
+                    // decide what to do
+                    return null;
                 } else {
                     return lockKey;
                 }

@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.TreeMap;
 
+import javax.ws.rs.ServiceUnavailableException;
+
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy;
@@ -51,6 +53,9 @@ public final class MigrationPolicy extends BouncePolicy {
     @Override
     public String putBlob(String container, Blob blob, PutOptions options) {
         Object lock = reconcileLocker.lockObject(container, blob.getMetadata().getName(), false);
+        if (lock == null) {
+            throw new ServiceUnavailableException("reconciling this object", 5L);
+        }
         try {
             return getDestination().putBlob(container, blob, options);
         } finally {

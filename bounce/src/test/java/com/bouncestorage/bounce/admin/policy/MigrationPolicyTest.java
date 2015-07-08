@@ -19,6 +19,7 @@ import java.util.Queue;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.HttpMethod;
+import javax.ws.rs.ServiceUnavailableException;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.Utils;
@@ -156,9 +157,14 @@ public final class MigrationPolicyTest {
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         // sleep a little to wait for migration to start
         Thread.sleep(100);
-        policy.putBlob(containerName, newBlob);
-        status.future().get();
+        try {
+            policy.putBlob(containerName, newBlob);
+        } catch (ServiceUnavailableException e) {
+            // putBlob may fail if we detect that reconciling is happening
+            return;
+        }
 
+        status.future().get();
         assertEqualBlobs(policy.getBlob(containerName, blobName), newBlob);
     }
 
