@@ -5,6 +5,7 @@
 
 package com.bouncestorage.bounce.admin;
 
+import com.bouncestorage.bounce.admin.policy.StoragePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -18,6 +19,7 @@ public final class Location {
     private String containerName;
     private String copyDelay;
     private String moveDelay;
+    private Long capacity;
 
     public void setBlobStoreId(int id) {
         blobStoreId = id;
@@ -40,6 +42,7 @@ public final class Location {
         blobStoreId = location.blobStoreId;
         copyDelay = location.copyDelay;
         moveDelay = location.moveDelay;
+        capacity = location.capacity;
     }
 
     public String getCopyDelay() {
@@ -56,6 +59,14 @@ public final class Location {
 
     public void setMoveDelay(String moveDelay) {
         this.moveDelay = moveDelay;
+    }
+
+    public Long getCapacity() {
+        return capacity;
+    }
+
+    public void setCapacity(long newCapacity) {
+        capacity = newCapacity;
     }
 
     @Override
@@ -89,6 +100,8 @@ public final class Location {
             setCopyDelay(value);
         } else if (key.equals(WriteBackPolicy.EVICT_DELAY)) {
             setMoveDelay(value);
+        } else if (key.equals(StoragePolicy.CAPACITY_SETTING)) {
+            setCapacity(Long.parseLong(value));
         }
     }
 
