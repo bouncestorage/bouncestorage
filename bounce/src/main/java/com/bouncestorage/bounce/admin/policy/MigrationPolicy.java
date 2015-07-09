@@ -20,14 +20,18 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
 
 import org.jclouds.blobstore.BlobStore;
+import org.jclouds.blobstore.KeyNotFoundException;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.internal.PageSetImpl;
+import org.jclouds.blobstore.options.CopyOptions;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
+import org.jclouds.http.HttpResponseException;
+import org.jclouds.openstack.swift.v1.CopyObjectException;
 
 @AutoService(BouncePolicy.class)
 public final class MigrationPolicy extends BouncePolicy {
@@ -150,6 +154,28 @@ public final class MigrationPolicy extends BouncePolicy {
         for (BlobStore blobStore : getCheckedStores()) {
             blobStore.removeBlobs(s, iterable);
         }
+    }
+
+    @Override
+    public String copyBlob(String fromContainer, String fromName, String toContainer, String toName, CopyOptions options) {
+        try {
+            return getDestination().copyBlob(fromContainer, fromName, toContainer, toName, options);
+        } catch (KeyNotFoundException e) {
+            // ignored
+        } catch (CopyObjectException e) {
+            // https://issues.apache.org/jira/browse/JCLOUDS-957
+            // Swift can throw different exceptions instead of KeyNotFoundException
+            HttpResponseException cause = (HttpResponseException) e.getCause();
+            if (cause.getResponse().getStatusCode() != 404) {
+                throw e;
+            }
+        } catch (NullPointerException e) {
+            if (getDestination().blobExists(fromContainer, fromName)) {
+                throw e;
+            }
+        }
+
+        return getSource().copyBlob(fromContainer, fromName, toContainer, toName, options);
     }
 
     private ImmutableList<BlobStore> getCheckedStores() {
