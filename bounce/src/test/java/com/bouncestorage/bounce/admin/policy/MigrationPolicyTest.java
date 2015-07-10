@@ -28,7 +28,6 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.bouncestorage.bounce.admin.BounceStats;
 import com.bouncestorage.bounce.admin.StatsQueueEntry;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.domain.Blob;
@@ -244,8 +243,7 @@ public final class MigrationPolicyTest {
         Blob blob = UtilsTest.makeBlob(policy, blobName, ByteSource.empty());
 
         policy.getDestination().putBlob(containerName, blob);
-        policy.copyBlob(containerName, blobName, containerName, copyBlobName,
-                CopyOptions.builder().userMetadata(ImmutableMap.of("x", "1")).build());
+        policy.copyBlob(containerName, blobName, containerName, copyBlobName, CopyOptions.NONE);
         assertEqualBlobs(policy.getBlob(containerName, copyBlobName), blob);
     }
 
