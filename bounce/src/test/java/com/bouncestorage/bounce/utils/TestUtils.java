@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Random;
 
+import com.google.common.base.Optional;
 import com.google.common.io.ByteSource;
 
 public final class TestUtils {
@@ -34,6 +35,11 @@ public final class TestUtils {
         @Override
         public InputStream openStream() {
             return new RandomInputStream(seed);
+        }
+
+        @Override
+        public Optional<Long> sizeIfKnown() {
+            return Optional.of(Long.MAX_VALUE);
         }
     }
 
