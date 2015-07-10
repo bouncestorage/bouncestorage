@@ -29,7 +29,6 @@ import org.apache.commons.lang.StringUtils;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
-import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.StorageType;
 import org.jclouds.blobstore.domain.internal.PageSetImpl;
@@ -150,8 +149,8 @@ public class StoragePolicyTest {
         StoragePolicy mock = Mockito.spy(policy);
         BlobStore mockSource = Mockito.mock(BlobStore.class);
         Mockito.doReturn(mockSource).when(mock).getSource();
-        Mockito.when(mockSource.list(Mockito.anyString(), Mockito.any(ListContainerOptions.class)))
-                .thenReturn((PageSet) new PageSetImpl<>(listResults, null));
+        Mockito.doReturn(new PageSetImpl<>(listResults, null)).when(mockSource).list(Mockito.anyString(),
+                Mockito.any(ListContainerOptions.class));
         mock.prepareBounce(containerName);
         BouncePolicy.BounceResult result = mock.reconcileObject(containerName,
                 new BounceStorageMetadata(expiredBlobMetadata, BounceStorageMetadata.NEAR_ONLY), null);
