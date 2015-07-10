@@ -30,8 +30,6 @@ import org.jclouds.blobstore.options.CopyOptions;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
-import org.jclouds.http.HttpResponseException;
-import org.jclouds.openstack.swift.v1.CopyObjectException;
 
 @AutoService(BouncePolicy.class)
 public final class MigrationPolicy extends BouncePolicy {
@@ -162,17 +160,6 @@ public final class MigrationPolicy extends BouncePolicy {
             return getDestination().copyBlob(fromContainer, fromName, toContainer, toName, options);
         } catch (KeyNotFoundException e) {
             // ignored
-        } catch (CopyObjectException e) {
-            // https://issues.apache.org/jira/browse/JCLOUDS-957
-            // Swift can throw different exceptions instead of KeyNotFoundException
-            HttpResponseException cause = (HttpResponseException) e.getCause();
-            if (cause.getResponse().getStatusCode() != 404) {
-                throw e;
-            }
-        } catch (NullPointerException e) {
-            if (getDestination().blobExists(fromContainer, fromName)) {
-                throw e;
-            }
         }
 
         return getSource().copyBlob(fromContainer, fromName, toContainer, toName, options);
