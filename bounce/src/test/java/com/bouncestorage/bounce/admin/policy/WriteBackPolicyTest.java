@@ -13,6 +13,8 @@ import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assume.assumeThat;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -31,10 +33,12 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.bouncestorage.bounce.admin.BounceStats;
 import com.bouncestorage.bounce.admin.StatsQueueEntry;
-import com.bouncestorage.bounce.utils.TestUtils;
+import com.bouncestorage.bounce.utils.ZeroInputStream;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
+
+import org.apache.commons.io.input.BoundedInputStream;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
@@ -42,6 +46,7 @@ import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.CopyOptions;
 import org.jclouds.blobstore.options.PutOptions;
+import org.jclouds.io.payloads.ByteSourcePayload;
 
 import org.junit.After;
 import org.junit.Before;
@@ -366,7 +371,7 @@ public class WriteBackPolicyTest {
                 // PUT
                 int blobLen = 1000 + r.nextInt(1000);
                 blobStores.forEach(b -> {
-                    Blob blob = UtilsTest.makeBlob(b, blobName, TestUtils.randomByteSource().slice(0, blobLen));
+                    Blob blob = UtilsTest.makeBlob(b, blobName, ByteSource.wrap(new byte[blobLen]));
                     b.putBlob(containerName, blob);
                 });
                 numBlobsInStore++;
@@ -450,7 +455,18 @@ public class WriteBackPolicyTest {
         skipIfTransient(policy);
 
         Blob blob = policy.blobBuilder(blobName)
-                .payload(TestUtils.randomByteSource().slice(0, size))
+                .payload(new ByteSourcePayload(new ByteSource() {
+                    /* ByteSource by default keeps reading the stream to figure out the size */
+                    @Override
+                    public long size() throws IOException {
+                        return size;
+                    }
+
+                    @Override
+                    public InputStream openStream() throws IOException {
+                        return new BoundedInputStream(new ZeroInputStream(), size);
+                    }
+                }))
                 .contentLength(size)
                 .build();
 
