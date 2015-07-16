@@ -44,7 +44,7 @@ SUREFIRE_ARCHIVE = '/tmp/surefire.tar'
 COMPRESSED_ARCHIVE = SUREFIRE_ARCHIVE + '.gz'
 BOUNCE_NIGHTLY_TEST_NAME = "nightly/bounce_tests.py"
 
-DOCKER_SWIFT_REPO = "https://github.com/timuralp/docker-swift"
+DOCKER_SWIFT_REPO = "https://github.com/kahing/docker-swift"
 DOCKER_SWIFT_DIR = "docker-swift"
 SWIFT_DATA_DIR = "/tmp/docker-swift"
 
