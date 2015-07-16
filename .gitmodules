@@ -1,6 +1,6 @@
 [submodule "s3proxy"]
 	path = s3proxy
-	url = https://github.com/bouncestorage/s3proxy.git
+	url = https://github.com/andrewgaul/s3proxy.git
 [submodule "swiftproxy"]
 	path = swiftproxy
 	url = git@github.com:bouncestorage/swiftproxy.git
