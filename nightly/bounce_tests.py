@@ -115,7 +115,6 @@ def setup_code():
 
 def setup_swift():
     git_clone(DOCKER_SWIFT_REPO, DOCKER_SWIFT_DIR)
-    execute("cd ~/%s && git checkout improvement/use_single_servers" % DOCKER_SWIFT_DIR)
     execute("cd ~/%s && sudo docker build -t pbinkley/docker-swift ." % DOCKER_SWIFT_DIR)
 
 def start_docker_swift(datadir):
