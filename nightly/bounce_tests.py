@@ -210,6 +210,13 @@ def get_swift_properties(swift_port):
     return [ ".provider=openstack-swift", ".endpoint=http://127.0.0.1:%s/auth/v1.0/" % swift_port,
              ".identity=test:tester", ".credential=testing", ".keystone.credential-type=tempAuthCredentials" ]
 
+def run_bounce_tests(provider_details, swift_port):
+    java_properties = get_java_properties(provider_details, swift_port)
+    os.environ['BOUNCE_OPTS'] = java_properties + " -Dbounce.backends=0,1"
+    command = "src/test/resources/run_proxy_tests.sh"
+    print(command)
+    execute(command)
+
 def run_test(provider_details, swift_port, test="all"):
     print "Testing %s" % provider_details['provider']
     java_properties = get_java_properties(provider_details, swift_port)
@@ -219,6 +226,7 @@ def run_test(provider_details, swift_port, test="all"):
     command += " test"
     print(command)
     execute(command)
+    run_bounce_tests(provider_details, swift_port)
 
 def notify_failure(creds, error, backtrace):
     message = "Exception message:\n%s\n" % error.message

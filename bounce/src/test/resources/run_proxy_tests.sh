@@ -23,6 +23,5 @@ sleep 5
 SKIP_TESTS="-e test.functional.tests:TestFile.testCopyFromHeader -e test.functional.tests:TestSlo.test_slo_copy_account -e test.functional.tests:TestSlo.test_slo_copy_the_manifest_account -e test.functional.tests:TestFile.testCopy -e test.functional.tests:TestFile.testCopyAccount -e test.functional.tests:TestFile.testCopyFromHeader404s -e test.functional.tests:TestFile.testNameLimit"
 export SKIP_TESTS
 
-
 src/test/resources/run-swift-tests.sh
 exit $?
