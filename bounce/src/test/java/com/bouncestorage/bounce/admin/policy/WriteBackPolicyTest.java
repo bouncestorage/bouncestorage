@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assume.assumeThat;
+import static org.junit.Assume.assumeTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,7 +58,7 @@ import org.slf4j.LoggerFactory;
 public class WriteBackPolicyTest {
     String containerName;
     BounceApplication app;
-    BouncePolicy policy;
+    WriteBackPolicy policy;
     BounceService bounceService;
     Duration duration = Duration.ofHours(1);
     Logger logger;
@@ -76,7 +77,7 @@ public class WriteBackPolicyTest {
         containerName = UtilsTest.switchPolicyforContainer(app, WriteBackPolicy.class,
                 ImmutableMap.of(WriteBackPolicy.EVICT_DELAY, duration.toString(),
                         WriteBackPolicy.COPY_DELAY, Duration.ofSeconds(0).toString()));
-        policy = (BouncePolicy) app.getBlobStore(containerName);
+        policy = (WriteBackPolicy) app.getBlobStore(containerName);
 
         // need to initialize logger after dropwizard application init
         logger = LoggerFactory.getLogger(WriteBackPolicyTest.class);
@@ -424,7 +425,7 @@ public class WriteBackPolicyTest {
                 ".container." + containerName +
                 ".op.";
         assertThat(putMarkerEntry.getDbSeries().getName()).isEqualTo(namePrefix + HttpMethod.PUT);
-        assertThat(putMarkerOp.get(1)).isEqualTo(blobName + WriteBackPolicy.LOG_MARKER_SUFFIX);
+        assertThat(putMarkerOp.get(1)).isEqualTo(policy.blobGetMarkerName(blobName));
         assertThat(putEntry.getDbSeries().getName()).isEqualTo(namePrefix + HttpMethod.PUT);
         assertThat(putOp.get(1)).isEqualTo(blobName);
         assertThat(putOp.get(2)).isEqualTo(getBlob.getMetadata().getSize());
@@ -447,6 +448,7 @@ public class WriteBackPolicyTest {
             skipIfTransient(bouncePolicy.getDestination());
         } else {
             assumeThat(blobStore.getContext().unwrap().getId(), not(is("transient")));
+            assumeTrue(false);
         }
     }
 

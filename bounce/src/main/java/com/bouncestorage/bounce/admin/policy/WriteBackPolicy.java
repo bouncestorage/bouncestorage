@@ -52,6 +52,7 @@ import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.io.MutableContentMetadata;
 import org.jclouds.io.Payload;
+import org.jclouds.util.Strings2;
 
 @AutoService(BouncePolicy.class)
 public class WriteBackPolicy extends BouncePolicy {
@@ -64,6 +65,7 @@ public class WriteBackPolicy extends BouncePolicy {
     public static final String TAKEOVER_MARKER = INTERNAL_PREFIX + "need_take_over";
     private static final Predicate<String> SWIFT_SEGMENT_PATTERN =
             Pattern.compile(".*/slo/\\d{10}\\.\\d{6}/\\d+/\\d+/\\d{8}$").asPredicate();
+    private static final String LOG_MARKER_SUFFIX_ESCAPED = LOG_MARKER_SUFFIX.replace(" ", "%20");
     protected Duration copyDelay;
     protected Duration evictDelay;
 
@@ -75,8 +77,13 @@ public class WriteBackPolicy extends BouncePolicy {
         return marker.substring(0, marker.length() - LOG_MARKER_SUFFIX.length());
     }
 
-    private static String blobGetMarkerName(String blob) {
-        return blob + LOG_MARKER_SUFFIX;
+    @VisibleForTesting
+    String blobGetMarkerName(String blob) {
+        if ("transient".equals(getContext().unwrap().getId())) {
+            return blob + LOG_MARKER_SUFFIX;
+        } else {
+            return Strings2.urlEncode(blob) + LOG_MARKER_SUFFIX_ESCAPED;
+        }
     }
 
     private void putMarkerBlob(String containerName, String key) {
@@ -468,7 +475,7 @@ public class WriteBackPolicy extends BouncePolicy {
                 if (nearPage.hasNext()) {
                     StorageMetadata next = nearPage.peek();
                     logger.debug("next blob: {}", next.getName());
-                    if (next.getName().equals(blobGetMarkerName(name))) {
+                    if (next.getName().equals(name + LOG_MARKER_SUFFIX)) {
                         nextIsMarker = true;
                     }
                 }

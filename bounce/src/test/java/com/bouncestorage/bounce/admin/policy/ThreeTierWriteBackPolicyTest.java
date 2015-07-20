@@ -55,14 +55,14 @@ public final class ThreeTierWriteBackPolicyTest extends WriteBackPolicyTest {
         assertThat(entry).isNotNull();
         assertThat(entry.getKey()).isEqualTo("credential");
         assertThat(entry.getValue()).isInstanceOf(BouncePolicy.class);
-        policy = (BouncePolicy) entry.getValue();
+        policy = (WriteBackPolicy) entry.getValue();
         assertThat(policy.getSource()).isInstanceOf(BlobStoreTarget.class);
         assertThat(policy.getDestination()).isInstanceOf(BouncePolicy.class);
-        policy = (BouncePolicy) policy.getDestination();
+        policy = (WriteBackPolicy) policy.getDestination();
         assertThat(policy.getSource()).isInstanceOf(BlobStoreTarget.class);
         assertThat(policy.getDestination()).isInstanceOf(BlobStoreTarget.class);
         policy.getDestination().createContainerInLocation(null, containerName);
-        policy = (BouncePolicy) entry.getValue();
+        policy = (WriteBackPolicy) entry.getValue();
     }
 
     @Test
