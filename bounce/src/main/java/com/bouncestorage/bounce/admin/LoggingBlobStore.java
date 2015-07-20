@@ -20,10 +20,12 @@ import org.jclouds.blobstore.options.PutOptions;
 public final class LoggingBlobStore extends ForwardingBlobStore {
 
     private BounceApplication app;
+    private final int id;
 
-    public LoggingBlobStore(BlobStore blobStore, BounceApplication app) {
+    public LoggingBlobStore(BlobStore blobStore, String id, BounceApplication app) {
         super(blobStore);
         this.app = app;
+        this.id = Integer.parseInt(id);
     }
 
     @Override
@@ -59,6 +61,6 @@ public final class LoggingBlobStore extends ForwardingBlobStore {
     }
 
     private int getProviderId() {
-        return app.getBlobStoreId(this);
+        return id;
     }
 }

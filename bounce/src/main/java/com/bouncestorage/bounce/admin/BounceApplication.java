@@ -107,6 +107,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     private BounceStats bounceStats;
     private KeyStoreUtils keyStoreUtils;
     private volatile Instant scheduledBounceRanAt = Instant.EPOCH;
+    private boolean testAutoConfig;
 
     public BounceApplication() {
         this.config = new BounceConfiguration();
@@ -227,7 +228,12 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             throw propagate(e);
         }
 
-        providers.put(Integer.valueOf(id), new LoggingBlobStore(context.getBlobStore(), this));
+        BlobStore blobStore = new LoggingBlobStore(context.getBlobStore(), id, this);
+        if (testAutoConfig) {
+            blobStore = new AutoConfigBlobStore(blobStore, this);
+        }
+
+        providers.put(Integer.valueOf(id), blobStore);
     }
 
     static Optional<BouncePolicy> getBouncePolicyFromName(String name) {
@@ -276,6 +282,9 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
             BlobStore store = providers.get(id);
             if (store == null) {
                 throw new IllegalArgumentException(String.format("Blobstore %d not found", id));
+            }
+            if (store instanceof AutoConfigBlobStore) {
+                store = ((AutoConfigBlobStore) store).delegate();
             }
             virtualContainer.getLocation(i).setBlobStoreId(id);
             String targetContainerName = c.getString(tierPrefix + "." + Location.CONTAINER_NAME_FIELD, containerName);
@@ -352,8 +361,19 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
     @VisibleForTesting
     public Map.Entry<String, BlobStore> locateBlobStore(String identity,
                                                         String container, String blob) {
+        logger.debug("locating blobstore for {} {} {}", identity, container, blob);
         BlobStore blobStore = null;
         String credential = null;
+        boolean testAltAuth = false;
+
+        if (testAutoConfig) {
+            // swift test uses multiple auth for the same instance but we
+            // only know about one, hardcode something for now
+            if ("test2:tester2".equals(identity)) {
+                identity = "test:tester";
+                testAltAuth = true;
+            }
+        }
 
         if (container != null) {
             blobStore = virtualContainers.get(container);
@@ -369,6 +389,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                         Configuration c = config.subset(BounceBlobStore.STORE_PROPERTY + "." + blobstoreId);
                         if (identity.equals(c.getString(Constants.PROPERTY_IDENTITY))) {
                             credential = c.getString(Constants.PROPERTY_CREDENTIAL);
+                            break;
                         }
                     }
                 }
@@ -383,6 +404,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                 if (identity.equals(c.getString(Constants.PROPERTY_IDENTITY))) {
                     credential = c.getString(Constants.PROPERTY_CREDENTIAL);
                     blobStore = providers.get(Integer.valueOf(id.toString()));
+                    logger.debug("returning blobstore from provider {}", id);
+                    break;
                 } else {
                     logger.debug("identity {} != {}", identity, c.getString(Constants.PROPERTY_IDENTITY));
                 }
@@ -390,10 +413,15 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         }
 
         if (blobStore != null && credential != null) {
+            if (testAltAuth) {
+                credential = "testing2";
+                identity = "test2:tester2";
+            }
             logger.info("identity: {} credential: {}", identity, credential);
             return Maps.immutableEntry(credential, blobStore);
         }
 
+        logger.debug("unable to locate blobstore for {} {} {}", identity, container, blob);
         return null;
     }
 
@@ -502,6 +530,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                 throw new IllegalStateException("Cannot find the application port");
             }
         });
+        testAutoConfig = config.getBoolean("bounce.autoconfig-tiers");
         registerConfigurationListener();
         bounceService = new BounceService(this);
         initFromConfig();
@@ -584,6 +613,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                     startS3Proxy();
                 } else if (SwiftProxy.PROPERTY_ENDPOINT.equals(name)) {
                     startSwiftProxy();
+                } else if ("bounce.autoconfig-tiers".equals(name)) {
+                    testAutoConfig = true;
                 }
             }
         });
