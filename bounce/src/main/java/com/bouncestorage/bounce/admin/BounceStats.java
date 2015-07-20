@@ -5,6 +5,7 @@
 
 package com.bouncestorage.bounce.admin;
 
+import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -108,8 +109,10 @@ public class BounceStats {
                 }
             }
         } catch (Throwable e) {
-            logger.error("Exception while pushing stats: " + e.getMessage());
-            logger.error(Throwables.getStackTraceAsString(e));
+            if (e.getCause() == null || !(e.getCause() instanceof ConnectException)) {
+                logger.error("Exception while pushing stats: " + e.getMessage());
+                logger.error(Throwables.getStackTraceAsString(e));
+            }
         }
     }
 
