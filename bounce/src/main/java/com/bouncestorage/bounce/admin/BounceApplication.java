@@ -530,7 +530,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
                 throw new IllegalStateException("Cannot find the application port");
             }
         });
-        testAutoConfig = config.getBoolean("bounce.autoconfig-tiers");
+        testAutoConfig = config.containsKey("bounce.autoconfig-tiers") && config.getBoolean("bounce.autoconfig-tiers");
         registerConfigurationListener();
         bounceService = new BounceService(this);
         initFromConfig();
