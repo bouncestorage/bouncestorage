@@ -20,6 +20,14 @@ public class BounceConfiguration extends PropertiesConfiguration {
     public BounceConfiguration(String filename) throws ConfigurationException {
         super(filename);
         this.fileName = filename;
+        Properties system = new Properties();
+        for (Object k : System.getProperties().keySet()) {
+            String s = k.toString();
+            if (s.startsWith("bounce.")) {
+                system.setProperty(s, System.getProperty(s));
+            }
+        }
+        setAll(system);
     }
 
     public BounceConfiguration() {
