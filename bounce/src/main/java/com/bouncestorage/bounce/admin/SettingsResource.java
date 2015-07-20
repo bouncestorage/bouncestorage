@@ -30,10 +30,13 @@ import com.google.common.base.Strings;
 import org.apache.commons.configuration.Configuration;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.gaul.s3proxy.S3ProxyConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Path("/settings")
 @Produces(MediaType.APPLICATION_JSON)
 public class SettingsResource {
+    private static final Logger logger = LoggerFactory.getLogger(SettingsResource.class);
     private final BounceApplication app;
 
     public SettingsResource(BounceApplication app) {
@@ -103,6 +106,7 @@ public class SettingsResource {
         try {
             app.getConfiguration().setAll(p);
         } catch (Throwable e) {
+            e.printStackTrace();
             if (e.getCause() != null) {
                 e = e.getCause();
             }
@@ -165,7 +169,11 @@ public class SettingsResource {
             if (s3Address == null) {
                 return true;
             }
-            return !(swiftAddress.equalsIgnoreCase(s3Address) && swiftPort == s3Port);
+            if (swiftAddress.equalsIgnoreCase(s3Address) && swiftPort == s3Port) {
+                logger.error("s3 and swift endpoint are the same: {} {}", s3Address, s3Port);
+                return false;
+            }
+            return true;
         }
     }
 }
