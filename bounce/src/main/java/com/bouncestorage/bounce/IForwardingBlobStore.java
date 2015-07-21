@@ -183,7 +183,7 @@ public interface IForwardingBlobStore extends BlobStore {
 
     @Override
     default long countBlobs(String container) {
-        return countBlobs(container, ListContainerOptions.NONE);
+        return delegate().countBlobs(container);
     }
 
     @Override
