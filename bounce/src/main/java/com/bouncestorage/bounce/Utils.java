@@ -24,6 +24,7 @@ import javax.annotation.Nullable;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.bouncestorage.bounce.utils.BlobStoreByteSource;
+import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.PeekingIterator;
 import com.google.common.hash.HashCode;
@@ -134,7 +135,7 @@ public final class Utils {
     }
 
     private static class CrawlBlobStoreIterator
-            implements Iterator<StorageMetadata> {
+            extends AbstractIterator<StorageMetadata> {
         private final BlobStore blobStore;
         private final String containerName;
         private final ListContainerOptions options;
@@ -146,6 +147,9 @@ public final class Utils {
             this.blobStore = Objects.requireNonNull(blobStore);
             this.containerName = Objects.requireNonNull(containerName);
             this.options = Objects.requireNonNull(options);
+            if (options.getDelimiter() == null && options.getDir() == null) {
+                this.options.recursive();
+            }
             advance();
         }
 
@@ -160,22 +164,14 @@ public final class Utils {
         }
 
         @Override
-        public boolean hasNext() {
-            if (iterator.hasNext()) {
-                return true;
-            }
-            // Presence of a marker does not guarantee that subsequent results; we must advance to determine this.
-            if (marker != null) {
-                advance();
-            }
-            return iterator.hasNext();
-        }
-
-        @Override
-        public StorageMetadata next() {
+        protected StorageMetadata computeNext() {
             while (true) {
                 if (!iterator.hasNext()) {
+                    if (marker == null) {
+                        return endOfData();
+                    }
                     advance();
+                    continue;
                 }
                 StorageMetadata metadata = iterator.next();
                 // filter out folders with atmos and filesystem providers
