@@ -12,7 +12,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assume.assumeThat;
-import static org.junit.Assume.assumeTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,7 +39,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 
 import org.apache.commons.io.input.BoundedInputStream;
-
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
@@ -48,7 +46,6 @@ import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.CopyOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.io.payloads.ByteSourcePayload;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -448,7 +445,6 @@ public class WriteBackPolicyTest {
             skipIfTransient(bouncePolicy.getDestination());
         } else {
             assumeThat(blobStore.getContext().unwrap().getId(), not(is("transient")));
-            assumeTrue(false);
         }
     }
 
