@@ -30,7 +30,7 @@ public final class BounceTest {
 
     @Before
     public void setUp() throws Exception {
-        containerName = UtilsTest.createRandomContainerName();
+        containerName = Utils.createRandomContainerName();
 
         policy = new WriteBackPolicy();
         policy.setBlobStores(UtilsTest.createTransientBlobStore(), UtilsTest.createTransientBlobStore());

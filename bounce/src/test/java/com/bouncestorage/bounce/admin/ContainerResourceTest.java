@@ -18,6 +18,7 @@ import java.util.Properties;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.Response;
 
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -77,7 +78,7 @@ public class ContainerResourceTest {
 
     @Test
     public void testCreateContainer() throws Exception {
-        String containerName = UtilsTest.createRandomContainerName();
+        String containerName = Utils.createRandomContainerName();
         String createContainerJSON = String.format("{\"name\":\"%s\"}", containerName);
         HttpURLConnection connection = UtilsTest.submitRequest(containerAPI, HttpMethod.POST, createContainerJSON);
         assertThat(connection.getResponseCode()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -86,7 +87,7 @@ public class ContainerResourceTest {
 
     @Test
     public void testListContainer() throws Exception {
-        String containerName = UtilsTest.createRandomContainerName();
+        String containerName = Utils.createRandomContainerName();
         String blobName = UtilsTest.createRandomBlobName();
         BlobStore blobStore = app.getBlobStore(objectStoreId);
         blobStore.createContainerInLocation(null, containerName);
@@ -106,7 +107,7 @@ public class ContainerResourceTest {
 
     @Test
     public void testRecursiveList() throws Exception {
-        String container = UtilsTest.createRandomContainerName();
+        String container = Utils.createRandomContainerName();
         BlobStore blobStore = app.getBlobStore(objectStoreId);
         blobStore.createContainerInLocation(null, container);
         String blob = "foo/bar";
@@ -126,9 +127,9 @@ public class ContainerResourceTest {
 
     @Test
     public void testListWithVirtualContainer() throws Exception {
-        String cacheContainer = UtilsTest.createRandomContainerName();
-        String originContainer = UtilsTest.createRandomContainerName();
-        String virtualContainerName = UtilsTest.createRandomContainerName();
+        String cacheContainer = Utils.createRandomContainerName();
+        String originContainer = Utils.createRandomContainerName();
+        String virtualContainerName = Utils.createRandomContainerName();
         BlobStore blobStore = app.getBlobStore(objectStoreId);
         blobStore.createContainerInLocation(null, originContainer);
         blobStore.createContainerInLocation(null, cacheContainer);

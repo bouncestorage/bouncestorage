@@ -16,6 +16,7 @@ import java.util.Properties;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.BounceLink;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.base.Joiner;
@@ -38,7 +39,7 @@ public final class ConfigTest {
 
     @Before
     public void setUp() throws Exception {
-        containerName = UtilsTest.createRandomContainerName();
+        containerName = Utils.createRandomContainerName();
 
         Properties properties = new Properties();
         try (InputStream is = ConfigTest.class.getResourceAsStream("/bounce.properties")) {

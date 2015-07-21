@@ -34,7 +34,7 @@ public final class EncryptedBlobStoreTest {
 
     @Before
     public void setUp() throws Exception {
-        containerName = UtilsTest.createRandomContainerName();
+        containerName = Utils.createRandomContainerName();
         Properties properties = new Properties();
         properties.putAll(ImmutableMap.of(
                 Constants.PROPERTY_PROVIDER, "encrypted",

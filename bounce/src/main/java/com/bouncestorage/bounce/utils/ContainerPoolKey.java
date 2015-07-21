@@ -3,7 +3,7 @@
  * For more information, please see COPYRIGHT in the top-level directory.
  */
 
-package com.bouncestorage.bounce.admin;
+package com.bouncestorage.bounce.utils;
 
 import com.google.auto.value.AutoValue;
 

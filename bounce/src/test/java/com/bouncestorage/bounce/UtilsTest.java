@@ -30,11 +30,11 @@ import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceConfiguration;
 import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
-import com.bouncestorage.bounce.admin.ContainerPool;
 import com.bouncestorage.bounce.admin.Location;
 import com.bouncestorage.bounce.admin.VirtualContainer;
 import com.bouncestorage.bounce.admin.VirtualContainerResource;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
+import com.bouncestorage.bounce.utils.ContainerPool;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
@@ -186,7 +186,7 @@ public final class UtilsTest {
 
     @Before
     public void setUp() throws Exception {
-        containerName = createRandomContainerName();
+        containerName = Utils.createRandomContainerName();
 
         nearContext = ContextBuilder
                 .newBuilder("transient")
@@ -303,10 +303,6 @@ public final class UtilsTest {
         }
     }
 
-    public static String createRandomContainerName() {
-        return "bounce-" + new Random().nextInt(Integer.MAX_VALUE);
-    }
-
     public static String createRandomBlobName() {
         return "blob-" + new Random().nextInt(Integer.MAX_VALUE);
     }
@@ -366,7 +362,7 @@ public final class UtilsTest {
         if (!isTransient(blobStore)) {
             container = ContainerPool.getContainerPool(blobStore).getContainer();
         } else {
-            container = UtilsTest.createRandomContainerName();
+            container = Utils.createRandomContainerName();
             blobStore.createContainerInLocation(null, container);
         }
         return container;

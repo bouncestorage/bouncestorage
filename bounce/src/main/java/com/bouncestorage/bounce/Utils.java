@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeoutException;
 
@@ -112,6 +113,10 @@ public final class Utils {
                 throw new TimeoutException("Application took more than 30 seconds to start");
             }
         }
+    }
+
+    public static String createRandomContainerName() {
+        return "bounce-" + new Random().nextInt(Integer.MAX_VALUE);
     }
 
     private static class CrawlBlobStoreIterable

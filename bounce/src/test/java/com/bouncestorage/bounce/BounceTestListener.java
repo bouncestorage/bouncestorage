@@ -6,7 +6,7 @@
 package com.bouncestorage.bounce;
 
 import com.bouncestorage.bounce.admin.BounceApplication;
-import com.bouncestorage.bounce.admin.ContainerPool;
+import com.bouncestorage.bounce.utils.ContainerPool;
 
 import org.junit.runner.Description;
 import org.junit.runner.Result;

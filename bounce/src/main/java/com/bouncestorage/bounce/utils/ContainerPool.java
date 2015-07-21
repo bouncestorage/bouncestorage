@@ -3,7 +3,7 @@
  * For more information, please see COPYRIGHT in the top-level directory.
  */
 
-package com.bouncestorage.bounce.admin;
+package com.bouncestorage.bounce.utils;
 
 import static com.google.common.base.Throwables.propagate;
 
@@ -14,7 +14,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import com.bouncestorage.bounce.UtilsTest;
+import com.bouncestorage.bounce.Utils;
 
 import org.jclouds.blobstore.BlobStore;
 import org.slf4j.Logger;
@@ -38,6 +38,17 @@ public final class ContainerPool {
         // this is probably a local swift which is always consistent
         if ("test:tester".equals(blobStore.getContext().unwrap().getIdentity())) {
             eventualConsistency = false;
+        } else {
+            blobStore.list().stream().parallel()
+                    .map(m -> m.getName())
+                    .filter(n -> n.startsWith("bounce-"))
+                    .forEach(n -> {
+                        try {
+                            blobStore.deleteContainer(n);
+                        } catch (RuntimeException e) {
+                            logger.error("unable to remove container {}", n);
+                        }
+                    });
         }
         this.containerPool = new LinkedBlockingQueue<>();
         for (int i = 0; i < POOL_SIZE; i++) {
@@ -71,7 +82,7 @@ public final class ContainerPool {
     }
 
     private void createContainer(boolean shouldSleep) {
-        String container = UtilsTest.createRandomContainerName();
+        String container = Utils.createRandomContainerName();
         blobStore.createContainerInLocation(null, container);
         if (shouldSleep) {
             awaitConsistency();

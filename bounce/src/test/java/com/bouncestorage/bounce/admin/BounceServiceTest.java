@@ -40,7 +40,7 @@ public final class BounceServiceTest {
 
     @Before
     public void setUp() throws Exception {
-        containerName = UtilsTest.createRandomContainerName();
+        containerName = Utils.createRandomContainerName();
 
         synchronized (BounceApplication.class) {
             app = new BounceApplication();
