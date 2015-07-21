@@ -18,10 +18,18 @@ PROXY_PID=$!
 
 export SKIP_PROXY=1
 pushd ../swiftproxy
-sleep 5
+sleep 10 # bounce config init after proxy startup
 
-SKIP_TESTS="-e test.functional.tests:TestFile.testCopyFromHeader -e test.functional.tests:TestSlo.test_slo_copy_account -e test.functional.tests:TestSlo.test_slo_copy_the_manifest_account -e test.functional.tests:TestFile.testCopy -e test.functional.tests:TestFile.testCopyAccount -e test.functional.tests:TestFile.testCopyFromHeader404s -e test.functional.tests:TestFile.testNameLimit"
+SKIP_TESTS="-e test.functional.tests:TestFile.testCopyFromHeader \
+-e test.functional.tests:TestSlo.test_slo_copy_account \
+-e test.functional.tests:TestSlo.test_slo_copy_the_manifest_account \
+-e test.functional.tests:TestFile.testCopy \
+-e test.functional.tests:TestFile.testCopyAccount \
+-e test.functional.tests:TestFile.testCopyFromHeader404s \
+-e test.functional.tests:TestFile.testNameLimit"
 export SKIP_TESTS
 
 src/test/resources/run-swift-tests.sh
+src/test/resources/run-swiftclient-tests.sh
+src/test/resources/run-swiftclient-python-tests.sh
 exit $?
