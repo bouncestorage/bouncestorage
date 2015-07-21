@@ -129,7 +129,7 @@ public final class Utils {
                 ListContainerOptions options) {
             this.blobStore = Objects.requireNonNull(blobStore);
             this.containerName = Objects.requireNonNull(containerName);
-            this.options = Objects.requireNonNull(options);
+            this.options = Objects.requireNonNull(options).clone();
         }
 
         @Override
