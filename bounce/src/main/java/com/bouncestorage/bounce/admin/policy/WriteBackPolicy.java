@@ -19,6 +19,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
@@ -92,6 +93,18 @@ public class WriteBackPolicy extends BouncePolicy {
                         .payload(ByteSource.empty())
                         .contentLength(0)
                         .build());
+    }
+
+    @Override
+    public boolean deleteContainerIfEmpty(String container) {
+        try {
+            Utils.waitUntil(app::hasNoPendingTasks);
+        } catch (TimeoutException e) {
+            // ignore
+        } catch (Exception e) {
+            throw propagate(e);
+        }
+        return super.deleteContainerIfEmpty(container);
     }
 
     @Override

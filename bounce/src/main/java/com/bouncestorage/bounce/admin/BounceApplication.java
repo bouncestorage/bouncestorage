@@ -696,6 +696,10 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         return backgroundReconcileTasks.schedule(task, delay, unit);
     }
 
+    public boolean hasNoPendingTasks() {
+        return backgroundReconcileTasks.getQueue().isEmpty() && backgroundReconcileTasks.getActiveCount() == 0;
+    }
+
     @VisibleForTesting
     public void busyWaitForBackgroundReconcileTasks() throws Exception {
         long completed = backgroundReconcileTasks.getCompletedTaskCount();
