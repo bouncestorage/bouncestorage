@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Properties;
 
 import com.bouncestorage.bounce.IForwardingBlobStore;
+import com.bouncestorage.bounce.utils.ContainerPool;
 
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.options.CreateContainerOptions;
@@ -48,6 +49,9 @@ public class AutoConfigBlobStore implements IForwardingBlobStore {
                     .mapToInt(o -> Integer.parseInt(o.toString())).max().orElse(0) + 1;
             p.setProperty("bounce.containers", config.getString("bounce.containers") + "," + nContainers);
         }
+
+        BlobStore tier2 = ((IForwardingBlobStore) app.getBlobStore(1)).delegate();
+        String tier2Container = ContainerPool.getContainerPool(tier2).getContainer();
         String prefix = "bounce.container." + nContainers;
         p.setProperty(prefix + ".name", container);
         p.setProperty(prefix + ".tier.1.evictDelay", "-P1D");
@@ -55,11 +59,15 @@ public class AutoConfigBlobStore implements IForwardingBlobStore {
         p.setProperty(prefix + ".tier.1.container", container);
         p.setProperty(prefix + ".tier.1.backend", "0");
         p.setProperty(prefix + ".tier.1.policy", "WriteBackPolicy");
-        p.setProperty(prefix + ".tier.2.container", container);
+        p.setProperty(prefix + ".tier.2.container", tier2Container);
         p.setProperty(prefix + ".tier.2.backend", "1");
         logger.info("auto adding container {}", nContainers);
+
+        boolean res = delegate().createContainerInLocation(location, container, options) |
+                tier2.createContainerInLocation(location, tier2Container, options);
+
         config.setAll(p);
 
-        return app.getBlobStore(container).createContainerInLocation(location, container, options);
+        return res;
     }
 }
