@@ -91,7 +91,6 @@ def execute_capture(command):
         raise TestException(e.output)
 
 def execute(command):
-    global ec2
     if ec2:
         return execute_capture(command)
     try:
