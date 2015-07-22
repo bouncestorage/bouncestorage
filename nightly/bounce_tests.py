@@ -71,8 +71,6 @@ OUTPUT_LOG = '/tmp/bounce_verifier.log'
 #JAVA_PROPERTIES = [ '-DLOG_LEVEL=info' ]
 JAVA_PROPERTIES = [  ]
 
-ec2 = False
-
 class TestException(BaseException):
     pass
 
@@ -82,22 +80,22 @@ class Creds(object):
         self.secret = secret
         self.token = token
 
-def execute_capture(command):
-    try:
-        out = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True).rstrip()
-        print out
+def execute(command, capture = False):
+    out = None
+    if capture:
+        out = ''
+    process = subprocess.Popen(command, stderr=subprocess.STDOUT,
+            stdout=subprocess.PIPE, shell=True)
+    for line in iter(process.stdout.readline, ''):
+        if capture:
+            out += line.rstrip()
+        else:
+            print line.rstrip()
+    process.wait()
+    if process.returncode != 0:
+        raise TestException('Command "%s" failed!' % command)
+    if capture:
         return out
-    except subprocess.CalledProcessError as e:
-        raise TestException(e.output)
-
-def execute(command):
-    global ec2
-    if ec2:
-        return execute_capture(command)
-    try:
-        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
-    except subprocess.CalledProcessError as e:
-        raise TestException(e.output)
 
 def git_clone(repo, directory):
     target_dir = os.path.join(os.environ['HOME'], directory)
@@ -115,7 +113,7 @@ def git_update_submodule(directory):
 def setup_code():
     with open(APT_SOURCES) as f:
         if f.read().find("unstable") == -1:
-            execute_capture("echo \"%s\"| sudo tee -a %s" % (UNSTABLE_REPO, APT_SOURCES))
+            execute("echo \"%s\"| sudo tee -a %s" % (UNSTABLE_REPO, APT_SOURCES))
 
     execute("sudo apt-get update")
     execute("sudo apt-get install -y " + " ".join(PACKAGES))
@@ -134,8 +132,8 @@ def start_docker_swift(datadir):
         execute("cd %s && sudo rm -Rf *" % datadir)
         os.chdir(cwd)
     execute("sudo mkdir -p %s" % datadir)
-    container = execute_capture("sudo docker run -d -P -v %s:/swift/nodes -t pbinkley/docker-swift" % datadir)
-    port = execute_capture("sudo docker inspect --format '{{ (index (index .NetworkSettings.Ports \"8080/tcp\") 0).HostPort }}' %s" % container)
+    container = execute("sudo docker run -d -P -v %s:/swift/nodes -t pbinkley/docker-swift" % datadir, capture = True)
+    port = execute("sudo docker inspect --format '{{ (index (index .NetworkSettings.Ports \"8080/tcp\") 0).HostPort }}' %s" % container, capture = True)
     return (container, port)
 
 def get_file_dir():
@@ -264,7 +262,6 @@ def maybe_update(log):
         os.execlp("env", "env", "python", current_file)
 
 def main():
-    global ec2
     ec2 = len(sys.argv) == 1
     test = "all"
     #os.environ['LOG_LEVEL'] = 'info'
