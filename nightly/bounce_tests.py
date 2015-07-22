@@ -71,8 +71,6 @@ OUTPUT_LOG = '/tmp/bounce_verifier.log'
 #JAVA_PROPERTIES = [ '-DLOG_LEVEL=info' ]
 JAVA_PROPERTIES = [  ]
 
-ec2 = False
-
 class TestException(BaseException):
     pass
 
@@ -91,9 +89,6 @@ def execute_capture(command):
         raise TestException(e.output)
 
 def execute(command):
-    global ec2
-    if ec2:
-        return execute_capture(command)
     try:
         subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
     except subprocess.CalledProcessError as e:
@@ -264,7 +259,6 @@ def maybe_update(log):
         os.execlp("env", "env", "python", current_file)
 
 def main():
-    global ec2
     ec2 = len(sys.argv) == 1
     test = "all"
     #os.environ['LOG_LEVEL'] = 'info'
