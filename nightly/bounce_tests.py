@@ -80,17 +80,11 @@ class Creds(object):
         self.secret = secret
         self.token = token
 
-def execute_capture(command):
+def execute(command):
     try:
         out = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True).rstrip()
         print out
         return out
-    except subprocess.CalledProcessError as e:
-        raise TestException(e.output)
-
-def execute(command):
-    try:
-        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
     except subprocess.CalledProcessError as e:
         raise TestException(e.output)
 
@@ -110,7 +104,7 @@ def git_update_submodule(directory):
 def setup_code():
     with open(APT_SOURCES) as f:
         if f.read().find("unstable") == -1:
-            execute_capture("echo \"%s\"| sudo tee -a %s" % (UNSTABLE_REPO, APT_SOURCES))
+            execute("echo \"%s\"| sudo tee -a %s" % (UNSTABLE_REPO, APT_SOURCES))
 
     execute("sudo apt-get update")
     execute("sudo apt-get install -y " + " ".join(PACKAGES))
@@ -129,8 +123,8 @@ def start_docker_swift(datadir):
         execute("cd %s && sudo rm -Rf *" % datadir)
         os.chdir(cwd)
     execute("sudo mkdir -p %s" % datadir)
-    container = execute_capture("sudo docker run -d -P -v %s:/swift/nodes -t pbinkley/docker-swift" % datadir)
-    port = execute_capture("sudo docker inspect --format '{{ (index (index .NetworkSettings.Ports \"8080/tcp\") 0).HostPort }}' %s" % container)
+    container = execute("sudo docker run -d -P -v %s:/swift/nodes -t pbinkley/docker-swift" % datadir)
+    port = execute("sudo docker inspect --format '{{ (index (index .NetworkSettings.Ports \"8080/tcp\") 0).HostPort }}' %s" % container)
     return (container, port)
 
 def get_file_dir():
