@@ -37,6 +37,7 @@ import com.bouncestorage.bounce.utils.ZeroInputStream;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
+import com.google.common.io.ByteStreams;
 
 import org.apache.commons.io.input.BoundedInputStream;
 import org.jclouds.blobstore.BlobStore;
@@ -495,6 +496,22 @@ public class WriteBackPolicyTest {
         BlobMetadata nearBlob = policy.getSource().blobMetadata(containerName, blobName);
         assertThat(farBlob.getContentMetadata().getContentLength()).isEqualTo(size);
         assertThat(nearBlob.getContentMetadata().getContentLength()).isEqualTo(size);
+
+        UtilsTest.advanceServiceClock(app, duration.plusHours(1));
+        logger.info("bouncing {}", blobName);
+        status = bounceService.bounce(containerName);
+        status.future().get();
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
+        logger.info("done bouncing {}", blobName);
+        BlobMetadata meta = policy.blobMetadata(containerName, blobName);
+        assertThat(BounceLink.isLink(policy.getSource().blobMetadata(containerName, blobName))).isTrue();
+        assertThat(Utils.equalsOtherThanTime(farBlob, meta)).isTrue();
+
+        // bring the blob back
+        try (InputStream in = policy.getBlob(containerName, blobName).getPayload().openStream()) {
+            ByteStreams.copy(in, ByteStreams.nullOutputStream());
+        }
+        assertThat(BounceLink.isLink(policy.getSource().blobMetadata(containerName, blobName))).isFalse();
     }
 
     private void assertEqualBlobStores(BlobStore one, BlobStore two) throws Exception {
