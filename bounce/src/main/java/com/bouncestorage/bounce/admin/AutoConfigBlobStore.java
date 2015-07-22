@@ -52,21 +52,27 @@ public class AutoConfigBlobStore implements IForwardingBlobStore {
 
         BlobStore tier2 = ((IForwardingBlobStore) app.getBlobStore(1)).delegate();
         String tier2Container = ContainerPool.getContainerPool(tier2).getContainer();
-        String prefix = "bounce.container." + nContainers;
-        p.setProperty(prefix + ".name", container);
-        p.setProperty(prefix + ".tier.1.evictDelay", "-P1D");
-        p.setProperty(prefix + ".tier.1.copyDelay", "-P1D");
-        p.setProperty(prefix + ".tier.1.container", container);
-        p.setProperty(prefix + ".tier.1.backend", "0");
-        p.setProperty(prefix + ".tier.1.policy", "WriteBackPolicy");
-        p.setProperty(prefix + ".tier.2.container", tier2Container);
-        p.setProperty(prefix + ".tier.2.backend", "1");
+
+        VirtualContainerResource r = new VirtualContainerResource(app);
+        VirtualContainer c = new VirtualContainer();
+        c.setName(container);
+        com.bouncestorage.bounce.admin.Location orig = new com.bouncestorage.bounce.admin.Location();
+        orig.setBlobStoreId(0);
+        orig.setCopyDelay("-P1D");
+        orig.setMoveDelay("-P1D");
+        orig.setContainerName(container);
+        com.bouncestorage.bounce.admin.Location tier2loc = new com.bouncestorage.bounce.admin.Location();
+        tier2loc.setBlobStoreId(1);
+        tier2loc.setContainerName(tier2Container);
+        c.setOriginLocation(orig);
+        c.setArchiveLocation(tier2loc);
         logger.info("auto adding container {}", nContainers);
 
         boolean res = delegate().createContainerInLocation(location, container, options) |
                 tier2.createContainerInLocation(location, tier2Container, options);
 
-        config.setAll(p);
+        r.createContainer(c);
+
 
         return res;
     }
