@@ -28,11 +28,11 @@ import org.jclouds.blobstore.domain.StorageMetadata;
 public class StoragePolicy extends WriteBackPolicy {
     public static final String CAPACITY_SETTING = "capacity";
 
+    protected long capacity;
+    protected Instant evictionTime;
+
     @VisibleForTesting
     long currentSize;
-
-    private long capacity;
-    private Instant evictionTime;
 
     @Override
     public void init(BounceApplication app, Configuration configuration) {
@@ -49,7 +49,14 @@ public class StoragePolicy extends WriteBackPolicy {
      */
     @Override
     public void prepareBounce(String containerName) {
+        currentSize = 0;
+        evictionTime = null;
         setEvictionTime(containerName);
+    }
+
+    protected boolean shouldEvict(String container, String blob, StorageMetadata meta) {
+        Instant objectDate = getInstant(meta.getLastModified());
+        return !objectDate.isAfter(evictionTime);
     }
 
     @Override
@@ -63,20 +70,25 @@ public class StoragePolicy extends WriteBackPolicy {
             return super.reconcileObject(container, sourceObject, destinationObject);
         }
 
-        Instant objectDate = getInstant(sourceObject.getLastModified());
-        if (!objectDate.isAfter(evictionTime)) {
+        BounceResult res;
+        if (shouldEvict(container, sourceObject.getName(), sourceObject)) {
             try {
-                return maybeMoveObject(container, sourceObject, destinationObject);
+                res = maybeMoveObject(container, sourceObject, destinationObject);
             } catch (IOException e) {
-                propagate(e);
+                throw propagate(e);
             }
+        } else {
+            res = super.reconcileObject(container, sourceObject, destinationObject);
         }
 
-        return super.reconcileObject(container, sourceObject, destinationObject);
+        if (res == BounceResult.MOVE || res == BounceResult.REMOVE || res == BounceResult.LINK) {
+            currentSize -= sourceObject.getSize();
+        }
+
+        return res;
     }
 
-    private void setEvictionTime(String containerName) {
-        currentSize = 0;
+    protected void setEvictionTime(String containerName) {
         // The MultiSet is limited to int, hence using the Map here
         TreeMap<Instant, Long> sizeHistogram = new TreeMap<>();
 
@@ -106,7 +118,7 @@ public class StoragePolicy extends WriteBackPolicy {
         return Instant.MAX;
     }
 
-    private Instant getInstant(Date date) {
+    Instant getInstant(Date date) {
         Instant value = date.toInstant().truncatedTo(ChronoUnit.DAYS);
         return value;
     }

@@ -193,9 +193,8 @@ public class WriteBackPolicy extends BouncePolicy {
         return etag;
     }
 
-    private BounceResult reconcileObject(String container, String blob)
+    protected BounceResult reconcileObject(String container, String blob)
             throws InterruptedException, ExecutionException {
-        logger.debug("auto reconciling {}", blob);
         BlobMetadata sourceMeta = getSource().blobMetadata(container, blob);
         BlobMetadata sourceMarkerMeta = getSource().blobMetadata(container, blobGetMarkerName(blob));
         BlobMetadata destMeta = getDestination().blobMetadata(container, blob);
