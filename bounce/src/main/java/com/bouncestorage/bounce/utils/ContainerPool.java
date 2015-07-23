@@ -41,7 +41,7 @@ public final class ContainerPool {
         } else {
             blobStore.list().stream().parallel()
                     .map(m -> m.getName())
-                    .filter(n -> n.startsWith("bounce-"))
+                    .filter(n -> n.matches(Utils.RANDOM_CONTAINER_REGEX))
                     .forEach(n -> {
                         try {
                             blobStore.deleteContainer(n);

@@ -49,6 +49,7 @@ import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 public final class Utils {
     public static final int WAIT_SLEEP_MS = 10;
     public static final int WAIT_TIMEOUT_MS = 30 * 1000;
+    public static final String RANDOM_CONTAINER_REGEX = "^bounce-[0-9]+$";
     private static final PutOptions MULTIPART_PUT = new PutOptions().multipart(true);
 
     private Utils() {
