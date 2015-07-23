@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import argparse
 import boto
 import boto.ses
 import email.mime.application
@@ -239,8 +240,8 @@ def get_all_blobstore_credentials(creds):
     return json.loads(key.get_contents_as_string())
 
 
-def get_all_blobstore_from_argv():
-    return json.load(open(sys.argv[1]))
+def get_all_blobstore_from_args(args):
+    return json.load(open(args.properties))
 
 
 def get_java_properties(provider_details, swift_port):
@@ -269,16 +270,15 @@ def run_bounce_tests(provider_details, swift_port):
     execute(command)
 
 
-def run_test(provider_details, swift_port, test="all"):
+def run_test(provider_details, swift_port, args):
     print "Testing %s" % provider_details['provider']
     java_properties = get_java_properties(provider_details, swift_port)
     command = "/usr/bin/mvn %s" % (java_properties)
-    if test != "all":
-        command += " -Dtest=" + test
+    if args.test is not None:
+        command += " -Dtest=" + args.test
     command += " test"
     print(command)
     execute(command)
-    run_bounce_tests(provider_details, swift_port)
 
 
 def notify_failure(creds, error, backtrace):
@@ -311,8 +311,8 @@ def maybe_update(log):
         os.execlp("env", "env", "python", current_file)
 
 
-def main():
-    ec2 = len(sys.argv) == 1
+def main(args):
+    ec2 = args.properties is None
     test = "all"
 
     if ec2:
@@ -333,9 +333,7 @@ def main():
             os.chdir(BOUNCE_SRC_DIR)
             setup_swift()
         else:
-            all_creds = get_all_blobstore_from_argv()
-            if len(sys.argv) > 2:
-                test = sys.argv[2]
+            all_creds = get_all_blobstore_from_args(args)
 
         saio_near_container, swift_near_port = start_docker_swift(
             SWIFT_DATA_DIR + "-near")
@@ -355,7 +353,10 @@ def main():
             remove_reports()
         for provider in all_creds:
             try:
-                run_test(provider, swift_near_port, test)
+                if args.unit_tests:
+                    run_test(provider, swift_near_port, args)
+                if args.bounce_tests:
+                    run_bounce_tests(provider, swift_near_port)
             finally:
                 if ec2:
                     archive_surefire(provider["provider"])
@@ -385,5 +386,21 @@ def main():
     if exception:
         sys.exit(1)
 
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description='Run the Bounce verifier tests')
+    parser.add_argument('--no-unit-tests', action='store_false',
+                        default=True, help='skip unit tests',
+                        dest='unit_tests')
+    parser.add_argument('--no-bounce-tests', action='store_false',
+                        default=True, help='skip integration tests',
+                        dest='bounce_tests')
+    parser.add_argument('--properties')
+    parser.add_argument('--test',
+                        help='specify a specific JUnit test to be run')
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    main()
+    main(parse_arguments())
