@@ -46,6 +46,7 @@ BOUNCE_NIGHTLY_TEST_NAME = "nightly/bounce_tests.py"
 
 DOCKER_SWIFT_REPO = "https://github.com/kahing/docker-swift"
 DOCKER_SWIFT_DIR = "docker-swift"
+IMAGE = 'kahing/docker-swift'
 SWIFT_DATA_DIR = "/tmp/docker-swift"
 
 ACCESS_KEY_FIELD = 'AccessKeyId'
@@ -124,7 +125,7 @@ def setup_code():
 
 def setup_swift():
     git_clone(DOCKER_SWIFT_REPO, DOCKER_SWIFT_DIR)
-    execute("cd ~/%s && sudo docker build -t pbinkley/docker-swift ." % DOCKER_SWIFT_DIR)
+    execute("cd ~/%s && sudo docker build -t %s ." % (DOCKER_SWIFT_DIR, IMAGE))
 
 def start_docker_swift(datadir):
     if os.path.exists(datadir):
@@ -132,7 +133,7 @@ def start_docker_swift(datadir):
         execute("cd %s && sudo rm -Rf *" % datadir)
         os.chdir(cwd)
     execute("sudo mkdir -p %s" % datadir)
-    container = execute("sudo docker run -d -P -v %s:/swift/nodes -t pbinkley/docker-swift" % datadir, capture = True)
+    container = execute("sudo docker run -d -P -v %s:/swift/nodes -t %s" % (datadir, IMAGE), capture = True)
     port = execute("sudo docker inspect --format '{{ (index (index .NetworkSettings.Ports \"8080/tcp\") 0).HostPort }}' %s" % container, capture = True)
     return (container, port)
 
