@@ -43,11 +43,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class StoragePolicyTest {
-    private BounceApplication app;
-    private BounceService bounceService;
-    private String containerName;
-    private Logger logger;
-    private StoragePolicy policy;
+    protected BounceApplication app;
+    protected BounceService bounceService;
+    protected String containerName;
+    protected Logger logger;
+    protected StoragePolicy policy;
 
     @Before
     public void setup() throws Exception {
