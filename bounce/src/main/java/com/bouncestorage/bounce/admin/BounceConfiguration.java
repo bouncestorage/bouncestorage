@@ -20,17 +20,14 @@ public class BounceConfiguration extends PropertiesConfiguration {
     public BounceConfiguration(String filename) throws ConfigurationException {
         super(filename);
         this.fileName = filename;
-
-        if (System.getProperty("bounce.autoconfig-tiers") != null) {
-            Properties system = new Properties();
-            for (Object k : System.getProperties().keySet()) {
-                String s = k.toString();
-                if (s.startsWith("bounce.")) {
-                    system.setProperty(s, System.getProperty(s));
-                }
+        Properties system = new Properties();
+        for (Object k : System.getProperties().keySet()) {
+            String s = k.toString();
+            if (s.startsWith("bounce.") || s.startsWith("s3proxy") || s.startsWith("swiftproxy")) {
+                system.setProperty(s, System.getProperty(s));
             }
-            setAll(system);
         }
+        setAll(system);
     }
 
     public BounceConfiguration() {
