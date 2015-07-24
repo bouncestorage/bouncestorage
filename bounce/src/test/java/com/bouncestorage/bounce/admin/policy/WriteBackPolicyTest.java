@@ -514,6 +514,39 @@ public class WriteBackPolicyTest {
         assertThat(BounceLink.isLink(policy.getSource().blobMetadata(containerName, blobName))).isFalse();
     }
 
+    @Test
+    public void testBounceLotsOfObjects() throws Exception {
+        final int numObjects = 1001;
+        for (int i = 1; i <= numObjects; i++) {
+            Blob blob = UtilsTest.makeBlob(policy, String.format("%06d", i));
+            policy.putBlob(containerName, blob);
+        }
+
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        if (policy.getDestination() instanceof BouncePolicy) {
+            assertStatus(status, status::getCopiedObjectCount).isEqualTo(numObjects * 2);
+        } else {
+            assertStatus(status, status::getCopiedObjectCount).isEqualTo(numObjects);
+        }
+    }
+
+    @Test
+    public void testCrawlLotsOfObjects() throws Exception {
+        final int numObjects = 1001;
+        for (int i = 1; i <= numObjects; i++) {
+            Blob blob = UtilsTest.makeBlob(policy, String.format("%06d", i));
+            policy.getSource().putBlob(containerName, blob);
+        }
+
+        Iterator<StorageMetadata> iter = Utils.crawlBlobStore(policy.getSource(), containerName).iterator();
+        for (int i = 1; i <= numObjects; i++) {
+            assertThat(iter.hasNext()).isTrue();
+            StorageMetadata meta = iter.next();
+            assertThat(meta.getName()).isEqualTo(String.format("%06d", i));
+        }
+    }
+
     private void assertEqualBlobStores(BlobStore one, BlobStore two) throws Exception {
         Iterator<StorageMetadata> iterFromOne = Utils.crawlBlobStore(one, containerName).iterator();
         Iterator<StorageMetadata> iterFromTwo = Utils.crawlBlobStore(two, containerName).iterator();

@@ -542,8 +542,7 @@ public class WriteBackPolicy extends BouncePolicy {
             }
         }
 
-        return new PageSetImpl<>(contents.values(),
-                nearPage.hasNext() ? nearPage.next().getName() : null);
+        return new PageSetImpl<>(contents.values(), contents.isEmpty() ? null : contents.lastKey());
     }
 
     private ImmutableSet<BounceStorageMetadata.Region> translateRegions(StorageMetadata farMetadata) {

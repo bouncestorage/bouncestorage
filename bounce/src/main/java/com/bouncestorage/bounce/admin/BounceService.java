@@ -141,10 +141,31 @@ public final class BounceService {
                 return !status.aborted && (srcIter.hasNext() || destIter.hasNext());
             }
 
+            private StorageMetadata peekOrNull(PeekingIterator<StorageMetadata> iter) {
+                return iter.hasNext() ? iter.peek() : null;
+            }
+
             @Override
             public Pair<BounceStorageMetadata, StorageMetadata> next() {
-                BounceStorageMetadata src = (BounceStorageMetadata) Utils.getNextOrNull(srcIter);
-                StorageMetadata dest = Utils.getNextOrNull(destIter);
+                BounceStorageMetadata src = (BounceStorageMetadata) peekOrNull(srcIter);
+                StorageMetadata dest = peekOrNull(destIter);
+                if (dest == null) {
+                    srcIter.next();
+                } else if (src == null) {
+                    destIter.next();
+                } else {
+                    int compare = dest.getName().compareTo(src.getName());
+                    if (compare == 0) {
+                        srcIter.next();
+                        destIter.next();
+                    } else if (compare < 0) {
+                        src = null;
+                        destIter.next();
+                    } else {
+                        dest = null;
+                        srcIter.next();
+                    }
+                }
                 return Pair.of(src, dest);
             }
         }
@@ -166,29 +187,7 @@ public final class BounceService {
                         BounceStorageMetadata sourceObject = p.getLeft();
                         StorageMetadata destinationObject = p.getRight();
 
-                        if (destinationObject == null) {
-                            reconcileObject(policy, sourceObject, null);
-                            sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
-                        } else if (sourceObject == null) {
-                            reconcileObject(policy, null, destinationObject);
-                            destinationObject = Utils.getNextOrNull(destinationIterator);
-                        } else {
-                            int compare = destinationObject.getName().compareTo(sourceObject.getName());
-                            if (compare == 0) {
-                                // they are the same key
-                                reconcileObject(policy, sourceObject, destinationObject);
-                                destinationObject = Utils.getNextOrNull(destinationIterator);
-                                sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
-                            } else if (compare < 0) {
-                                // near store missing this object
-                                reconcileObject(policy, null, destinationObject);
-                                destinationObject = Utils.getNextOrNull(destinationIterator);
-                            } else {
-                                // destination store missing this object
-                                reconcileObject(policy, sourceObject, destinationObject);
-                                sourceObject = (BounceStorageMetadata) Utils.getNextOrNull(sourceIterator);
-                            }
-                        }
+                        reconcileObject(policy, sourceObject, destinationObject);
                     });
         }
 
