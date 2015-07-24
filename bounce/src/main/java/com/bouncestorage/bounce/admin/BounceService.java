@@ -101,17 +101,21 @@ public final class BounceService {
 
         @Override
         public void run() {
-            BlobStore blobStore = app.getBlobStore(container);
-            BouncePolicy policy = (BouncePolicy) requireNonNull(blobStore);
-            processPolicy(policy);
-            logStats(policy.getSource(), sourceStats);
-            if (policy.getDestination() instanceof BouncePolicy) {
-                processPolicy((BouncePolicy) policy.getDestination());
-            } else if (policy.getDestination() != null) {
-                logStats(policy.getDestination(), destinationStats);
+            try {
+                BlobStore blobStore = app.getBlobStore(container);
+                BouncePolicy policy = (BouncePolicy) requireNonNull(blobStore);
+                processPolicy(policy);
+                logStats(policy.getSource(), sourceStats);
+                if (policy.getDestination() instanceof BouncePolicy) {
+                    processPolicy((BouncePolicy) policy.getDestination());
+                } else if (policy.getDestination() != null) {
+                    logStats(policy.getDestination(), destinationStats);
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
+            } finally {
+                status.endTime = new Date();
             }
-
-            status.endTime = new Date();
         }
 
         private void logStats(BlobStore blobStore, ContainerStats stats) {
