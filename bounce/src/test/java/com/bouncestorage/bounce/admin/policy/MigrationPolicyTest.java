@@ -29,7 +29,6 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.bouncestorage.bounce.admin.BounceStats;
 import com.bouncestorage.bounce.admin.StatsQueueEntry;
-import com.bouncestorage.bounce.utils.TestUtils;
 import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.domain.Blob;
@@ -149,8 +148,8 @@ public final class MigrationPolicyTest {
     @Test
     public void testOverwriteWhileMigrating() throws Exception {
         String blobName = UtilsTest.createRandomBlobName();
-        Blob oldBlob = UtilsTest.makeBlob(policy, blobName,
-                TestUtils.randomByteSource().slice(0, 10 * 1024 * 1024));
+        int size = 10 * 1024 * 1024;
+        Blob oldBlob = UtilsTest.makeBlob(policy, blobName, ByteSource.wrap(new byte[size]));
         Blob newBlob = UtilsTest.makeBlob(policy, blobName, ByteSource.empty());
 
         policy.getSource().putBlob(containerName, oldBlob);
