@@ -149,14 +149,16 @@ public final class UtilsTest {
             BlobMetadata actualMeta = actual.getMetadata();
             BlobMetadata expectMeta = expected.getMetadata();
             String name = expectMeta.getName();
-
-            try (InputStream is = actual.getPayload().openStream();
-                 InputStream is2 = expected.getPayload().openStream()) {
-                assertThat(is).as(name).hasContentEqualTo(is2);
-            }
-            // TODO: assert more metadata, including user metadata
             ContentMetadata actualContentMeta = actualMeta.getContentMetadata();
             ContentMetadata expectContentMeta = expectMeta.getContentMetadata();
+
+            if (actualContentMeta.getContentLength() < 100 && expectContentMeta.getContentLength() < 100) {
+                try (InputStream is = actual.getPayload().openStream();
+                     InputStream is2 = expected.getPayload().openStream()) {
+                    assertThat(is).as(name).hasContentEqualTo(is2);
+                }
+            }
+            // TODO: assert more metadata, including user metadata
             // s3 doesn't return content md5
             if (actualContentMeta.getContentMD5AsHashCode() != null &&
                     expectContentMeta.getContentMD5AsHashCode() != null) {
@@ -165,6 +167,8 @@ public final class UtilsTest {
             }
             assertThat(actualContentMeta.getContentType()).as(name)
                     .isEqualTo(expectContentMeta.getContentType());
+            assertThat(actualContentMeta.getContentLength()).as(name)
+                    .isEqualTo(expectContentMeta.getContentLength());
         }
     }
 

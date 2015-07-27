@@ -19,6 +19,7 @@ import java.util.Queue;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.HttpMethod;
+import javax.ws.rs.ServiceUnavailableException;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.Utils;
@@ -28,6 +29,7 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.bouncestorage.bounce.admin.BounceStats;
 import com.bouncestorage.bounce.admin.StatsQueueEntry;
+import com.bouncestorage.bounce.utils.TestUtils;
 import com.google.common.io.ByteSource;
 
 import org.jclouds.blobstore.domain.Blob;
@@ -142,6 +144,29 @@ public final class MigrationPolicyTest {
         policy.putBlob(containerName, blobBar);
 
         assertEqualBlobs(policy.getBlob(containerName, blobName), blobBar);
+    }
+
+    @Test
+    public void testOverwriteWhileMigrating() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        Blob oldBlob = UtilsTest.makeBlob(policy, blobName,
+                TestUtils.randomByteSource().slice(0, 10 * 1024 * 1024));
+        Blob newBlob = UtilsTest.makeBlob(policy, blobName, ByteSource.empty());
+
+        policy.getSource().putBlob(containerName, oldBlob);
+
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
+        // sleep a little to wait for migration to start
+        Thread.sleep(100);
+        try {
+            policy.putBlob(containerName, newBlob);
+        } catch (ServiceUnavailableException e) {
+            // putBlob may fail if we detect that reconciling is happening
+            return;
+        }
+
+        status.future().get();
+        assertEqualBlobs(policy.getBlob(containerName, blobName), newBlob);
     }
 
     @Test
