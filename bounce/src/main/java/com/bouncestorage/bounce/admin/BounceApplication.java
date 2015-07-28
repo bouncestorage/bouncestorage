@@ -593,6 +593,8 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         if (!backgroundReconcileTasks.isShutdown()) {
             backgroundReconcileTasks.shutdown();
         }
+        backgroundTasks.shutdown();
+        backgroundTasks.awaitTermination(30, TimeUnit.SECONDS);
         bounceStats.shutdown();
     }
 
@@ -696,7 +698,7 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         return backgroundReconcileTasks.schedule(task, delay, unit);
     }
 
-    public boolean hasNoPendingTasks() {
+    public boolean hasNoPendingReconcileTasks() {
         return backgroundReconcileTasks.getQueue().isEmpty() && backgroundReconcileTasks.getActiveCount() == 0;
     }
 
@@ -705,6 +707,10 @@ public final class BounceApplication extends Application<BounceDropWizardConfigu
         long completed = backgroundReconcileTasks.getCompletedTaskCount();
         backgroundReconcileTasks.resume();
         Utils.waitUntil(() -> backgroundReconcileTasks.getCompletedTaskCount() > completed);
+    }
+
+    public boolean hasNoPendingTasks() {
+        return backgroundTasks.getQueue().isEmpty() && backgroundTasks.getActiveCount() == 0;
     }
 
     @VisibleForTesting

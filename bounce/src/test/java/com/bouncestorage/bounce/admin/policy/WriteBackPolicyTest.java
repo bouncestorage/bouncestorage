@@ -189,12 +189,15 @@ public class WriteBackPolicyTest {
         } else {
             assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
         }
+        Utils.waitUntil(app::hasNoPendingTasks);
 
         // Run the last modified time policy and ensure that the blob is removed
         policy.removeBlob(containerName, blobName);
         farBlob = policy.getDestination().getBlob(containerName, blobName);
         assertThat(policy.getBlob(containerName, blobName)).isNull();
         UtilsTest.assertEqualBlobs(farBlob, blob);
+        Utils.waitUntil(app::hasNoPendingTasks);
+
         status = runBounce(bounceService, containerName);
         if (policy.getDestination() instanceof BouncePolicy) {
             assertStatus(status, status::getRemovedObjectCount).isEqualTo(2);
@@ -224,6 +227,7 @@ public class WriteBackPolicyTest {
         } else {
             assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
         }
+        Utils.waitUntil(app::hasNoPendingTasks);
 
         // Update the object
         logger.info("PUT bar to {}", containerName);
@@ -234,6 +238,7 @@ public class WriteBackPolicyTest {
         UtilsTest.assertEqualBlobs(nearBlob, blobBar);
         UtilsTest.assertEqualBlobs(farBlob, blobFoo);
         UtilsTest.assertEqualBlobs(canonicalBlob, blobBar);
+        Utils.waitUntil(app::hasNoPendingTasks);
 
         // Run the write back policy and ensure that the blob is updated
         logger.info("BOUNCE bar");

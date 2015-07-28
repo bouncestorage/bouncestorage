@@ -98,7 +98,7 @@ public class WriteBackPolicy extends BouncePolicy {
     @Override
     public boolean deleteContainerIfEmpty(String container) {
         try {
-            Utils.waitUntil(app::hasNoPendingTasks);
+            Utils.waitUntil(app::hasNoPendingReconcileTasks);
         } catch (TimeoutException e) {
             // ignore
         } catch (Exception e) {

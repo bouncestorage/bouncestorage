@@ -184,6 +184,7 @@ public final class UtilsTest {
 
     public static AbstractLongAssert<LongAssert> assertStatus(BounceService.BounceTaskStatus status,
             LongSupplier supplier) throws Exception {
+        status.future().get();
         ObjectMapper mapper = new ObjectMapper();
         return new LongAssert(supplier.getAsLong()).as(mapper.writeValueAsString(status));
     }

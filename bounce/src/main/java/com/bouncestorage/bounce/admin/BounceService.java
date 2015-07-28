@@ -91,12 +91,14 @@ public final class BounceService {
         private BounceTaskStatus status;
         private ContainerStats sourceStats;
         private ContainerStats destinationStats;
+        private Throwable initBackTrace;
 
         BounceTask(String container, BounceTaskStatus status) {
             this.container = requireNonNull(container);
             this.status = requireNonNull(status);
             sourceStats = new ContainerStats();
             destinationStats = new ContainerStats();
+            initBackTrace = new RuntimeException();
         }
 
         @Override
@@ -112,7 +114,10 @@ public final class BounceService {
                     logStats(policy.getDestination(), destinationStats);
                 }
             } catch (Throwable e) {
-                e.printStackTrace();
+                e.initCause(initBackTrace);
+                logger.error("bounce error", e);
+                status.aborted = true;
+                status.errorObjectCount.incrementAndGet();
             } finally {
                 status.endTime = new Date();
             }

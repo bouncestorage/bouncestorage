@@ -26,13 +26,9 @@ import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 public final class ConfigTest {
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
     private String containerName;
     private BounceApplication app;
     private BounceService bounceService;

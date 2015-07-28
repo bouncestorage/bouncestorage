@@ -5,6 +5,8 @@
 
 package com.bouncestorage.bounce.admin;
 
+import static com.bouncestorage.bounce.UtilsTest.assertStatus;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
@@ -62,6 +64,7 @@ public final class AdminTest {
         if (policy != null) {
             policy.deleteContainer(containerName);
         }
+        app.stop();
     }
 
     @Test
@@ -89,5 +92,6 @@ public final class AdminTest {
         status = bounceBlobsResource.bounceBlobs(new BounceBlobsResource.BounceServiceRequest(
                 Optional.of(containerName), Optional.absent(), Optional.of(true)));
         assertThat(status.aborted).isTrue();
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
     }
 }
