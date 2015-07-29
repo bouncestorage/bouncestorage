@@ -234,10 +234,9 @@ public class WriteBackPolicy extends BouncePolicy {
     @Override
     public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject) {
-        logger.debug("reconciling {}", sourceObject == null ? destinationObject.getName() : sourceObject.getName());
         if (sourceObject != null) {
-            logger.debug("reconciling {} {}", sourceObject.getName(),
-                    destinationObject == null ? "null" : destinationObject.getName());
+            logger.debug("reconciling {} {} {}", sourceObject.getName(),
+                    destinationObject == null ? "null" : destinationObject.getName(), sourceObject.getLastModified());
             try {
                 if (isEvict() && isObjectExpired(sourceObject, evictDelay)) {
                     return maybeMoveObject(container, sourceObject, destinationObject);

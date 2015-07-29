@@ -65,6 +65,7 @@ public class StoragePolicy extends WriteBackPolicy {
 
         Instant objectDate = getInstant(sourceObject.getLastModified());
         if (!objectDate.isAfter(evictionTime)) {
+            logger.debug("evicting {}", sourceObject.getName());
             try {
                 return maybeMoveObject(container, sourceObject, destinationObject);
             } catch (IOException e) {
@@ -92,17 +93,28 @@ public class StoragePolicy extends WriteBackPolicy {
     }
 
     Instant getEvictionTime(TreeMap<Instant, Long> sizeHistogram) {
+        logger.info("current size: {} target capacity: {}", currentSize, capacity);
         long delta = currentSize - capacity;
         if (delta < 0) {
+            logger.info("current size is {} < {}, nothing to evict", currentSize, capacity);
             return Instant.MIN;
+        }
+
+        if (logger.isDebugEnabled()) {
+            sizeHistogram.forEach((k, v) -> logger.debug("{} bytes in size histogram {}", v, k));
         }
 
         for (Instant key : sizeHistogram.keySet()) {
             delta -= sizeHistogram.get(key);
             if (delta < 0) {
+                logger.info("evicting until {}", key);
                 return key;
+            } else {
+                logger.debug("size will be {} after evicting to {}", currentSize - delta, key);
             }
         }
+
+        logger.info("current size is {} > {}, evicting everything", currentSize, capacity);
         return Instant.MAX;
     }
 

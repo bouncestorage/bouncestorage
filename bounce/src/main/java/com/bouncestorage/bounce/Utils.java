@@ -29,6 +29,7 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.PeekingIterator;
 import com.google.common.hash.HashCode;
+import com.google.common.hash.Hashing;
 import com.google.inject.Module;
 
 import org.jclouds.Constants;
@@ -44,6 +45,7 @@ import org.jclouds.blobstore.domain.StorageType;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.io.ContentMetadata;
+import org.jclouds.io.MutableContentMetadata;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 
 public final class Utils {
@@ -86,12 +88,20 @@ public final class Utils {
         try {
             Blob blobFrom = copyBlob(src, dest, containerName, containerName, blobName);
             if (blobFrom != null) {
+                MutableContentMetadata contentMetadata = blobFrom.getMetadata().getContentMetadata();
+                if (contentMetadata.getContentMD5AsHashCode() == null) {
+                    contentMetadata.setContentMD5(getContentMD5FromBlob(src, blobFrom));
+                }
                 createBounceLink(src, blobFrom.getMetadata());
             }
         } catch (IOException e) {
             propagate(e);
         }
         return BouncePolicy.BounceResult.MOVE;
+    }
+
+    private static HashCode getContentMD5FromBlob(BlobStore blobStore, Blob blob) throws IOException {
+        return new BlobStoreByteSource(blobStore, blob, blob.getMetadata().getSize()).hash(Hashing.md5());
     }
 
     public static BouncePolicy.BounceResult createBounceLink(BlobStore blobStore, BlobMetadata blobMetadata) {
