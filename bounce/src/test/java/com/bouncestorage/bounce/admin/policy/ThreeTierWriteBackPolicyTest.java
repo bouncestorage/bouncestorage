@@ -26,8 +26,10 @@ import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
+@Ignore
 public final class ThreeTierWriteBackPolicyTest extends WriteBackPolicyTest {
     @Before
     public void setUp() throws Exception {

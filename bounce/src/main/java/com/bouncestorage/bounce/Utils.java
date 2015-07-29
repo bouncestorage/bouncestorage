@@ -264,8 +264,12 @@ public final class Utils {
 
     public static Blob copyBlob(BlobStore from, BlobStore to, String containerNameTo, Blob blobFrom)
             throws IOException {
-        if (blobFrom == null || BounceLink.isLink(blobFrom.getMetadata())) {
+        if (blobFrom == null) {
             return null;
+        }
+
+        if (BounceLink.isLink(blobFrom.getMetadata())) {
+            throw new IllegalArgumentException(blobFrom.getMetadata().getName() + " is a link");
         }
 
         ContentMetadata metadata = blobFrom.getMetadata().getContentMetadata();

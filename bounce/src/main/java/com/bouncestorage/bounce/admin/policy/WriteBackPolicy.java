@@ -41,6 +41,7 @@ import com.google.common.io.ByteSource;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.io.input.TeeInputStream;
+import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.PageSet;
@@ -95,6 +96,22 @@ public class WriteBackPolicy extends BouncePolicy {
                         .build());
     }
 
+    private void removeMarkerBlob(String containerName, String key) {
+        logger.debug("deleting marker blob for {}", key);
+        getSource().removeBlob(containerName, blobGetMarkerName(key));
+    }
+
+    private boolean deleteContainerOrLogContent(BlobStore blobStore, String container) {
+        if (!blobStore.deleteContainerIfEmpty(container)) {
+            logger.info("container {} not empty", container);
+            if (logger.isDebugEnabled()) {
+                blobStore.list(container).forEach(s -> logger.debug("{}", s.getName()));
+            }
+            return false;
+        }
+        return true;
+    }
+
     @Override
     public boolean deleteContainerIfEmpty(String container) {
         try {
@@ -104,7 +121,9 @@ public class WriteBackPolicy extends BouncePolicy {
         } catch (Exception e) {
             throw propagate(e);
         }
-        return super.deleteContainerIfEmpty(container);
+
+        return deleteContainerOrLogContent(getSource(), container) &&
+                deleteContainerOrLogContent(getDestination(), container);
     }
 
     @Override
@@ -206,17 +225,11 @@ public class WriteBackPolicy extends BouncePolicy {
                 if (sourceMarkerMeta != null) {
                     if (BounceLink.isLink(sourceMeta)) {
                         meta = new BounceStorageMetadata(destMeta, BounceStorageMetadata.FAR_ONLY);
-                    } else if (Utils.eTagsEqual(sourceMeta.getETag(), destMeta.getETag())) {
-                        meta = new BounceStorageMetadata(sourceMeta, BounceStorageMetadata.EVERYWHERE);
                     } else {
                         meta = new BounceStorageMetadata(sourceMeta, BounceStorageMetadata.NEAR_ONLY);
                     }
                 } else {
-                    if (Utils.eTagsEqual(sourceMeta.getETag(), destMeta.getETag())) {
-                        meta = new BounceStorageMetadata(sourceMeta, BounceStorageMetadata.EVERYWHERE);
-                    } else {
-                        meta = new BounceStorageMetadata(destMeta, BounceStorageMetadata.FAR_ONLY);
-                    }
+                    meta = new BounceStorageMetadata(sourceMeta, BounceStorageMetadata.EVERYWHERE);
                 }
             } else {
                 meta = new BounceStorageMetadata(sourceMeta, BounceStorageMetadata.NEAR_ONLY);
@@ -225,7 +238,7 @@ public class WriteBackPolicy extends BouncePolicy {
             return reconcileObject(container, meta, destMeta);
         } else {
             if (sourceMarkerMeta != null) {
-                getSource().removeBlob(container, blobGetMarkerName(blob));
+                removeMarkerBlob(container, blob);
             }
             return reconcileObject(container, null, destMeta);
         }
@@ -236,8 +249,8 @@ public class WriteBackPolicy extends BouncePolicy {
             destinationObject) {
         logger.debug("reconciling {}", sourceObject == null ? destinationObject.getName() : sourceObject.getName());
         if (sourceObject != null) {
-            logger.debug("reconciling {} {}", sourceObject.getName(),
-                    destinationObject == null ? "null" : destinationObject.getName());
+            logger.debug("reconciling {} {} {}", sourceObject.getName(),
+                    destinationObject == null ? "null" : destinationObject.getName(), sourceObject.getRegions());
             try {
                 if (isEvict() && isObjectExpired(sourceObject, evictDelay)) {
                     return maybeMoveObject(container, sourceObject, destinationObject);
@@ -412,13 +425,13 @@ public class WriteBackPolicy extends BouncePolicy {
         if (sourceObject.getRegions().equals(BounceStorageMetadata.FAR_ONLY)) {
             return BounceResult.NO_OP;
         }
-        if (sourceObject.getRegions().equals(BounceStorageMetadata.EVERYWHERE)) {
+        if (sourceObject.getRegions().containsAll(BounceStorageMetadata.EVERYWHERE)) {
             BlobMetadata sourceMetadata = getSource().blobMetadata(container, sourceObject.getName());
             BlobMetadata destinationMetadata = getDestination().blobMetadata(container, destinationObject.getName());
 
-            if (sourceMetadata != null && destinationMetadata != null &&
-                    Utils.eTagsEqual(destinationMetadata.getETag(), sourceMetadata.getETag())) {
+            if (sourceMetadata != null && destinationMetadata != null) {
                 Utils.createBounceLink(this, sourceMetadata);
+                removeMarkerBlob(container, sourceObject.getName());
                 return BounceResult.LINK;
             }
         }
@@ -426,10 +439,11 @@ public class WriteBackPolicy extends BouncePolicy {
         logger.debug("moving {}", sourceObject.getName());
         Utils.copyBlobAndCreateBounceLink(getSource(), getDestination(), container,
                 sourceObject.getName());
+        removeMarkerBlob(container, sourceObject.getName());
         return BounceResult.MOVE;
     }
 
-    private boolean isSwiftSegmentBlob(String name) {
+    public static boolean isSwiftSegmentBlob(String name) {
         return SWIFT_SEGMENT_PATTERN.test(name);
     }
 
@@ -499,12 +513,6 @@ public class WriteBackPolicy extends BouncePolicy {
                 if (nextIsMarker) {
                     if (BounceLink.isLink(getSource().blobMetadata(s, name))) {
                         meta = new BounceStorageMetadata(farMeta, farRegions);
-                    } else if (Utils.eTagsEqual(nearMeta.getETag(), farMeta.getETag())) {
-                        meta = new BounceStorageMetadata(nearMeta,
-                                new ImmutableSet.Builder<BounceStorageMetadata.Region>()
-                                        .addAll(farRegions)
-                                        .add(BounceStorageMetadata.Region.NEAR)
-                                        .build());
                     } else {
                         meta = new BounceStorageMetadata(nearMeta, BounceStorageMetadata.NEAR_ONLY);
                     }
@@ -512,12 +520,15 @@ public class WriteBackPolicy extends BouncePolicy {
                     meta.hasMarkerBlob(true);
                     contents.put(name, meta);
                 } else {
-                    if (Utils.eTagsEqual(nearMeta.getETag(), farMeta.getETag())) {
+                    if (nearMeta.getSize().equals(farMeta.getSize())) {
                         meta = new BounceStorageMetadata(nearMeta,
                                 new ImmutableSet.Builder<BounceStorageMetadata.Region>()
                                         .add(BounceStorageMetadata.Region.NEAR)
                                         .addAll(farRegions)
                                         .build());
+                        if (nearMeta.getLastModified().compareTo(meta.getLastModified()) < 0) {
+                            meta.setLastModified(nearMeta.getLastModified());
+                        }
                     } else {
                         meta = new BounceStorageMetadata(farMeta, farRegions);
                     }
@@ -565,16 +576,12 @@ public class WriteBackPolicy extends BouncePolicy {
             return BounceResult.NO_OP;
         }
         if (sourceObject.getRegions().equals(BounceStorageMetadata.EVERYWHERE)) {
-            BlobMetadata destinationMeta = getDestination().blobMetadata(container, destinationObject.getName());
-            BlobMetadata sourceMeta = getSource().blobMetadata(container, sourceObject.getName());
-            if (Utils.eTagsEqual(destinationMeta.getETag(), sourceMeta.getETag())) {
-                return BounceResult.NO_OP;
-            }
+            return BounceResult.NO_OP;
         }
 
-        // Either the object does not exist in the far store or the ETags are not equal, so we should copy
         logger.debug("copying {} to far store", sourceObject.getName());
         Utils.copyBlob(getSource(), getDestination(), container, container, sourceObject.getName());
+        removeMarkerBlob(container, sourceObject.getName());
         return BounceResult.COPY;
     }
 

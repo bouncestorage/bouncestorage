@@ -96,16 +96,15 @@ public final class MigrationPolicy extends BouncePolicy {
                 return BounceResult.NO_OP;
             } else if (sourceMeta != null && destinationMeta == null) {
                 return moveObject(container, sourceMeta);
-            }
-
-            if (Utils.eTagsEqual(sourceMeta.getETag(), destinationMeta.getETag())) {
-                getSource().removeBlob(container, sourceMeta.getName());
-                return BounceResult.REMOVE;
             } else {
-                if (sourceMeta.getLastModified().compareTo(destinationMeta.getLastModified()) > 0) {
+                if (!sourceMeta.getSize().equals(destinationMeta.getSize()) ||
+                        sourceMeta.getLastModified().compareTo(destinationMeta.getLastModified()) > 0) {
                     logger.warn("Different objects with the same name: {}", sourceMeta.getName());
+                    return BounceResult.NO_OP;
+                } else {
+                    getSource().removeBlob(container, sourceMeta.getName());
+                    return BounceResult.REMOVE;
                 }
-                return BounceResult.NO_OP;
             }
         } finally {
             reconcileLocker.unlockObject(lock, true);

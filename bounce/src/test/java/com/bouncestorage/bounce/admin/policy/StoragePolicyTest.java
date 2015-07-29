@@ -38,6 +38,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.mockito.exceptions.base.MockitoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -148,16 +149,22 @@ public class StoragePolicyTest {
 
         StoragePolicy mock = Mockito.spy(policy);
         BlobStore mockSource = Mockito.mock(BlobStore.class);
+        Mockito.doReturn(policy.getSource().getContext()).when(mock).getContext();
         Mockito.doReturn(mockSource).when(mock).getSource();
         Mockito.doReturn(new PageSetImpl<>(listResults, null)).when(mockSource).list(Mockito.anyString(),
                 Mockito.any(ListContainerOptions.class));
         mock.prepareBounce(containerName);
-        BouncePolicy.BounceResult result = mock.reconcileObject(containerName,
-                new BounceStorageMetadata(expiredBlobMetadata, BounceStorageMetadata.NEAR_ONLY), null);
-        assertThat(result).isEqualTo(BouncePolicy.BounceResult.MOVE);
-        result = mock.reconcileObject(containerName,
-                new BounceStorageMetadata(remainingBlobMetadata, BounceStorageMetadata.NEAR_ONLY), null);
-        assertThat(result).isEqualTo(BouncePolicy.BounceResult.NO_OP);
+        try {
+            BouncePolicy.BounceResult result = mock.reconcileObject(containerName,
+                    new BounceStorageMetadata(expiredBlobMetadata, BounceStorageMetadata.NEAR_ONLY), null);
+            assertThat(result).isEqualTo(BouncePolicy.BounceResult.MOVE);
+            result = mock.reconcileObject(containerName,
+                    new BounceStorageMetadata(remainingBlobMetadata, BounceStorageMetadata.NEAR_ONLY), null);
+            assertThat(result).isEqualTo(BouncePolicy.BounceResult.NO_OP);
+        } catch (MockitoException e) {
+            e.setStackTrace(e.getUnfilteredStackTrace());
+            throw e;
+        }
     }
 
     @Test
