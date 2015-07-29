@@ -33,6 +33,8 @@ import org.jclouds.blobstore.domain.internal.MutableBlobMetadataImpl;
 import org.jclouds.io.ContentMetadata;
 import org.jclouds.io.MutableContentMetadata;
 import org.jclouds.io.payloads.ByteSourcePayload;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class BounceLink implements Serializable {
 
@@ -41,6 +43,7 @@ public final class BounceLink implements Serializable {
     private static final Map<String, String> BOUNCE_ATTR = ImmutableMap.of(
             BOUNCE_LINK, ""
     );
+    private static final Logger logger = LoggerFactory.getLogger(BounceLink.class);
     private MutableBlobMetadata metadata;
 
     public BounceLink(Optional<BlobMetadata> metadata) {
@@ -64,7 +67,9 @@ public final class BounceLink implements Serializable {
              ObjectInputStream ois = new ObjectInputStream(is)) {
             Object obj = ois.readObject();
             if (obj instanceof BounceLink) {
-                return (BounceLink) obj;
+                BounceLink link = (BounceLink) obj;
+                logger.debug("deserialized as {}", link.metadata);
+                return link;
             }
             return null;
         } catch (ClassNotFoundException e) {

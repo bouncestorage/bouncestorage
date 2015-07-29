@@ -142,6 +142,15 @@ public final class UtilsTest {
         return ContextBuilder.newBuilder("transient").build(BlobStoreContext.class).getBlobStore();
     }
 
+    public static void assertEqualMeta(StorageMetadata actual, StorageMetadata expected) {
+        assertThat(Utils.eTagsEqual(actual.getETag(), expected.getETag()))
+                .as(actual.getETag() + " " + expected.getETag())
+                .isTrue();
+        assertThat(actual.getName()).isEqualTo(expected.getName());
+        assertThat(actual.getSize()).isEqualTo(expected.getSize());
+        assertThat(actual.getType()).isEqualTo(expected.getType());
+    }
+
     public static void assertEqualBlobs(Blob actual, Blob expected) throws Exception {
         if (actual != expected) {
             assertThat(actual).isNotNull();

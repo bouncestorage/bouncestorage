@@ -5,6 +5,7 @@
 
 package com.bouncestorage.bounce.admin.policy;
 
+import static com.bouncestorage.bounce.UtilsTest.assertEqualMeta;
 import static com.bouncestorage.bounce.UtilsTest.assertStatus;
 import static com.bouncestorage.bounce.UtilsTest.runBounce;
 
@@ -510,7 +511,7 @@ public class WriteBackPolicyTest {
         logger.info("done bouncing {}", blobName);
         BlobMetadata meta = policy.blobMetadata(containerName, blobName);
         assertThat(BounceLink.isLink(policy.getSource().blobMetadata(containerName, blobName))).isTrue();
-        assertThat(Utils.equalsOtherThanTime(farBlob, meta)).isTrue();
+        assertEqualMeta(farBlob, meta);
 
         // bring the blob back
         try (InputStream in = policy.getBlob(containerName, blobName).getPayload().openStream()) {
