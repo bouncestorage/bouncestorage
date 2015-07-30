@@ -27,6 +27,7 @@ import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BouncePolicy.BounceResult;
+import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterators;
@@ -188,6 +189,7 @@ public final class BounceService {
             policy.prepareBounce(container);
             StreamSupport.stream(Spliterators.spliteratorUnknownSize(
                     new ReconcileIterator(sourceIterator, destinationIterator), Spliterator.CONCURRENT), true)
+                    .filter(p -> p.getRight() == null || !WriteBackPolicy.isSwiftSegmentBlob(p.getRight().getName()))
                     .forEach((p) -> {
                         BounceStorageMetadata sourceObject = p.getLeft();
                         StorageMetadata destinationObject = p.getRight();
