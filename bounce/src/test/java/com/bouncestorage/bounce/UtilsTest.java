@@ -143,9 +143,6 @@ public final class UtilsTest {
     }
 
     public static void assertEqualMeta(StorageMetadata actual, StorageMetadata expected) {
-        assertThat(Utils.eTagsEqual(actual.getETag(), expected.getETag()))
-                .as(actual.getETag() + " " + expected.getETag())
-                .isTrue();
         assertThat(actual.getName()).isEqualTo(expected.getName());
         assertThat(actual.getSize()).isEqualTo(expected.getSize());
         assertThat(actual.getType()).isEqualTo(expected.getType());
