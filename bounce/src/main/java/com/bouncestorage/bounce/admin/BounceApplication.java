@@ -78,7 +78,7 @@ import org.slf4j.LoggerFactory;
 import ch.qos.logback.classic.Level;
 
 
-public final class BounceApplication extends Application<BounceDropWizardConfiguration> {
+public class BounceApplication extends Application<BounceDropWizardConfiguration> {
     @VisibleForTesting
     public static final int BOUNCE_SCHEDULE_TIME = 21;
 
