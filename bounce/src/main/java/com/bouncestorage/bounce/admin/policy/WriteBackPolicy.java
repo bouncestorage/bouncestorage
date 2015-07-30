@@ -68,6 +68,7 @@ public class WriteBackPolicy extends BouncePolicy {
     private static final Predicate<String> SWIFT_SEGMENT_PATTERN =
             Pattern.compile(".*/slo/\\d{10}\\.\\d{6}/\\d+/\\d+/\\d{8}$").asPredicate();
     private static final String LOG_MARKER_SUFFIX_ESCAPED = LOG_MARKER_SUFFIX.replace(" ", "%20");
+    private static final ListContainerOptions LIST_CONTAINER_RECURSIVE = new ListContainerOptions().recursive();
     protected Duration copyDelay;
     protected Duration evictDelay;
 
@@ -105,7 +106,7 @@ public class WriteBackPolicy extends BouncePolicy {
         if (!blobStore.deleteContainerIfEmpty(container)) {
             logger.info("container {} not empty", container);
             if (logger.isDebugEnabled()) {
-                blobStore.list(container).forEach(s -> logger.debug("{}", s.getName()));
+                blobStore.list(container, LIST_CONTAINER_RECURSIVE).forEach(s -> logger.debug("{}", s.getName()));
             }
             return false;
         }
@@ -122,8 +123,15 @@ public class WriteBackPolicy extends BouncePolicy {
             throw propagate(e);
         }
 
-        return deleteContainerOrLogContent(getSource(), container) &&
-                deleteContainerOrLogContent(getDestination(), container);
+        try {
+            Utils.waitUntil(() -> deleteContainerOrLogContent(getSource(), container) &&
+                    deleteContainerOrLogContent(getDestination(), container));
+            return true;
+        } catch (TimeoutException e) {
+            return false;
+        } catch (Exception e) {
+            throw propagate(e);
+        }
     }
 
     @Override
