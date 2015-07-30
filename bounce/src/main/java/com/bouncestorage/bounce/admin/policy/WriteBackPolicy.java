@@ -52,6 +52,7 @@ import org.jclouds.blobstore.options.CopyOptions;
 import org.jclouds.blobstore.options.GetOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
+import org.jclouds.http.HttpResponseException;
 import org.jclouds.io.MutableContentMetadata;
 import org.jclouds.io.Payload;
 import org.jclouds.util.Strings2;
@@ -375,15 +376,30 @@ public class WriteBackPolicy extends BouncePolicy {
             throw new UnsupportedOperationException("illegal prefix");
         }
 
-        Blob blob = super.getBlob(container, blobName, options);
-        if (blob == null) {
-            if (takeOverInProcess) {
-                return getDestination().getBlob(container, blobName, options);
+        Blob blob = null;
+        boolean isLink;
+        try {
+            blob = super.getBlob(container, blobName, options);
+            if (blob == null) {
+                if (takeOverInProcess) {
+                    return getDestination().getBlob(container, blobName, options);
+                }
+                return null;
             }
-            return null;
+
+            BlobMetadata meta = blob.getMetadata();
+            isLink = BounceLink.isLink(meta);
+        } catch (HttpResponseException e) {
+            if (e.getResponse().getStatusCode() == 412 &&
+                    e.getResponse().getHeaders().containsKey("X-Object-Meta-Bounce-Link")) {
+                isLink = true;
+            } else {
+                throw e;
+            }
         }
-        BlobMetadata meta = blob.getMetadata();
-        if (BounceLink.isLink(meta)) {
+
+        if (isLink) {
+            logger.debug("following link {}", blobName);
             try {
                 if (app != null && options.equals(GetOptions.NONE)) {
                     blob = getDestination().getBlob(container, blobName, GetOptions.NONE);

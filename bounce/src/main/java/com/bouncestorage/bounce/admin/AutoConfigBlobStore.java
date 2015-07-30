@@ -7,8 +7,10 @@ package com.bouncestorage.bounce.admin;
 
 import static java.util.Objects.requireNonNull;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
+import java.util.Random;
 
 import com.bouncestorage.bounce.IForwardingBlobStore;
 import com.bouncestorage.bounce.utils.ContainerPool;
@@ -58,8 +60,31 @@ public class AutoConfigBlobStore implements IForwardingBlobStore {
         c.setName(container);
         com.bouncestorage.bounce.admin.Location orig = new com.bouncestorage.bounce.admin.Location();
         orig.setBlobStoreId(0);
-        orig.setCopyDelay("-P1D");
-        orig.setMoveDelay("-P1D");
+        Random random = new Random();
+        switch (random.nextInt(5)) {
+            case 0:
+                orig.setCopyDelay("-P1D");
+                orig.setMoveDelay("-P1D");
+                break;
+            case 1:
+                orig.setCopyDelay("P0D");
+                orig.setMoveDelay("-P1D");
+                break;
+            case 2:
+                orig.setCopyDelay("-P1D");
+                orig.setMoveDelay("P0D");
+                break;
+            case 3:
+                orig.setCopyDelay("-P1D");
+                orig.setMoveDelay(Duration.ofMillis(random.nextInt(50)).toString());
+                break;
+            case 4:
+                orig.setCopyDelay(Duration.ofMillis(random.nextInt(50)).toString());
+                orig.setMoveDelay("-P1D");
+                break;
+            default:
+                break;
+        }
         orig.setContainerName(container);
         com.bouncestorage.bounce.admin.Location tier2loc = new com.bouncestorage.bounce.admin.Location();
         tier2loc.setBlobStoreId(1);
