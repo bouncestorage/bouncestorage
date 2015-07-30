@@ -37,6 +37,7 @@ import com.bouncestorage.bounce.admin.StatsQueueEntry;
 import com.bouncestorage.bounce.utils.ZeroInputStream;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 
@@ -343,6 +344,46 @@ public class WriteBackPolicyTest {
         assertThat(etag).isNotNull();
         Blob linkedBlob = policy.getBlob(containerName, toBlobName);
         UtilsTest.assertEqualBlobs(linkedBlob, blob);
+    }
+
+    @Test
+    public void testDirectoryBlobBounceNOOP() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        ByteSource payload = ByteSource.empty();
+        Blob blob = policy.blobBuilder(blobName)
+                .payload(payload)
+                .contentLength(payload.size())
+                .contentType("application/directory")
+                .contentMD5(payload.hash(Hashing.md5()))
+                .build();
+        policy.putBlob(containerName, blob);
+        policy.copyDelay = Duration.parse("P1D");
+
+        UtilsTest.advanceServiceClock(app, duration.plusHours(1));
+        BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getCopiedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+    }
+
+    @Test
+    public void testDirectoryCopyBlob() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        ByteSource payload = ByteSource.empty();
+        Blob blob = policy.blobBuilder(blobName)
+                .payload(payload)
+                .contentLength(payload.size())
+                .contentType("application/directory")
+                .contentMD5(payload.hash(Hashing.md5()))
+                .build();
+        policy.putBlob(containerName, blob);
+        policy.copyDelay = Duration.parse("PT1H");
+
+        UtilsTest.advanceServiceClock(app, duration.plusHours(1));
+        BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getCopiedObjectCount).isEqualTo(1);
+        assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
     }
 
     @Test

@@ -23,6 +23,7 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.admin.BounceService;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
 
 import org.apache.commons.lang.StringUtils;
@@ -124,6 +125,39 @@ public class StoragePolicyTest {
 
         BlobMetadata link = policy.getSource().blobMetadata(containerName, expiringBlob);
         assertThat(BounceLink.isLink(link)).isTrue();
+    }
+
+    @Test
+    public void testDirectoryBlobMoveNOOP() throws Exception {
+        String expiringBlob = "expired";
+        String content = StringUtils.repeat("foo", 3500);
+        Blob blob = UtilsTest.makeBlob(policy, expiringBlob, ByteSource.wrap(content.getBytes()));
+        policy.putBlob(containerName, blob);
+
+        ByteSource dirBlobPayload = ByteSource.empty();
+        String directoryBlob = "dir";
+        Blob dirBlob = policy.blobBuilder(directoryBlob)
+                .payload(dirBlobPayload)
+                .contentLength(dirBlobPayload.size())
+                .contentType("application/directory")
+                .contentMD5(dirBlobPayload.hash(Hashing.md5()))
+                .build();
+        policy.putBlob(containerName, dirBlob);
+
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
+        status.future().get();
+        assertStatus(status, status::getErrorObjectCount).isEqualTo(0);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
+
+        String farContainer = ((BlobStoreTarget) policy.getDestination()).mapContainer(null);
+        Blob farBlob = policy.getDestination().getBlob(farContainer, expiringBlob);
+        assertThat(farBlob.getMetadata().getContentMetadata().getContentLength()).isEqualTo(content.length());
+
+        BlobMetadata link = policy.getSource().blobMetadata(containerName, expiringBlob);
+        assertThat(BounceLink.isLink(link)).isTrue();
+
+        BlobMetadata dirBlobMeta = policy.getSource().blobMetadata(containerName, directoryBlob);
+        assertThat(BounceLink.isLink(dirBlobMeta)).isFalse();
     }
 
     @Test
