@@ -346,8 +346,18 @@ public class AutoConfigBlobStore implements BlobStore {
 
     private BounceConfiguration getNewConfiguration() {
         Properties properties = new Properties();
-        properties.setProperty(WriteBackPolicy.COPY_DELAY, "P0D");
-        properties.setProperty(WriteBackPolicy.EVICT_DELAY, "P0D");
+        if (System.getProperty("bounce." + WriteBackPolicy.COPY_DELAY) != null) {
+            properties.setProperty(WriteBackPolicy.COPY_DELAY,
+                    System.getProperty("bounce." + WriteBackPolicy.COPY_DELAY));
+        } else {
+            properties.setProperty(WriteBackPolicy.COPY_DELAY, "P0D");
+        }
+        if (System.getProperty("bounce." + WriteBackPolicy.EVICT_DELAY) != null) {
+            properties.setProperty(WriteBackPolicy.EVICT_DELAY,
+                    System.getProperty("bounce." + WriteBackPolicy.EVICT_DELAY));
+        } else {
+            properties.setProperty(WriteBackPolicy.EVICT_DELAY, "P0D");
+        }
         BounceConfiguration config = new BounceConfiguration();
         config.setAll(properties);
         return config;
