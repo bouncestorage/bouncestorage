@@ -5,19 +5,18 @@
 
 package com.bouncestorage.bounce.utils;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceConfiguration;
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.BounceService;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.collect.ImmutableMap;
 
@@ -64,14 +63,13 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions options) {
+        runBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(containerName);
         String result = policy.putBlob(containerName, blob, options);
         if (result == null) {
             return null;
         }
-        if (!runBounce(containerName)) {
-            throw new RuntimeException("Bouncing the object failed");
-        }
+        app.resumeBackgroundTasks();
         return result;
     }
 
@@ -82,8 +80,11 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public Blob getBlob(String containerName, String blobName, GetOptions options) {
+        runBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(containerName);
-        return policy.getBlob(containerName, blobName, options);
+        Blob result = policy.getBlob(containerName, blobName, options);
+        app.resumeBackgroundTasks();
+        return result;
     }
 
     @Override
@@ -94,15 +95,18 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public void removeBlob(String container, String name) {
+        runBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(container);
         policy.removeBlob(container, name);
-        runBounce(container);
+        app.resumeBackgroundTasks();
     }
 
     @Override
     public void removeBlobs(String container, Iterable<String> iterable) {
+        runBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(container);
         policy.removeBlobs(container, iterable);
+        app.resumeBackgroundTasks();
     }
 
     @Override
@@ -350,7 +354,7 @@ public class AutoConfigBlobStore implements BlobStore {
             properties.setProperty(WriteBackPolicy.COPY_DELAY,
                     System.getProperty("bounce." + WriteBackPolicy.COPY_DELAY));
         } else {
-            properties.setProperty(WriteBackPolicy.COPY_DELAY, "P0D");
+            properties.setProperty(WriteBackPolicy.COPY_DELAY, "P-1D");
         }
         if (System.getProperty("bounce." + WriteBackPolicy.EVICT_DELAY) != null) {
             properties.setProperty(WriteBackPolicy.EVICT_DELAY,
@@ -363,18 +367,14 @@ public class AutoConfigBlobStore implements BlobStore {
         return config;
     }
 
-    private boolean runBounce(String containerName) {
-        BounceService service = new BounceService(app);
-        BounceService.BounceTaskStatus status = service.bounce(containerName);
+    private void runBackgroundTasks() {
         try {
-            status.future().get();
-        } catch (InterruptedException | ExecutionException e) {
-            logger.warn("Failed to run bounce on: " + containerName);
-            return false;
+            if (!app.hasNoPendingReconcileTasks()) {
+                app.busyWaitForBackgroundReconcileTasks();
+            }
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            logger.error(Arrays.toString(e.getStackTrace()));
         }
-        if (status.getErrorObjectCount() != 0) {
-            return false;
-        }
-        return true;
     }
 }

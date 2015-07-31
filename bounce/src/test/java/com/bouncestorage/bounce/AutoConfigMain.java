@@ -11,6 +11,7 @@ import java.io.InputStream;
 
 import com.bouncestorage.bounce.admin.ObjectStoreResourceTest;
 import com.bouncestorage.bounce.utils.BounceAutoConfigApplication;
+import com.bouncestorage.bounce.utils.ContainerPool;
 import com.google.common.io.ByteStreams;
 
 import org.slf4j.Logger;
@@ -24,13 +25,21 @@ public final class AutoConfigMain {
     }
 
     public static void main(String[] args) throws Exception {
-        File configFile = File.createTempFile("bounce-test", "properties");
-        try (FileOutputStream out = new FileOutputStream(configFile);
-             InputStream is = ObjectStoreResourceTest.class.getResourceAsStream("/bounce.properties")) {
-            ByteStreams.copy(is, out);
+        File configFile;
+        if (args.length > 0 && args[0].equals("--properties")) {
+            logger.info("Using properties file: " + args[1]);
+            configFile = new File(args[1]);
+        } else {
+            configFile = File.createTempFile("bounce-test", "properties");
+            try (FileOutputStream out = new FileOutputStream(configFile);
+                 InputStream is = ObjectStoreResourceTest.class
+                         .getResourceAsStream("/bounce.properties")) {
+                ByteStreams.copy(is, out);
+            }
         }
         BounceAutoConfigApplication app = new BounceAutoConfigApplication(configFile.getPath());
         String webConfig = Main.class.getResource("/bounce.yml").toExternalForm();
-        app.run(new String[] {"server", webConfig});
+        Runtime.getRuntime().addShutdownHook(new Thread(ContainerPool::destroyAllContainers));
+        app.run(new String[]{"server", webConfig});
     }
 }
