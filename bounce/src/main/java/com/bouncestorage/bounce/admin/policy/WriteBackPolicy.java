@@ -153,6 +153,7 @@ public class WriteBackPolicy extends BouncePolicy {
             throw new UnsupportedOperationException("illegal prefix");
         }
         super.removeBlob(container, name);
+        removeMarkerBlob(container, name);
         enqueueReconcile(container, name);
     }
 
