@@ -159,8 +159,10 @@ public class WriteBackPolicy extends BouncePolicy {
 
     private void enqueueReconcile(String containerName, String blobName) {
         if (app != null) {
-            app.executeBackgroundReconcileTask(() -> reconcileObject(containerName, blobName),
-                    copyDelay.getSeconds(), TimeUnit.SECONDS);
+            if (isCopy()) {
+                app.executeBackgroundReconcileTask(() -> reconcileObject(containerName, blobName),
+                        copyDelay.getSeconds(), TimeUnit.SECONDS);
+            }
             if (isEvict() && !copyDelay.equals(evictDelay)) {
                 app.executeBackgroundReconcileTask(() -> reconcileObject(containerName, blobName),
                         evictDelay.getSeconds(), TimeUnit.SECONDS);
