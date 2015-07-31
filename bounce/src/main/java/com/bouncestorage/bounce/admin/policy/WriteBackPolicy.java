@@ -435,10 +435,14 @@ public class WriteBackPolicy extends BouncePolicy {
             if (BounceLink.isLink(meta)) {
                 Blob linkBlob = getSource().getBlob(container, blobName);
                 if (linkBlob != null) {
-                    try {
-                        return BounceLink.fromBlob(linkBlob).getBlobMetadata();
-                    } catch (IOException e) {
-                        throw propagate(e);
+                    if (BounceLink.isLink(linkBlob.getMetadata())) {
+                        try {
+                            return BounceLink.fromBlob(linkBlob).getBlobMetadata();
+                        } catch (IOException e) {
+                            throw propagate(e);
+                        }
+                    } else {
+                        return linkBlob.getMetadata();
                     }
                 } else {
                     return null;
