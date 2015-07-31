@@ -1,0 +1,8 @@
+{
+	"share": "192.168.10.41:/share/test",
+	"endpoint": "http://localhost:32772/auth/v1.0",
+	"user": "test:tester",
+	"password": "testing",
+	"container": "swift",
+	"mount-point": "/tmp/fstest"
+}

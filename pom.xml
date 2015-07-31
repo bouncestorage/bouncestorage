@@ -29,6 +29,7 @@
           <executable>pep8</executable>
           <arguments>
             <argument>${project.basedir}/nightly</argument>
+            <argument>${project.basedir}/fstest</argument>
           </arguments>
         </configuration>
       </plugin>
