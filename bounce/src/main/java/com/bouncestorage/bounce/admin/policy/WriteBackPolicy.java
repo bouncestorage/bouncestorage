@@ -123,14 +123,15 @@ public class WriteBackPolicy extends BouncePolicy {
             throw propagate(e);
         }
 
-        try {
-            Utils.waitUntil(() -> deleteContainerOrLogContent(getSource(), container) &&
-                    deleteContainerOrLogContent(getDestination(), container));
-            return true;
-        } catch (TimeoutException e) {
+        if (deleteContainerOrLogContent(getSource(), container)) {
+            if (takeOverInProcess) {
+                return deleteContainerOrLogContent(getDestination(), container);
+            } else {
+                getDestination().deleteContainer(container);
+                return true;
+            }
+        } else {
             return false;
-        } catch (Exception e) {
-            throw propagate(e);
         }
     }
 
