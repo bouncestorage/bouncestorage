@@ -90,8 +90,8 @@ public final class MigrationPolicy extends BouncePolicy {
                 return moveObject(container, sourceObject);
             }
 
-            BlobMetadata sourceMeta = getSource().blobMetadata(container, sourceObject.getName());
-            BlobMetadata destinationMeta = getDestination().blobMetadata(container, destinationObject.getName());
+            BlobMetadata sourceMeta = getSource().blobMetadata(container, blobName);
+            BlobMetadata destinationMeta = getDestination().blobMetadata(container, blobName);
             if (sourceMeta == null && destinationMeta != null) {
                 return BounceResult.NO_OP;
             } else if (sourceMeta != null && destinationMeta == null) {
