@@ -59,7 +59,7 @@ BLOBSTORE_2_PROPERTY_PREFIX = 'bounce.backend.1.jclouds'
 
 SSH_KEY_NAME = "/home/admin/.ssh/id_rsa"
 
-PACKAGES = ['openjdk-8-jdk git fortune cowsay docker.io']
+PACKAGES = ['openjdk-8-jdk git fortune cowsay docker.io python-virtualenv']
 APT_SOURCES = "/etc/apt/sources.list"
 UNSTABLE_REPO = "deb http://cloudfront.debian.net/debian unstable main"
 
