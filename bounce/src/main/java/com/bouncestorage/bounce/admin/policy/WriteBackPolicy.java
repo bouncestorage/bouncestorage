@@ -36,6 +36,7 @@ import com.google.auto.service.AutoService;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
+import com.google.common.collect.Lists;
 import com.google.common.collect.PeekingIterator;
 import com.google.common.io.ByteSource;
 
@@ -70,6 +71,7 @@ public class WriteBackPolicy extends BouncePolicy {
             Pattern.compile(".*/slo/\\d{10}\\.\\d{6}/\\d+/\\d+/\\d{8}$").asPredicate();
     private static final String LOG_MARKER_SUFFIX_ESCAPED = LOG_MARKER_SUFFIX.replace(" ", "%20");
     private static final ListContainerOptions LIST_CONTAINER_RECURSIVE = new ListContainerOptions().recursive();
+    private static final Iterable<Character> skipPathEncoding = Lists.charactersOf("/:;=");
     protected Duration copyDelay;
     protected Duration evictDelay;
 
@@ -86,7 +88,7 @@ public class WriteBackPolicy extends BouncePolicy {
         if ("transient".equals(getContext().unwrap().getId())) {
             return blob + LOG_MARKER_SUFFIX;
         } else {
-            return Strings2.urlEncode(blob) + LOG_MARKER_SUFFIX_ESCAPED;
+            return Strings2.urlEncode(blob, skipPathEncoding) + LOG_MARKER_SUFFIX_ESCAPED;
         }
     }
 
