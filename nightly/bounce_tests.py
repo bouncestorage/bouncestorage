@@ -59,7 +59,8 @@ BLOBSTORE_2_PROPERTY_PREFIX = 'bounce.backend.1.jclouds'
 
 SSH_KEY_NAME = "/home/admin/.ssh/id_rsa"
 
-PACKAGES = ['openjdk-8-jdk git fortune cowsay docker.io python-virtualenv']
+PACKAGES = 'openjdk-8-jdk git fortune cowsay docker.io python-virtualenv'\
+           ' python-dev libffi-dev'
 APT_SOURCES = "/etc/apt/sources.list"
 UNSTABLE_REPO = "deb http://cloudfront.debian.net/debian unstable main"
 
@@ -127,7 +128,7 @@ def setup_code():
                     % (UNSTABLE_REPO, APT_SOURCES))
 
     execute("sudo apt-get update")
-    execute("sudo apt-get install -y " + " ".join(PACKAGES))
+    execute("sudo apt-get install -y " + PACKAGES)
     git_clone(BOUNCE_REPO, BOUNCE_SRC_DIR)
     git_update_submodule(BOUNCE_SRC_DIR)
     target_dir = os.path.join(os.environ['HOME'], BOUNCE_SRC_DIR)
