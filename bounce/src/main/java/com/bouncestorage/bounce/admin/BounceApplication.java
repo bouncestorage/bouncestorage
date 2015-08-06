@@ -229,10 +229,6 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
         }
 
         BlobStore blobStore = new LoggingBlobStore(context.getBlobStore(), id, this);
-        if (testAutoConfig) {
-            blobStore = new AutoConfigBlobStore(blobStore, this);
-        }
-
         providers.put(Integer.valueOf(id), blobStore);
     }
 
@@ -282,9 +278,6 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
             BlobStore store = providers.get(id);
             if (store == null) {
                 throw new IllegalArgumentException(String.format("Blobstore %d not found", id));
-            }
-            if (store instanceof AutoConfigBlobStore) {
-                store = ((AutoConfigBlobStore) store).delegate();
             }
             virtualContainer.getLocation(i).setBlobStoreId(id);
             String targetContainerName = c.getString(tierPrefix + "." + Location.CONTAINER_NAME_FIELD, containerName);
@@ -346,6 +339,9 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
     public int getBlobStoreId(BlobStore blobStore) {
         if (blobStore instanceof BlobStoreTarget) {
             blobStore = ((BlobStoreTarget) blobStore).delegate();
+        }
+        if (blobStore instanceof LoggingBlobStore) {
+            return ((LoggingBlobStore) blobStore).getProviderId();
         }
         Integer result = providers.inverse().get(blobStore);
         if (result == null) {
