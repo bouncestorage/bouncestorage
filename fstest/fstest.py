@@ -9,6 +9,8 @@ import subprocess
 import swiftclient
 import time
 import unittest
+import urllib
+import urllib2
 
 CHUNK_SIZE = 256 * 1024 * 1024
 TEST_CONFIG_ENV = 'FSTEST_CONFIG'
@@ -22,6 +24,8 @@ SWIFT_USER = 'user'
 SWIFT_PASSWORD = 'password'
 SWIFT_CONTAINER = 'container'
 MOUNT_POINT = 'mount-point'
+BOUNCE_API = 'bounce-api'
+USE_BOUNCE = 'use-bounce'
 
 
 class TestFileSystem(unittest.TestCase):
@@ -98,6 +102,7 @@ class TestFileSystem(unittest.TestCase):
 
         self.wait_for(_test_object, timeout, self._config[SWIFT_CONTAINER],
                       object_name)
+        self.run_bounce(timeout)
 
     def head_object(self, object_name):
         container = self._config[SWIFT_CONTAINER]
@@ -123,6 +128,21 @@ class TestFileSystem(unittest.TestCase):
             time.sleep(0.5)
             if timeout and time.time() - start > timeout:
                 break
+
+    def run_bounce(self, timeout):
+        def _wait_for_bounce(url):
+            result = json.load(urllib2.urlopen(url))
+            return result['endTime'] != None
+
+        if self._config[USE_BOUNCE] != 'true':
+            return
+
+        container = self._config[SWIFT_CONTAINER]
+        param = json.dumps({'name': container})
+        url = '%s/bounce/%s' % (self._config[BOUNCE_API], container)
+        req = urllib2.Request(url, param, {'Content-Type': 'application/json'})
+        urllib2.urlopen(req).read()
+        self.wait_for(_wait_for_bounce, timeout, url)
 
     def test_mkdir(self):
         dir_name = self.get_random_string()
