@@ -7,84 +7,77 @@ package com.bouncestorage.bounce.utils;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import javax.ws.rs.ServiceUnavailableException;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ReconcileLocker {
-    /**
-     * holds the states of operations that are currently happening.
-     * the state of the lock is:
-     * 0: if it's a reconcile operation
-     * 1: if nothing is holding the lock
-     * 2+: if one or more threads is doing a non-reconcile operation
-     */
-    private ConcurrentMap<Pair<String, String>, AtomicLong> operations = new ConcurrentHashMap<>();
+    private ConcurrentMap<Object, ReentrantReadWriteLock> operations = new ConcurrentHashMap<>();
+    private Logger logger = LoggerFactory.getLogger(getClass());
 
-    public Object lockObject(String container, String key, boolean reconcile) {
+    public interface LockKey extends AutoCloseable {
+        @Override void close();
+    }
+
+    public LockKey lockObject(String container, String key, boolean reconcile) {
         Pair<String, String> lockKey = Pair.of(container, key);
 
-        do {
-            AtomicLong lock = operations.compute(lockKey, (k, v) -> {
-                if (v == null) {
-                    if (reconcile) {
-                        return new AtomicLong(0);
-                    } else {
-                        return new AtomicLong(2);
-                    }
+        try {
+            operations.compute(lockKey, (k, rwLock) -> {
+                if (rwLock == null) {
+                    rwLock = new ReentrantReadWriteLock();
+                    Lock lock = reconcile ? rwLock.writeLock() : rwLock.readLock();
+                    lock.lock();
+                    return rwLock;
                 } else {
-                    if (reconcile) {
-                        // a non-reconcile operation is happening,
-                        // so reconcile is going to skip over this object,
-                        // no need to bother with locking
-                        return v;
+                    if (reconcile || rwLock.isWriteLockedByCurrentThread()) {
+                        logger.info("concurrent operation {} reconcile: {}", lockKey, reconcile);
+                        throw new ServiceUnavailableException("concurrent operation");
+                    }
+                    Lock lock = rwLock.readLock();
+                    if (lock.tryLock()) {
+                        return rwLock;
                     } else {
-                        if (v.get() != 0) {
-                            v.incrementAndGet();
-                        }
-                        return v;
+                        logger.info("concurrent operation {} reconcile: {}", lockKey, reconcile);
+                        throw new ServiceUnavailableException("concurrent operation");
                     }
                 }
             });
 
-            if (reconcile) {
-                if (lock.get() != 0) {
-                    // something else is going on, that's okay
-                    return null;
-                } else {
-                    return lockKey;
-                }
+            return () -> unlockObject(lockKey, reconcile);
+        } catch (RuntimeException e) {
+            if (e.getCause() != null && e.getCause() instanceof ServiceUnavailableException) {
+                throw (ServiceUnavailableException) e.getCause();
             } else {
-                if (lock.get() == 0) {
-                    // a reconciling task is working on this key, fail and let the caller
-                    // decide what to do
-                    return null;
-                } else {
-                    return lockKey;
-                }
+                throw e;
             }
-        } while (true);
+        }
     }
 
-    public void unlockObject(Object lockKey, boolean reconcile) {
-        operations.compute((Pair<String, String>) lockKey, (k, v) -> {
+    private void unlockObject(Object lockKey, boolean reconcile) {
+        operations.compute(lockKey, (k, rwLock) -> {
             if (reconcile) {
-                long state = v.get();
-                if (state != 0) {
-                    throw new IllegalMonitorStateException("lock state is not 0: " + state);
-                }
+                rwLock.writeLock().unlock();
                 return null;
             } else {
-                long state = v.decrementAndGet();
-                if (state == 1) {
-                    // nothing else is going on, we can remove this
+                rwLock.readLock().unlock();
+                if (rwLock.getReadLockCount() == 0) {
                     return null;
-                } else if (state == 0) {
-                    throw new IllegalMonitorStateException("lock state is 0");
-                } else {
-                    return v;
                 }
+                return rwLock;
             }
         });
+    }
+
+    @VisibleForTesting
+    long size() {
+        return operations.size();
     }
 }

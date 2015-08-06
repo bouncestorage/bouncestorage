@@ -54,14 +54,8 @@ public final class MigrationPolicy extends BouncePolicy {
 
     @Override
     public String putBlob(String container, Blob blob, PutOptions options) {
-        Object lock = reconcileLocker.lockObject(container, blob.getMetadata().getName(), false);
-        if (lock == null) {
-            throw new ServiceUnavailableException("reconciling this object", 5L);
-        }
-        try {
+        try (ReconcileLocker.LockKey ignored = reconcileLocker.lockObject(container, blob.getMetadata().getName(), false)) {
             return getDestination().putBlob(container, blob, options);
-        } finally {
-            reconcileLocker.unlockObject(lock, false);
         }
     }
 
@@ -78,14 +72,7 @@ public final class MigrationPolicy extends BouncePolicy {
             return BounceResult.NO_OP;
         }
 
-        Object lock = reconcileLocker.lockObject(container, blobName, true);
-        if (lock == null) {
-            // not able to lock key, another PUT is in operation, so we can just skip
-            // this. note that we should not delete the object from source store,
-            // because the PUT may fail
-            return BounceResult.NO_OP;
-        }
-        try {
+        try (ReconcileLocker.LockKey ignored = reconcileLocker.lockObject(container, blobName, true)) {
             if (sourceObject.getRegions().equals(SOURCE)) {
                 return moveObject(container, sourceObject);
             }
@@ -106,8 +93,11 @@ public final class MigrationPolicy extends BouncePolicy {
                     return BounceResult.REMOVE;
                 }
             }
-        } finally {
-            reconcileLocker.unlockObject(lock, true);
+        } catch (ServiceUnavailableException e) {
+            // not able to lock key, another PUT is in operation, so we can just skip
+            // this. note that we should not delete the object from source store,
+            // because the PUT may fail
+            return BounceResult.NO_OP;
         }
     }
 
