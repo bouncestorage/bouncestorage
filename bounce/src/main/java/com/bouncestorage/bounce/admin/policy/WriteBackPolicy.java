@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
 import javax.ws.rs.ClientErrorException;
+import javax.ws.rs.ServiceUnavailableException;
 import javax.ws.rs.core.Response;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
@@ -33,6 +34,7 @@ import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.utils.ReconcileLocker;
 import com.google.auto.service.AutoService;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
@@ -78,6 +80,7 @@ public class WriteBackPolicy extends BouncePolicy {
     private static final ListContainerOptions LIST_CONTAINER_RECURSIVE = new ListContainerOptions().recursive();
     protected Duration copyDelay;
     protected Duration evictDelay;
+    private ReconcileLocker reconcileLocker = new ReconcileLocker();
 
     public static boolean isMarkerBlob(String name) {
         return name.endsWith(LOG_MARKER_SUFFIX);
@@ -144,14 +147,17 @@ public class WriteBackPolicy extends BouncePolicy {
 
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions options) {
-        if (blob.getMetadata().getName().startsWith(INTERNAL_PREFIX)) {
+        String blobName = blob.getMetadata().getName();
+        if (blobName.startsWith(INTERNAL_PREFIX)) {
             throw new UnsupportedOperationException("illegal prefix");
         }
-        putMarkerBlob(containerName, blob.getMetadata().getName());
-        String etag = getSource().putBlob(containerName, blob, options);
-        String blobName = blob.getMetadata().getName();
-        enqueueReconcile(containerName, blobName);
-        return etag;
+
+        try (ReconcileLocker.LockKey ignored = reconcileLocker.lockObject(containerName, blobName, false)) {
+            putMarkerBlob(containerName, blobName);
+            String etag = getSource().putBlob(containerName, blob, options);
+            enqueueReconcile(containerName, blobName);
+            return etag;
+        }
     }
 
     @Override
@@ -304,25 +310,30 @@ public class WriteBackPolicy extends BouncePolicy {
     @Override
     public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject) {
-        logger.debug("reconciling {}", sourceObject == null ? destinationObject.getName() : sourceObject.getName());
-        if (sourceObject != null) {
-            logger.debug("reconciling {} {} {}", sourceObject.getName(),
-                    destinationObject == null ? "null" : destinationObject.getName(), sourceObject.getRegions());
-            try {
-                if (isEvict() && isObjectExpired(sourceObject, evictDelay)) {
-                    return maybeMoveObject(container, sourceObject, destinationObject);
-                } else if (isCopy() && (isImmediateCopy() || isObjectExpired(sourceObject, copyDelay))) {
-                    return maybeCopyObject(container, sourceObject, destinationObject);
+        String blobName = sourceObject == null ? destinationObject.getName() : sourceObject.getName();
+        try (ReconcileLocker.LockKey ignored = reconcileLocker.lockObject(container, blobName, true)) {
+            logger.debug("reconciling {}", blobName);
+            if (sourceObject != null) {
+                logger.debug("reconciling {} {} {}", sourceObject.getName(),
+                        destinationObject == null ? "null" : destinationObject.getName(), sourceObject.getRegions());
+                try {
+                    if (isEvict() && isObjectExpired(sourceObject, evictDelay)) {
+                        return maybeMoveObject(container, sourceObject, destinationObject);
+                    } else if (isCopy() && (isImmediateCopy() || isObjectExpired(sourceObject, copyDelay))) {
+                        return maybeCopyObject(container, sourceObject, destinationObject);
+                    }
+                } catch (IOException e) {
+                    throw propagate(e);
                 }
-            } catch (IOException e) {
-                throw propagate(e);
-            }
 
+                return BounceResult.NO_OP;
+            } else {
+                logger.debug("reconciling null {}", destinationObject.getName());
+                getDestination().removeBlob(container, destinationObject.getName());
+                return BounceResult.REMOVE;
+            }
+        } catch (ServiceUnavailableException e) {
             return BounceResult.NO_OP;
-        } else {
-            logger.debug("reconciling null {}", destinationObject.getName());
-            getDestination().removeBlob(container, destinationObject.getName());
-            return BounceResult.REMOVE;
         }
     }
 
