@@ -205,7 +205,7 @@ public final class VirtualContainerResource {
         if (location.isUnset()) {
             return;
         }
-        if (location.getCapacity() != null) {
+        if (location.getCapacity() != null && location.getCapacity() > 0) {
             if (location.getCopyDelay() != null && !location.getCopyDelay().startsWith("-")) {
                 throw new IllegalArgumentException("Cannot set both capacity and delay");
             }
