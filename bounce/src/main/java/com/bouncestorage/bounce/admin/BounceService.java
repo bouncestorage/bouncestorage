@@ -201,16 +201,14 @@ public final class BounceService {
         private void reconcileObject(BouncePolicy policy, BounceStorageMetadata source,
                                              StorageMetadata destination) {
             try {
+                status.totalObjectCount.getAndIncrement();
                 BounceResult result = policy.reconcileObject(container, source, destination);
                 adjustContainerStats(result, source, destination);
                 adjustCount(result);
             } catch (Throwable e) {
-                e.printStackTrace();
-                logger.error("Failed to reconcile object {}, {} in {}: {}", source, destination, container,
-                        e.getMessage());
+                logger.error(String.format("Failed to reconcile object %s, %s in %s",
+                        source, destination, container), e);
                 status.errorObjectCount.getAndIncrement();
-            } finally {
-                status.totalObjectCount.getAndIncrement();
             }
         }
 
