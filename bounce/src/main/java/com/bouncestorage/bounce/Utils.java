@@ -23,7 +23,6 @@ import java.util.concurrent.TimeoutException;
 import javax.annotation.Nullable;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.bouncestorage.bounce.utils.BlobStoreByteSource;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;
@@ -97,8 +96,6 @@ public final class Utils {
     public static BouncePolicy.BounceResult createBounceLink(BlobStore blobStore, BlobMetadata blobMetadata) {
         BounceLink link = new BounceLink(Optional.of(blobMetadata));
         blobStore.putBlob(blobMetadata.getContainer(), link.toBlob(blobStore));
-        blobStore.removeBlob(blobMetadata.getContainer(), blobMetadata.getName() +
-                WriteBackPolicy.LOG_MARKER_SUFFIX);
         return BouncePolicy.BounceResult.LINK;
     }
 

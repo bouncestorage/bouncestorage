@@ -73,9 +73,9 @@ public class WriteBackPolicy extends BouncePolicy {
     public static final String TAKEOVER_MARKER = INTERNAL_PREFIX + "need_take_over";
     private static final Predicate<String> SWIFT_SEGMENT_PATTERN =
             Pattern.compile(".*/slo/\\d{10}\\.\\d{6}/\\d+/\\d+/\\d{8}$").asPredicate();
-    private static final String LOG_MARKER_SUFFIX_ESCAPED = LOG_MARKER_SUFFIX.replace(" ", "%20");
-    private static final ListContainerOptions LIST_CONTAINER_RECURSIVE = new ListContainerOptions().recursive();
     private static final Iterable<Character> skipPathEncoding = Lists.charactersOf("/:;=");
+    private static final String LOG_MARKER_SUFFIX_ESCAPED = Strings2.urlEncode(LOG_MARKER_SUFFIX, skipPathEncoding);
+    private static final ListContainerOptions LIST_CONTAINER_RECURSIVE = new ListContainerOptions().recursive();
     protected Duration copyDelay;
     protected Duration evictDelay;
 
@@ -158,6 +158,9 @@ public class WriteBackPolicy extends BouncePolicy {
     public void removeBlob(String container, String name) {
         if (name.startsWith(INTERNAL_PREFIX)) {
             throw new UnsupportedOperationException("illegal prefix");
+        }
+        if (name.endsWith(LOG_MARKER_SUFFIX) || name.endsWith(LOG_MARKER_SUFFIX_ESCAPED)) {
+            throw new UnsupportedOperationException("illegal suffix: " + name);
         }
         super.removeBlob(container, name);
         removeMarkerBlob(container, name);
@@ -242,6 +245,7 @@ public class WriteBackPolicy extends BouncePolicy {
             etag = getDestination().copyBlob(fromContainer, fromName, toContainer, toName, options);
             if (etag != null) {
                 Utils.createBounceLink(getSource(), getDestination().blobMetadata(toContainer, toName));
+                removeMarkerBlob(fromContainer, toName);
             }
         } else {
             putMarkerBlob(toContainer, toName);
