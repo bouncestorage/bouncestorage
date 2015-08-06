@@ -1,15 +1,19 @@
+import hashlib
 import json
 import os
 import os.path
 import random
+import stat
 import string
 import subprocess
 import swiftclient
 import time
 import unittest
 
-CHUNK_SIZE = 2 * 1024 * 1024 * 1024
+CHUNK_SIZE = 256 * 1024 * 1024
 TEST_CONFIG_ENV = 'FSTEST_CONFIG'
+
+DEFAULT_TIMEOUT = 30
 
 # Fields in the configuration file
 SHARE_PROPERTY = 'share'
@@ -72,6 +76,8 @@ class TestFileSystem(unittest.TestCase):
                                   stdout=subprocess.PIPE)
         dd_in.stdout.close()
         print dd_out.communicate()[0]
+        self.assertTrue(os.path.isfile(name))
+        self.assertEqual(os.stat(name).st_size, size)
 
     def swift_connect(self):
         authurl = self._config[SWIFT_ENDPOINT]
@@ -82,20 +88,41 @@ class TestFileSystem(unittest.TestCase):
                                              key=swift_password)
 
     def wait_for_object(self, object_name, timeout=None):
-        start_time = time.time()
-        while True:
+        def _test_object(container, object_name):
             conn = self.swift_connect()
             try:
-                conn.head_object(self._config[SWIFT_CONTAINER], object_name)
-                break
+                meta = conn.head_object(container, object_name)
+                return True
             except swiftclient.exceptions.ClientException as e:
-                if timeout and time.time() - start_time > timeout:
-                    raise e
-                time.sleep(0.5)
+                return False
+
+        self.wait_for(_test_object, timeout, self._config[SWIFT_CONTAINER],
+                      object_name)
 
     def head_object(self, object_name):
         container = self._config[SWIFT_CONTAINER]
         return self.swift_connect().head_object(container, object_name)
+
+    def hash_file(self, full_path):
+        md5 = hashlib.md5()
+        chunk = 4*1024*1024
+        print("hashing %s" % full_path)
+        with open(full_path) as f:
+            while True:
+                data = f.read(chunk)
+                md5.update(data)
+                if len(data) < chunk:
+                    break
+        return md5.hexdigest()
+
+    def wait_for(self, condition, timeout=None, *args):
+        start = time.time()
+        while True:
+            if condition(*args):
+                break
+            time.sleep(0.5)
+            if timeout and time.time() - start > timeout:
+                break
 
     def test_mkdir(self):
         dir_name = self.get_random_string()
@@ -112,15 +139,12 @@ class TestFileSystem(unittest.TestCase):
         self.mount_share()
         self.assertFalse(os.path.isdir(dir_path))
 
-    def test_file(self):
+    def _write_file_test(self, min_size, max_size):
         file_name = self.get_random_string()
         full_path = os.sep.join([self._config[MOUNT_POINT], file_name])
-        meg = 1024*1024
-        file_size = random.randint(meg, 1024*meg)/(meg)*(meg)
+        file_size = random.randint(min_size, max_size)*1024*1024
 
         self.write_file(full_path, file_size)
-        self.assertTrue(os.path.isfile(full_path))
-        self.assertEqual(os.stat(full_path).st_size, file_size)
         self.umount_share()
 
         self.wait_for_object(file_name)
@@ -134,26 +158,63 @@ class TestFileSystem(unittest.TestCase):
         self.assertFalse(os.path.isfile(full_path))
 
     def test_large_file(self):
+        chunk_size_mb = CHUNK_SIZE/(1024*1024)
+        self._write_file_test(chunk_size_mb + 1, chunk_size_mb + 100)
+
+    def test_file(self):
+        self._write_file_test(1, 100)
+
+    def test_chmod(self):
         file_name = self.get_random_string()
         full_path = os.sep.join([self._config[MOUNT_POINT], file_name])
-        file_size = CHUNK_SIZE + 1024*1024
+        file_size = random.randint(1, 100) * 1024*1024
         self.write_file(full_path, file_size)
-        self.assertTrue(os.path.isfile(full_path))
-        self.assertEqual(os.stat(full_path).st_size, file_size)
         self.umount_share()
 
+        self.mount_share()
+        new_mode = stat.S_IRUSR
+        os.chmod(full_path, new_mode)
+        self.assertEqual(stat.S_IMODE(os.stat(full_path).st_mode), new_mode)
+
+        self.umount_share()
+        self.mount_share()
+        self.assertEqual(stat.S_IMODE(os.stat(full_path).st_mode), new_mode)
+
+    def _overwrite_test(self, min_size, max_size):
+        def _test_object_size(self, name, size):
+            try:
+                meta = self.head_object(name)
+                return int(meta['content-length']) == size
+            except swiftclient.client.ClientException as e:
+                return False
+
+        file_name = self.get_random_string()
+        full_path = os.sep.join([self._config[MOUNT_POINT], file_name])
+        file_size = random.randint(min_size, max_size)*1024*1024
+        self.write_file(full_path, file_size)
+        md5 = self.hash_file(full_path)
+        self.umount_share()
         self.wait_for_object(file_name)
-        head_result = self.head_object(file_name)
-        self.assertEqual(int(head_result['content-length']), file_size)
 
         self.mount_share()
-        self.assertTrue(os.path.isfile(full_path))
-        self.assertEqual(os.stat(full_path).st_size, file_size)
-
-        os.remove(full_path)
+        new_size = random.randint(min_size, max_size)*1024*1024
+        self.write_file(full_path, new_size)
+        new_md5 = self.hash_file(full_path)
         self.umount_share()
+
+        self.wait_for(_test_object_size, DEFAULT_TIMEOUT, self, file_name,
+                      new_size)
         self.mount_share()
-        self.assertFalse(os.path.isfile(file_name))
+        self.assertEqual(os.stat(full_path).st_size, new_size)
+        self.assertEqual(self.hash_file(full_path), new_md5)
+        os.remove(full_path)
+
+    def test_overwrite(self):
+        self._overwrite_test(1, 100)
+
+    def test_overwrite_large_file(self):
+        chunk_size_mb = CHUNK_SIZE/(1024*1024)
+        self._overwrite_test(chunk_size_mb + 1, chunk_size_mb + 100)
 
 
 if __name__ == '__main__':
