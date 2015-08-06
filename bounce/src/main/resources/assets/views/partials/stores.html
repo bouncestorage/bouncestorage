@@ -167,12 +167,16 @@
                 </select>
               </div>
             </div>
+            <div class="form-group">
+              <span class="label label-danger" ng-click="editLocation.message = null"
+                  ng-bind="editLocation.message" ng-show="editLocation.message">
+              </span>
+            </div>
           </form>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal"
-            ng-click="actions.updateTier()">
+        <button type="button" class="btn btn-default" ng-click="actions.updateTier()">
           Close
         </button>
       </div>

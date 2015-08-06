@@ -314,6 +314,12 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     $scope.actions.updateTier = function() {
       BounceUtils.setDuration($scope.editLocation);
       BounceUtils.setCapacity($scope.editLocation);
+      var validationResult = BounceUtils.validateTier($scope.editLocation);
+      if (validationResult !== null) {
+        $scope.editLocation.message = validationResult;
+        return;
+      }
+      $('#configureTierModal').modal('hide');
     };
 
     $scope.actions.saveContainer = function() {

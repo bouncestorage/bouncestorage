@@ -316,6 +316,20 @@ BounceUtils.parseFields = function(tierLocation) {
   BounceUtils.parseCapacity(tierLocation);
 };
 
+BounceUtils.validateTier = function(tier) {
+  var moveSet = tier.object.moveDelay && tier.object.moveDelay !== '-P1D';
+  var copySet = tier.object.copyDelay && tier.object.copyDelay !== '-P1D';
+  var capacitySet = tier.object.capacity && tier.object.capacity > 0;
+  if (!moveSet && ! copySet && !capacitySet) {
+    return 'Either a storage limit or copy/eviction time must bet set';
+  }
+  if ((moveSet || copySet) && capacitySet) {
+    return 'Cannot set both storage limit and copy/eviction time';
+  }
+
+  return null;
+};
+
 BounceUtils.toHumanSize = function(dataSize) {
   var sizes = [
     { name: 'KB',
