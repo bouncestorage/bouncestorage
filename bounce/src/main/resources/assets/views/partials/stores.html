@@ -36,9 +36,8 @@
         <tbody>
           <tr ng-repeat="container in containers">
             <td>
-              <button class="btn btn-link" type="button" ng-click="actions.listContainer(container)">
-                {{container.name}}
-              </button>
+              <button class="btn btn-link" type="button"
+                  ng-click="actions.listContainer(container)">{{getName(container)}}</button>
             </td>
             <td><i>{{interpretStatus(container.status)}}</i></td>
             <td>

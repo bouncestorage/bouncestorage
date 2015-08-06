@@ -274,6 +274,13 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
                     });
     };
 
+    $scope.getName = function(container) {
+      if (container.name.length > 22) {
+        return container.name.substring(0, 19) + '...';
+      }
+      return container.name;
+    };
+
     $scope.actions.listContainer = function(container) {
       $scope.listedContainer = {};
       if (container.status === 'CONFIGURED') {
