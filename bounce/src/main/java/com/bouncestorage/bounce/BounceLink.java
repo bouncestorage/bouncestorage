@@ -48,6 +48,9 @@ public final class BounceLink implements Serializable {
 
     public BounceLink(Optional<BlobMetadata> metadata) {
         if (metadata.isPresent()) {
+            if (isLink(metadata.get())) {
+                throw new IllegalArgumentException(metadata.get().getName() + " is already a link");
+            }
             this.metadata = new MutableBlobMetadataImpl(metadata.get());
         } else {
             this.metadata = new MutableBlobMetadataImpl();

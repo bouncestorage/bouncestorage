@@ -151,6 +151,9 @@ public class WriteBackPolicy extends BouncePolicy {
         if (blobName.startsWith(INTERNAL_PREFIX)) {
             throw new UnsupportedOperationException("illegal prefix");
         }
+        if (BounceLink.isLink(blob.getMetadata())) {
+            throw new IllegalArgumentException(blobName + " is a link");
+        }
 
         try (ReconcileLocker.LockKey ignored = reconcileLocker.lockObject(containerName, blobName, false)) {
             putMarkerBlob(containerName, blobName);
@@ -312,7 +315,6 @@ public class WriteBackPolicy extends BouncePolicy {
             destinationObject) {
         String blobName = sourceObject == null ? destinationObject.getName() : sourceObject.getName();
         try (ReconcileLocker.LockKey ignored = reconcileLocker.lockObject(container, blobName, true)) {
-            logger.debug("reconciling {}", blobName);
             if (sourceObject != null) {
                 logger.debug("reconciling {} {} {}", sourceObject.getName(),
                         destinationObject == null ? "null" : destinationObject.getName(), sourceObject.getRegions());
@@ -517,7 +519,7 @@ public class WriteBackPolicy extends BouncePolicy {
             BlobMetadata destinationMetadata = getDestination().blobMetadata(container, destinationObject.getName());
 
             if (sourceMetadata != null && destinationMetadata != null) {
-                Utils.createBounceLink(this, sourceMetadata);
+                Utils.createBounceLink(getSource(), sourceMetadata);
                 removeMarkerBlob(container, sourceObject.getName());
                 return BounceResult.LINK;
             }
