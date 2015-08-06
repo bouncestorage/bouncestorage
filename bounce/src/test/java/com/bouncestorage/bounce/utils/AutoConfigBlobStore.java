@@ -5,7 +5,6 @@
 
 package com.bouncestorage.bounce.utils;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
+import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceConfiguration;
 import com.bouncestorage.bounce.admin.BouncePolicy;
@@ -63,13 +63,11 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions options) {
-        runBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(containerName);
         String result = policy.putBlob(containerName, blob, options);
         if (result == null) {
             return null;
         }
-        app.resumeBackgroundTasks();
         return result;
     }
 
@@ -80,49 +78,42 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public Blob getBlob(String containerName, String blobName, GetOptions options) {
-        runBackgroundTasks();
+        drainBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(containerName);
-        Blob result = policy.getBlob(containerName, blobName, options);
-        app.resumeBackgroundTasks();
-        return result;
+        return policy.getBlob(containerName, blobName, options);
     }
 
     @Override
     public BlobMetadata blobMetadata(String container, String name) {
+        drainBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(container);
         return policy.blobMetadata(container, name);
     }
 
     @Override
     public void removeBlob(String container, String name) {
-        runBackgroundTasks();
+        drainBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(container);
         policy.removeBlob(container, name);
-        app.resumeBackgroundTasks();
+        drainBackgroundTasks();
     }
 
     @Override
     public void removeBlobs(String container, Iterable<String> iterable) {
-        runBackgroundTasks();
+        drainBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(container);
         policy.removeBlobs(container, iterable);
-        app.resumeBackgroundTasks();
+        drainBackgroundTasks();
     }
 
     @Override
     public BlobAccess getBlobAccess(String container, String blob) {
-        if (!policyMap.containsKey(container)) {
-            throw new ContainerNotFoundException();
-        }
-        return policyMap.get(container).getBlobAccess(container, blob);
+        return getPolicyFromContainer(container).getBlobAccess(container, blob);
     }
 
     @Override
     public void setBlobAccess(String container, String blob, BlobAccess blobAccess) {
-        if (!policyMap.containsKey(container)) {
-            throw new ContainerNotFoundException();
-        }
-        policyMap.get(container).setBlobAccess(container, blob, blobAccess);
+        getPolicyFromContainer(container).setBlobAccess(container, blob, blobAccess);
     }
 
     @Override
@@ -132,50 +123,33 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public long countBlobs(String container, ListContainerOptions listContainerOptions) {
-        if (!policyMap.containsKey(container)) {
-            throw new ContainerNotFoundException();
-        }
-        return policyMap.get(container).countBlobs(container, listContainerOptions);
+        drainBackgroundTasks();
+        return getPolicyFromContainer(container).countBlobs(container, listContainerOptions);
     }
 
     @Override
     public MultipartUpload initiateMultipartUpload(String container, BlobMetadata blobMetadata) {
-        if (!policyMap.containsKey(container)) {
-            throw new ContainerNotFoundException();
-        }
-        return policyMap.get(container).initiateMultipartUpload(container, blobMetadata);
+        return getPolicyFromContainer(container).initiateMultipartUpload(container, blobMetadata);
     }
 
     @Override
     public void abortMultipartUpload(MultipartUpload multipartUpload) {
-        if (!policyMap.containsKey(multipartUpload.containerName())) {
-            throw new ContainerNotFoundException();
-        }
-        policyMap.get(multipartUpload.containerName()).abortMultipartUpload(multipartUpload);
+        getPolicyFromContainer(multipartUpload.containerName()).abortMultipartUpload(multipartUpload);
     }
 
     @Override
     public String completeMultipartUpload(MultipartUpload multipartUpload, List<MultipartPart> list) {
-        if (!policyMap.containsKey(multipartUpload.containerName())) {
-            throw new ContainerNotFoundException();
-        }
-        return policyMap.get(multipartUpload.containerName()).completeMultipartUpload(multipartUpload, list);
+        return getPolicyFromContainer(multipartUpload.containerName()).completeMultipartUpload(multipartUpload, list);
     }
 
     @Override
     public MultipartPart uploadMultipartPart(MultipartUpload multipartUpload, int i, Payload payload) {
-        if (!policyMap.containsKey(multipartUpload.containerName())) {
-            throw new ContainerNotFoundException();
-        }
-        return policyMap.get(multipartUpload.containerName()).uploadMultipartPart(multipartUpload, i, payload);
+        return getPolicyFromContainer(multipartUpload.containerName()).uploadMultipartPart(multipartUpload, i, payload);
     }
 
     @Override
     public List<MultipartPart> listMultipartUpload(MultipartUpload multipartUpload) {
-        if (!policyMap.containsKey(multipartUpload.containerName())) {
-            throw new ContainerNotFoundException();
-        }
-        return policyMap.get(multipartUpload.containerName()).listMultipartUpload(multipartUpload);
+        return getPolicyFromContainer(multipartUpload.containerName()).listMultipartUpload(multipartUpload);
     }
 
     @Override
@@ -210,12 +184,14 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public PageSet<? extends StorageMetadata> list(String containerName, ListContainerOptions options) {
+        drainBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(containerName);
         return policy.list(containerName, options);
     }
 
     @Override
     public void clearContainer(String container) {
+        drainBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(container);
         policy.clearContainer(container);
     }
@@ -269,13 +245,16 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public void deleteContainer(String container) {
+        drainBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(container);
         policy.deleteContainer(container);
         policyMap.remove(container);
+        drainBackgroundTasks();
     }
 
     @Override
     public boolean deleteContainerIfEmpty(String container) {
+        drainBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(container);
         boolean result = policy.deleteContainerIfEmpty(container);
         if (result) {
@@ -286,34 +265,27 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public boolean directoryExists(String container, String directory) {
-        if (!policyMap.containsKey(container)) {
-            throw new ContainerNotFoundException();
-        }
-        return policyMap.get(container).directoryExists(container, directory);
+        drainBackgroundTasks();
+        return getPolicyFromContainer(container).directoryExists(container, directory);
     }
 
     @Override
     public void createDirectory(String container, String directory) {
-        if (!policyMap.containsKey(container)) {
-            throw new ContainerNotFoundException();
-        }
-        policyMap.get(container).createDirectory(container, directory);
+        drainBackgroundTasks();
+        getPolicyFromContainer(container).createDirectory(container, directory);
     }
 
     @Override
     public void deleteDirectory(String container, String directory) {
-        if (!policyMap.containsKey(container)) {
-            throw new ContainerNotFoundException();
-        }
-        policyMap.get(container).deleteDirectory(container, directory);
+        drainBackgroundTasks();
+        getPolicyFromContainer(container).deleteDirectory(container, directory);
+        drainBackgroundTasks();
     }
 
     @Override
     public boolean blobExists(String container, String blob) {
-        if (!policyMap.containsKey(container)) {
-            throw new ContainerNotFoundException();
-        }
-        return policyMap.get(container).blobExists(container, blob);
+        drainBackgroundTasks();
+        return getPolicyFromContainer(container).blobExists(container, blob);
     }
 
     @Override
@@ -334,16 +306,19 @@ public class AutoConfigBlobStore implements BlobStore {
     @Override
     public String copyBlob(String fromContainer, String fromName, String toContainer, String toName,
                            CopyOptions options) {
+        drainBackgroundTasks();
         if (!fromContainer.equals(toContainer)) {
             throw new IllegalArgumentException("Copy only between the same containers is supported");
         }
         BouncePolicy policy = getPolicyFromContainer(fromContainer);
-        return policy.copyBlob(fromContainer, fromName, toContainer, toName, options);
+        String etag = policy.copyBlob(fromContainer, fromName, toContainer, toName, options);
+        drainBackgroundTasks();
+        return etag;
     }
 
     public BouncePolicy getPolicyFromContainer(String containerName) {
         if (!policyMap.containsKey(containerName)) {
-            throw new IllegalArgumentException(String.format("Container %s does not exist", containerName));
+            throw new ContainerNotFoundException();
         }
         return policyMap.get(containerName);
     }
@@ -367,14 +342,11 @@ public class AutoConfigBlobStore implements BlobStore {
         return config;
     }
 
-    private void runBackgroundTasks() {
+    private void drainBackgroundTasks() {
         try {
-            if (!app.hasNoPendingReconcileTasks()) {
-                app.busyWaitForBackgroundReconcileTasks();
-            }
+            Utils.waitUntil(() -> app.hasNoPendingReconcileTasks());
         } catch (Exception e) {
-            logger.error(e.getMessage());
-            logger.error(Arrays.toString(e.getStackTrace()));
+            logger.error(e.getMessage(), e);
         }
     }
 }
