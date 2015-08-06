@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.Map;
 import java.util.TreeMap;
 
 import com.bouncestorage.bounce.BounceStorageMetadata;
@@ -97,10 +98,10 @@ public class StoragePolicy extends WriteBackPolicy {
             return Instant.MIN;
         }
 
-        for (Instant key : sizeHistogram.keySet()) {
-            delta -= sizeHistogram.get(key);
+        for (Map.Entry<Instant, Long> entry : sizeHistogram.entrySet()) {
+            delta -= entry.getValue();
             if (delta < 0) {
-                return key;
+                return entry.getKey();
             }
         }
         return Instant.MAX;
