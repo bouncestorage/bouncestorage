@@ -14,7 +14,7 @@ trap cleanup EXIT
 
 AUTOCONFIG_MAIN=com.bouncestorage.bounce.AutoConfigMain
 BOUNCE_OPTS="$BOUNCE_OPTS -Dexec.classpathScope=test"
-PROXY_BIN="mvn -o exec:java $BOUNCE_OPTS -Dexec.mainClass=$AUTOCONFIG_MAIN"
+PROXY_BIN="mvn -o exec:java $BOUNCE_OPTS -Dexec.mainClass=$AUTOCONFIG_MAIN -Dbounce.autoconfig-tiers=true"
 stdbuf -oL -eL $PROXY_BIN -Dexec.args='--properties src/main/resources/bounce.properties' &
 PROXY_PID=$!
 
@@ -23,6 +23,7 @@ pushd ../swiftproxy
 sleep 10 # bounce config init after proxy startup
 
 SKIP_TESTS="-e test.functional.tests:TestFile.testCopyFromHeader \
+-e test.functional.tests:TestSlo \
 -e test.functional.tests:TestSlo.test_slo_copy_account \
 -e test.functional.tests:TestSlo.test_slo_copy_the_manifest_account \
 -e test.functional.tests:TestFile.testCopy \
