@@ -8,6 +8,12 @@ server:
   rootPath: '/api/*'
 logging:
   level: DEBUG
+  appenders:
+    - type: console
+      threshold: ALL
+      timeZone: UTC
+      target: stdout
+      logFormat: '%.-1p %d{MM-dd HH:mm:ss.SSS} %t %c{30}:%L %X{clientId}|%X{sessionId}:%X{messageId}:%X{fileId}] %m%n'
   loggers:
     org.eclipse.jetty: info
     jclouds.wire: info
