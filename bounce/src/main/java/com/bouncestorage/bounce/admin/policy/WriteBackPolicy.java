@@ -27,6 +27,7 @@ import java.util.stream.StreamSupport;
 import javax.ws.rs.ClientErrorException;
 import javax.ws.rs.core.Response;
 
+import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
 import com.bouncestorage.bounce.Utils;
@@ -43,6 +44,7 @@ import com.google.common.io.ByteSource;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.io.input.TeeInputStream;
 import org.jclouds.blobstore.BlobStore;
+import org.jclouds.blobstore.KeyNotFoundException;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.PageSet;
@@ -56,6 +58,8 @@ import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.http.HttpResponseException;
 import org.jclouds.io.MutableContentMetadata;
 import org.jclouds.io.Payload;
+import org.jclouds.openstack.swift.v1.SwiftApi;
+import org.jclouds.openstack.swift.v1.features.ObjectApi;
 import org.jclouds.util.Strings2;
 
 @AutoService(BouncePolicy.class)
@@ -184,6 +188,22 @@ public class WriteBackPolicy extends BouncePolicy {
         }
     }
 
+    private String replaceMetadata(BlobStore blobStore, String container, String blobName,
+                                   CopyOptions options) {
+        if (!"openstack-swift".equals(blobStore.getContext().unwrap().getId())) {
+            return blobStore.copyBlob(container, blobName, container, blobName, options);
+        } else {
+            SwiftApi swiftApi = blobStore.getContext().unwrapApi(SwiftApi.class);
+            String region = blobStore.listAssignableLocations().iterator().next().getId();
+            String realContainer = ((BlobStoreTarget) blobStore).mapContainer(container);
+            ObjectApi objectApi = swiftApi.getObjectApi(region, realContainer);
+            if (!objectApi.updateMetadata(blobName, options.getUserMetadata().get())) {
+                throw new KeyNotFoundException(realContainer, blobName, "updateMetadata");
+            }
+            return null;
+        }
+    }
+
     @Override
     public String copyBlob(String fromContainer, String fromName, String toContainer, String toName, CopyOptions options) {
         if (!fromContainer.equals(toContainer)) {
@@ -196,6 +216,24 @@ public class WriteBackPolicy extends BouncePolicy {
         if (sourceMeta == null) {
             // nothing to copy
             return null;
+        }
+
+        if (fromName.equals(toName) && options.getUserMetadata().isPresent()) {
+            // we are only updating the user metadata
+            if (BounceLink.isLink(sourceMeta)) {
+                String etag = replaceMetadata(getDestination(), fromContainer, fromName, options);
+                BlobMetadata meta = getDestination().blobMetadata(toContainer, toName);
+                Utils.createBounceLink(getSource(), meta);
+                return etag == null ? meta.getETag() : etag;
+            } else {
+                try {
+                    replaceMetadata(getDestination(), fromContainer, fromName, options);
+                } catch (KeyNotFoundException e) {
+                    // if it's not on the remote side yet, it's ok
+                }
+                String etag = replaceMetadata(getSource(), fromContainer, fromName, options);
+                return etag == null ? getSource().blobMetadata(fromContainer, fromName).getETag() : etag;
+            }
         }
 
         String etag;
@@ -339,7 +377,7 @@ public class WriteBackPolicy extends BouncePolicy {
         Instant now = app.getClock().instant();
         Instant then = metadata.getLastModified().toInstant();
         logger.debug("now {} mtime {}", now, then);
-        return !now.minus(duration).isBefore(then);
+        return !now.plusSeconds(1).minus(duration).isBefore(then);
     }
 
     private Blob pipeBlobAndReturn(String container, Blob blob) throws IOException {
