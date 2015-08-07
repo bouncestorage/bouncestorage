@@ -134,6 +134,7 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
     $scope.durationUnits = BounceUtils.durationUnits;
     $scope.capacityUnits = BounceUtils.capacityUnits;
     $scope.tiers = BounceUtils.tiers;
+    $scope.editModal = $('#configureTierModal');
 
     $scope.getProviderLabel = function() {
       if ($scope.store.region === null) {
@@ -338,6 +339,15 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       $scope.editLocation = locationObject;
       BounceUtils.parseFields($scope.editLocation);
       $('#configureTierModal').modal('show');
+    };
+
+    $scope.actions.cancelEditTier = function() {
+      if ($scope.editLocation.configured !== true) {
+        // reset all of the edit location changes
+        $scope.editLocation.object.blobStoreId = -1;
+        $scope.editLocation.object.containerName = '';
+      }
+      $scope.editModal.modal('hide');
     };
 
     $scope.actions.updateTier = function() {
