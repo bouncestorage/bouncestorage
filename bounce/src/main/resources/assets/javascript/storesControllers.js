@@ -188,6 +188,20 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       });
     };
 
+    $scope.findContainerByName = function(blobStoreId, containerName) {
+      if (!(blobStoreId in $scope.containersMap)) {
+        return null;
+      }
+      var containers = $scope.containersMap[blobStoreId];
+      // TODO: this list is likely sorted, so we could use binary search
+      for (var i = 0; i < containers.length; i++) {
+        if (containers[i].name === containerName) {
+          return containers[i];
+        }
+      }
+      return null;
+    };
+
     $scope.getContainersForPrompt = function() {
       if ($scope.editLocation === null || $scope.editLocation === undefined) {
         return [];
@@ -197,6 +211,14 @@ storesControllers.controller('ViewStoresCtrl', ['$scope', '$location',
       if (!(blobStoreId in $scope.containersMap)) {
         return [];
       }
+      var container = $scope.findContainerByName(blobStoreId,
+          editLocation.containerName);
+
+      if (container && container.status === 'INUSE') {
+        $scope.editLocation.configured = true;
+        return [container];
+      }
+
       if (blobStoreId === $scope.enhanceContainer.originLocation.blobStoreId) {
         return $scope.containersMap[blobStoreId].filter(
           function(container) {

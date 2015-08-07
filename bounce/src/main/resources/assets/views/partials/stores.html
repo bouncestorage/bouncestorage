@@ -114,12 +114,13 @@
               <label class="control-label">Container for the {{editLocation.edit_name}}</label>
               <div class="form-inline">
                 <select class="form-control" ng-model="editLocation.object.blobStoreId"
-                    ng-options="store.id as store.nickname for store in stores">
+                    ng-options="store.id as store.nickname for store in stores"
+                    ng-disabled="editLocation.configured">
                   <option value="">Select object store&hellip;</option>
                 </select>
                 <select class="form-control" ng-model="editLocation.object.containerName"
-                    ng-options="container.name as container.name for container in getContainersForPrompt()"
-                    ng-disabled="editLocation.object.blobStoreId < 0">
+                    ng-options="container.name as getName(container) for container in getContainersForPrompt()"
+                    ng-disabled="editLocation.object.blobStoreId < 0 || editLocation.configured">
                   <option value="">Select container&hellip;</option>
                 </select>
               </div>
