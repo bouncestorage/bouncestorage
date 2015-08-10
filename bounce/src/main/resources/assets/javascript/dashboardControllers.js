@@ -78,7 +78,7 @@ dashboardControllers.controller('DashboardCtrl', ['$rootScope', '$scope',
   $scope.getDurationData = function() {
     for (var i in BounceUtils.TRACKED_METHODS) {
       $http.get(BounceUtils.SERIES_URL,
-          { params: { q: BounceUtils.durationQuery(i) }
+          { params: { query: BounceUtils.durationQuery(i) }
           })
         .success((function(method) {
           return function(results) {
@@ -97,7 +97,7 @@ dashboardControllers.controller('DashboardCtrl', ['$rootScope', '$scope',
   };
 
   $scope.getOpsData = function() {
-    $http.get(BounceUtils.SERIES_URL, { params: { q: BounceUtils.OPS_QUERY }
+    $http.get(BounceUtils.SERIES_URL, { params: { query: BounceUtils.OPS_QUERY }
                           })
       .success(function(results) {
         if (results.length === 0 || results[0].points.length === 0) {
