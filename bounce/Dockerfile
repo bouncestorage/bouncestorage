@@ -6,6 +6,6 @@ COPY target/bounce-1.0-SNAPSHOT-jar-with-dependencies.jar bounce.jar
 COPY setup_influxdb.sh docker_entrypoint.sh docker_dev_entrypoint.sh ./
 COPY src/test/resources/bounce.properties ./
 RUN mkdir -p /tmp/blobstore
-EXPOSE 80 443 8080 9000 9001 8086
+EXPOSE 80 443 8080 9000 9001
 CMD []
 ENTRYPOINT ["/data/docker_entrypoint.sh"]
