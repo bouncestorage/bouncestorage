@@ -1,6 +1,6 @@
 FROM java:openjdk-8
-RUN curl https://s3.amazonaws.com/influxdb/influxdb_latest_amd64.deb -o /tmp/influxdb_latest_amd64.deb
-RUN dpkg -i /tmp/influxdb_latest_amd64.deb
+RUN curl https://s3.amazonaws.com/influxdb/influxdb_0.8.8_amd64.deb -o /tmp/influxdb.deb
+RUN dpkg -i /tmp/influxdb.deb
 WORKDIR /data
 COPY target/bounce-1.0-SNAPSHOT-jar-with-dependencies.jar bounce.jar
 COPY setup_influxdb.sh docker_entrypoint.sh docker_dev_entrypoint.sh ./

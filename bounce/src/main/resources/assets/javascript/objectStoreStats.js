@@ -41,7 +41,7 @@ bounce.factory('objectStoreStats', ['$rootScope', '$http',
         if (since !== null) {
           query += " where time > " + since;
         }
-        $http.get(BounceUtils.SERIES_URL, { params: { q: query } })
+        $http.get(BounceUtils.SERIES_URL, { params: { query: query } })
             .success(function(callback) {
               return function(result) {
                 finishRequest();
@@ -89,7 +89,7 @@ bounce.factory('objectStoreStats', ['$rootScope', '$http',
         var objectStore = objectStores[i];
         var query = BounceUtils.objectStoreStatsQuery(objectStore.id);
         pendingRequests++;
-        $http.get(BounceUtils.SERIES_URL, { params: { q: query } })
+        $http.get(BounceUtils.SERIES_URL, { params: { query: query } })
             .success(function(objectStore) {
               var data = createObjectStoreData(objectStore.nickname);
               objectStoreData.push(data);

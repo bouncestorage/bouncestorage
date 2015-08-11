@@ -393,11 +393,11 @@ BounceUtils.parseSerieName = function (name) {
 };
 
 BounceUtils.DB_NAME = "bounce";
-BounceUtils.DB_URL = "http://" + window.location.hostname + ":8086";
+BounceUtils.DB_URL = "/api/db/";
 BounceUtils.DB_USER = "bounce";
 BounceUtils.DB_PASSWORD = "bounce";
-BounceUtils.SERIES_URL = BounceUtils.DB_URL + "/db/" + BounceUtils.DB_NAME +
-    "/series?u=" + BounceUtils.DB_USER + "&p=" + BounceUtils.DB_PASSWORD;
+BounceUtils.SERIES_URL = BounceUtils.DB_URL + BounceUtils.DB_NAME +
+    "?username=" + BounceUtils.DB_USER + "&password=" + BounceUtils.DB_PASSWORD;
 
 BounceUtils.TRACKED_METHODS =
   { 'PUT': 0,

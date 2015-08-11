@@ -29,6 +29,11 @@ public final class LoggingBlobStore extends ForwardingBlobStore {
     }
 
     @Override
+    public Blob getBlob(String containerName, String blobName) {
+        return getBlob(containerName, blobName, GetOptions.NONE);
+    }
+
+    @Override
     public Blob getBlob(String containerName, String blobName, GetOptions options) {
         Date startTime = new Date();
         Blob blob = delegate().getBlob(containerName, blobName, options);
@@ -38,6 +43,11 @@ public final class LoggingBlobStore extends ForwardingBlobStore {
                     blob.getMetadata().getSize(), startTime.getTime());
         }
         return blob;
+    }
+
+    @Override
+    public String putBlob(String containerName, Blob blob) {
+        return putBlob(containerName, blob, PutOptions.NONE);
     }
 
     @Override
