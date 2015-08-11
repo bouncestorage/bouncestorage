@@ -65,8 +65,6 @@ import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.http.HttpResponseException;
 import org.jclouds.io.MutableContentMetadata;
 import org.jclouds.io.Payload;
-import org.jclouds.openstack.swift.v1.SwiftApi;
-import org.jclouds.openstack.swift.v1.features.ObjectApi;
 import org.jclouds.util.Strings2;
 
 @AutoService(BouncePolicy.class)
@@ -207,18 +205,7 @@ public class WriteBackPolicy extends BouncePolicy {
 
     private String replaceMetadata(BlobStore blobStore, String container, String blobName,
                                    CopyOptions options) {
-        if (!"openstack-swift".equals(blobStore.getContext().unwrap().getId())) {
-            return blobStore.copyBlob(container, blobName, container, blobName, options);
-        } else {
-            SwiftApi swiftApi = blobStore.getContext().unwrapApi(SwiftApi.class);
-            String region = blobStore.listAssignableLocations().iterator().next().getId();
-            String realContainer = ((BlobStoreTarget) blobStore).mapContainer(container);
-            ObjectApi objectApi = swiftApi.getObjectApi(region, realContainer);
-            if (!objectApi.updateMetadata(blobName, options.getUserMetadata().get())) {
-                throw new KeyNotFoundException(realContainer, blobName, "updateMetadata");
-            }
-            return null;
-        }
+        return blobStore.copyBlob(container, blobName, container, blobName, options);
     }
 
     @Override
