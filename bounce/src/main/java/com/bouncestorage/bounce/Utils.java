@@ -44,12 +44,15 @@ import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.io.ContentMetadata;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class Utils {
     public static final int WAIT_SLEEP_MS = 10;
     public static final int WAIT_TIMEOUT_MS = 30 * 1000;
     public static final String RANDOM_CONTAINER_REGEX = "^bounce-[0-9]+$";
     private static final PutOptions MULTIPART_PUT = new PutOptions().multipart(true);
+    private static final Logger logger = LoggerFactory.getLogger(Utils.class);
 
     private Utils() {
         throw new AssertionError("intentionally unimplemented");
@@ -106,11 +109,13 @@ public final class Utils {
     public static void waitUntil(long waitMs, long timeoutMs, Callable<Boolean> test) throws Exception {
         Instant timeStarted = Instant.now();
         while (!test.call()) {
-            Thread.sleep(waitMs);
             if (Instant.now().minusMillis(timeoutMs).isAfter(timeStarted)) {
-                throw new TimeoutException("Application took more than 30 seconds to start");
+                throw new TimeoutException("Application took more than " + (timeoutMs / 1000) + " seconds to start");
             }
+            Thread.sleep(waitMs);
         }
+        logger.debug("Waited {} out of {} ms for {}",
+                Instant.now().minusMillis(timeStarted.toEpochMilli()).toEpochMilli(), timeoutMs, test);
     }
 
     public static String createRandomContainerName() {
