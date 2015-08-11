@@ -410,6 +410,9 @@ public class WriteBackPolicy extends BouncePolicy {
             try {
                 logger.debug("copying {} to tee stream", name);
                 return Utils.copyBlob(getDestination(), getSource(), container, blob, tee);
+            } catch (RuntimeException e) {
+                logger.error("copying " + name + " to tee stream failed", e);
+                throw e;
             } finally {
                 tee.close();
             }
