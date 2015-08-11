@@ -7,6 +7,7 @@ package com.bouncestorage.bounce.admin.policy;
 
 import static java.util.Objects.requireNonNull;
 
+import static com.bouncestorage.bounce.Utils.eTagsEqual;
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
@@ -29,6 +30,7 @@ import java.util.stream.StreamSupport;
 
 import javax.ws.rs.ClientErrorException;
 import javax.ws.rs.ServiceUnavailableException;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
 import com.bouncestorage.bounce.BounceLink;
@@ -423,36 +425,59 @@ public class WriteBackPolicy extends BouncePolicy {
         return getDestination().getContext().unwrap().getId();
     }
 
+    private GetOptions maybeConditionalGet(String container, String blobName, GetOptions options) {
+        if (options.getIfMatch() != null || options.getIfNoneMatch() != null ||
+                options.getIfModifiedSince() != null || options.getIfUnmodifiedSince() != null) {
+
+            BlobMetadata meta = blobMetadata(container, blobName);
+            HttpResponseException ex = null;
+
+            if (options.getIfMatch() != null && !eTagsEqual(options.getIfMatch(), meta.getETag())) {
+                throw new ClientErrorException(Response.Status.PRECONDITION_FAILED);
+            }
+
+            if (options.getIfNoneMatch() != null && eTagsEqual(options.getIfNoneMatch(), meta.getETag())) {
+                throw new WebApplicationException(Response.Status.NOT_MODIFIED);
+            }
+
+            if (options.getIfModifiedSince() != null &&
+                    meta.getLastModified().compareTo(options.getIfModifiedSince()) <= 0) {
+                throw new WebApplicationException(Response.Status.NOT_MODIFIED);
+            }
+
+            if (options.getIfUnmodifiedSince() != null &&
+                    meta.getLastModified().compareTo(options.getIfUnmodifiedSince()) > 0) {
+                throw new ClientErrorException(Response.Status.PRECONDITION_FAILED);
+            }
+
+            return new GetOptions() {
+                @Override
+                public List<String> getRanges() {
+                    return options.getRanges();
+                }
+            };
+        }
+
+        return options;
+    }
+
     @Override
     public Blob getBlob(String container, String blobName, GetOptions options) {
         if (blobName.startsWith(INTERNAL_PREFIX)) {
             throw new UnsupportedOperationException("illegal prefix");
         }
 
-        Blob blob = null;
-        boolean isLink;
-        try {
-            blob = super.getBlob(container, blobName, options);
-            if (blob == null) {
-                if (takeOverInProcess) {
-                    return getDestination().getBlob(container, blobName, options);
-                }
-                return null;
-            }
+        options = maybeConditionalGet(container, blobName, options);
 
-            BlobMetadata meta = blob.getMetadata();
-            isLink = BounceLink.isLink(meta);
-        } catch (HttpResponseException e) {
-            if (e.getResponse().getStatusCode() == 412 &&
-                    e.getResponse().getHeaders().containsKey("X-Object-Meta-Bounce-Link")) {
-                isLink = true;
-            } else {
-                throw e;
+        Blob blob = super.getBlob(container, blobName, options);
+        if (blob == null) {
+            if (takeOverInProcess) {
+                return getDestination().getBlob(container, blobName, options);
             }
+            return null;
         }
-
-        if (isLink) {
-            logger.debug("following link {}", blobName);
+        BlobMetadata meta = blob.getMetadata();
+        if (BounceLink.isLink(meta)) {
             try {
                 if (app != null && options.equals(GetOptions.NONE)) {
                     blob = getDestination().getBlob(container, blobName, GetOptions.NONE);
