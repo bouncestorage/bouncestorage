@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
@@ -50,6 +51,9 @@ public class AutoConfigBlobStore implements BlobStore {
     private BounceApplication app;
 
     private Logger logger = LoggerFactory.getLogger(getClass());
+    private AtomicLong pendingBytes = new AtomicLong();
+    private AtomicLong pendingObjects = new AtomicLong();
+    private String lastPutObject;
 
     public AutoConfigBlobStore(BounceApplication app) {
         policyMap = new HashMap<>();
@@ -64,10 +68,21 @@ public class AutoConfigBlobStore implements BlobStore {
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions options) {
         BouncePolicy policy = getPolicyFromContainer(containerName);
+        if (blob.getMetadata().getName().equals(lastPutObject)) {
+            // drain bounce if this is an immediate overwrite, because
+            // we could be bouncing this object
+            drainBackgroundTasks();
+        }
+        Long length = blob.getMetadata().getContentMetadata().getContentLength();
+        lastPutObject = blob.getMetadata().getName();
         String result = policy.putBlob(containerName, blob, options);
         if (result == null) {
             return null;
         }
+        if (length != null) {
+            pendingBytes.getAndAdd(length);
+        }
+        pendingObjects.getAndIncrement();
         return result;
     }
 
@@ -85,7 +100,8 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public BlobMetadata blobMetadata(String container, String name) {
-        drainBackgroundTasks();
+        // swiftproxy issues a blobmetadata right after a PUT
+        //drainBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(container);
         return policy.blobMetadata(container, name);
     }
@@ -95,6 +111,7 @@ public class AutoConfigBlobStore implements BlobStore {
         drainBackgroundTasks();
         BouncePolicy policy = getPolicyFromContainer(container);
         policy.removeBlob(container, name);
+        pendingObjects.getAndIncrement();
         drainBackgroundTasks();
     }
 
@@ -311,6 +328,7 @@ public class AutoConfigBlobStore implements BlobStore {
         }
         BouncePolicy policy = getPolicyFromContainer(fromContainer);
         String etag = policy.copyBlob(fromContainer, fromName, toContainer, toName, options);
+        pendingObjects.getAndIncrement();
         drainBackgroundTasks();
         return etag;
     }
@@ -343,7 +361,11 @@ public class AutoConfigBlobStore implements BlobStore {
 
     private void drainBackgroundTasks() {
         try {
-            Utils.waitUntil(() -> app.hasNoPendingReconcileTasks());
+            long assumeBW = 100 * 1000 / 1000; // 100KB/s in ms
+            long totalTime = pendingBytes.getAndSet(0) / assumeBW;
+            // allow for 5 seocnds overhead / object
+            totalTime += pendingObjects.getAndSet(0) * 5 * 1000;
+            Utils.waitUntil(10, totalTime, () -> app.hasNoPendingReconcileTasks());
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
