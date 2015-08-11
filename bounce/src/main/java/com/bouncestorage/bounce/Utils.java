@@ -259,7 +259,8 @@ public final class Utils {
         to.putBlob(containerNameTo, blob, options);
     }
 
-    public static Blob copyBlob(BlobStore from, BlobStore to, String containerNameTo, Blob blobFrom)
+    public static Blob copyBlob(BlobStore from, BlobStore to, String containerNameTo, Blob blobFrom,
+                                boolean saveSystemMetadata)
             throws IOException {
         if (blobFrom == null) {
             return null;
@@ -269,9 +270,15 @@ public final class Utils {
             throw new IllegalArgumentException(blobFrom.getMetadata().getName() + " is a link");
         }
 
+        Map<String, String> userMetadata = blobFrom.getMetadata().getUserMetadata();
+        if (saveSystemMetadata) {
+            SystemMetadataSerializer.SYSTEM_METADATA
+                    .forEach(t -> userMetadata.put(t.getName(), t.serialize(blobFrom.getMetadata())));
+        }
+
         ContentMetadata metadata = blobFrom.getMetadata().getContentMetadata();
         PayloadBlobBuilder builder = to.blobBuilder(blobFrom.getMetadata().getName())
-                .userMetadata(blobFrom.getMetadata().getUserMetadata())
+                .userMetadata(userMetadata)
                 .payload(new BlobStoreByteSource(from, blobFrom, blobFrom.getMetadata().getSize()));
 
         copyToBlobBuilder(metadata, builder);
@@ -292,14 +299,23 @@ public final class Utils {
     // TODO: eventually this should support parallel copies, cancellation, and
     // multi-part uploads
     public static Blob copyBlob(BlobStore from, BlobStore to,
-            String containerNameFrom, String containerNameTo, String blobName)
+                                String containerNameFrom, String containerNameTo, String blobName)
+            throws IOException {
+        return copyBlob(from, to, containerNameFrom, containerNameTo, blobName, false);
+    }
+
+    // TODO: eventually this should support parallel copies, cancellation, and
+    // multi-part uploads
+    public static Blob copyBlob(BlobStore from, BlobStore to,
+                                String containerNameFrom, String containerNameTo, String blobName,
+                                boolean saveSystemMetadata)
             throws IOException {
         Blob blobFrom = from.getBlob(containerNameFrom, blobName);
         if (blobFrom == null) {
             return null;
         }
 
-        return copyBlob(from, to, containerNameTo, blobFrom);
+        return copyBlob(from, to, containerNameTo, blobFrom, saveSystemMetadata);
     }
 
     static void moveBlob(BlobStore from, BlobStore to,

@@ -14,6 +14,8 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
@@ -22,15 +24,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import javax.ws.rs.ClientErrorException;
 import javax.ws.rs.ServiceUnavailableException;
 import javax.ws.rs.core.Response;
 
-import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.bouncestorage.bounce.SystemMetadataSerializer;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
@@ -49,9 +52,11 @@ import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.KeyNotFoundException;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
+import org.jclouds.blobstore.domain.MutableBlobMetadata;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.internal.BlobImpl;
+import org.jclouds.blobstore.domain.internal.MutableBlobMetadataImpl;
 import org.jclouds.blobstore.domain.internal.PageSetImpl;
 import org.jclouds.blobstore.options.CopyOptions;
 import org.jclouds.blobstore.options.GetOptions;
@@ -406,7 +411,7 @@ public class WriteBackPolicy extends BouncePolicy {
 
         Payload blobPayload = blob.getPayload();
         MutableContentMetadata contentMetadata = blob.getMetadata().getContentMetadata();
-        Blob retBlob = new BlobImpl(blob.getMetadata());
+        Blob retBlob = new BlobImpl(replaceSystemMetadata(blob.getMetadata()));
         retBlob.setPayload(pipeIn);
         retBlob.setAllHeaders(blob.getAllHeaders());
         TeeInputStream tee = new TeeInputStream(blobPayload.openStream(), pipeOut, true);
@@ -470,15 +475,43 @@ public class WriteBackPolicy extends BouncePolicy {
                     logger.debug("unbouncing {} from {} to {}", blobName, getDestStoreName(), getSourceStoreName());
                     Utils.copyBlob(getDestination(), getSource(), container, container, blobName);
                     logger.debug("returning unbounced blob {}", blobName);
-                    return getSource().getBlob(container, blobName, options);
+                    blob = getSource().getBlob(container, blobName, options);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-                return getDestination().getBlob(container, blobName, options);
+                blob = getDestination().getBlob(container, blobName, options);
             }
-        } else {
-            return blob;
         }
+
+        return replaceSystemMetadata(blob);
+    }
+
+    private Blob replaceSystemMetadata(Blob blob) {
+        MutableContentMetadata contentMetadata = blob.getMetadata().getContentMetadata();
+        Blob newBlob = new BlobImpl(replaceSystemMetadata(blob.getMetadata()));
+        newBlob.setPayload(blob.getPayload());
+        newBlob.setAllHeaders(blob.getAllHeaders());
+        newBlob.getMetadata().setContentMetadata(contentMetadata);
+        return newBlob;
+    }
+
+    private MutableBlobMetadata replaceSystemMetadata(MutableBlobMetadata blobMetadata) {
+        Map<String, String> userMetadata = blobMetadata.getUserMetadata();
+        SystemMetadataSerializer.SYSTEM_METADATA.stream()
+                .filter(t -> userMetadata.containsKey(t.getName()))
+                .forEach(t -> {
+                    t.deserialize(blobMetadata, userMetadata.get(t.getName()));
+                });
+        Map<String, String> filtered = userMetadata.entrySet().stream()
+                .filter(e -> !e.getKey().startsWith(SystemMetadataSerializer.METADATA_PREFIX))
+                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
+        blobMetadata.setUserMetadata(filtered);
+        return blobMetadata;
+    }
+
+    private BlobMetadata replaceSystemMetadata(BlobMetadata blobMetadata) {
+        MutableBlobMetadata mutable = new MutableBlobMetadataImpl(blobMetadata);
+        return replaceSystemMetadata(mutable);
     }
 
     @Override
@@ -499,14 +532,17 @@ public class WriteBackPolicy extends BouncePolicy {
                             throw propagate(e);
                         }
                     } else {
-                        return linkBlob.getMetadata();
+                        return replaceSystemMetadata(linkBlob.getMetadata());
                     }
                 } else {
                     return null;
                 }
             }
+
+            return replaceSystemMetadata(meta);
+        } else {
+            return null;
         }
-        return meta;
     }
 
     protected final BounceResult maybeMoveObject(String container, BounceStorageMetadata sourceObject,
