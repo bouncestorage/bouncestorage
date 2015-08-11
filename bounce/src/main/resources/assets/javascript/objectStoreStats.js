@@ -85,6 +85,8 @@ bounce.factory('objectStoreStats', ['$rootScope', '$http',
     }
 
     function getObjectStoreStats(objectStores) {
+      objectStoreData.length = 0;
+
       for (var i = 0; i < objectStores.length; i++) {
         var objectStore = objectStores[i];
         var query = BounceUtils.objectStoreStatsQuery(objectStore.id);

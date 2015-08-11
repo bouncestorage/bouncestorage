@@ -16,6 +16,15 @@ describe ('Test objectStoreStats', function() {
     $httpBackend.verifyNoOutstandingRequest();
   });
 
+  function setupQueryStubs(objectStoreId, objectStores) {
+    // Summary stats
+    $httpBackend.expect('GET',
+        constructDBQuery(BounceUtils.objectStoreStatsQuery(
+            objectStoreId)))
+        .respond([]);
+    checkTotalContainerStats(objectStoreId, '.*', null, null, null);
+  }
+
   it('should request cumulative stats and ALL PUT/GET for the provider',
     function() {
       var objectStores = [
@@ -24,14 +33,29 @@ describe ('Test objectStoreStats', function() {
       ];
 
       var objectStoreId = objectStores[0].id;
-      // Summary stats
-      $httpBackend.expect('GET',
-          constructDBQuery(BounceUtils.objectStoreStatsQuery(
-              objectStoreId)))
-          .respond([]);
-      checkTotalContainerStats(objectStoreId, '.*', null, null, null);
+      setupQueryStubs(objectStoreId, objectStores);
       objectStoreStats.getStats(objectStores);
       $httpBackend.flush();
+  });
+
+  it('should reset the object store stats on each call', function() {
+    var objectStores = [
+      { id: 1
+      }
+    ];
+    var objectStoreId = objectStores[0].id;
+
+    setupQueryStubs(objectStoreId, objectStores);
+    objectStoreStats.getStats(objectStores);
+    $httpBackend.flush();
+    var results = objectStoreStats.result;
+    expect(results.length).toEqual(1);
+
+    setupQueryStubs(objectStoreId, objectStores);
+    objectStoreStats.getStats(objectStores);
+    $httpBackend.flush();
+    var results = objectStoreStats.result;
+    expect(results.length).toEqual(1);
   });
 
   it('should augment stats for the container after reported time', function() {
