@@ -118,12 +118,11 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public long countBlobs(String container) {
-        return countBlobs(container, ListContainerOptions.NONE);
+        return getPolicyFromContainer(container).countBlobs(container);
     }
 
     @Override
     public long countBlobs(String container, ListContainerOptions listContainerOptions) {
-        drainBackgroundTasks();
         return getPolicyFromContainer(container).countBlobs(container, listContainerOptions);
     }
 
