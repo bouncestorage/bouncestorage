@@ -173,11 +173,11 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public PageSet<? extends StorageMetadata> list() {
-        List<StorageMetadata> results = policyMap.keySet().stream().map(container -> {
-            StorageMetadata metadata = new StorageMetadataImpl(StorageType.CONTAINER, null, container, null, null,
-                    null, null, null, ImmutableMap.of(), null);
-            return metadata;
-        }).collect(Collectors.toList());
+        List<StorageMetadata> results = policyMap.keySet().stream()
+                .map(container -> new StorageMetadataImpl(StorageType.CONTAINER, null, container, null, null,
+                                null, null, null, ImmutableMap.of(), null))
+                .sorted()
+                .collect(Collectors.toList());
         return new PageSetImpl<>(results, null);
     }
 
