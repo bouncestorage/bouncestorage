@@ -418,7 +418,7 @@ BounceUtils.OBJECT_STORE_PREFIX = "object_store_stats"
 BounceUtils.OBJECT_STORE_QUERY =
     "select * from /^" + BounceUtils.OBJECT_STORE_PREFIX;
 
-BounceUtils.OPS_QUERY_OBJECTS_SIZE = "select count(object), sum(size) from /^" +
+BounceUtils.OPS_QUERY_OBJECTS = "select * from /^" +
     BounceUtils.OPS_SERIES_PREFIX;
 
 BounceUtils.opCountQuery = function(op) {
@@ -436,6 +436,14 @@ BounceUtils.objectStoreStatsQuery = function(providerId) {
 };
 
 BounceUtils.containerStatsQuery = function(providerId, containerName, method) {
-  return BounceUtils.OPS_QUERY_OBJECTS_SIZE + ".provider." + providerId +
+  return BounceUtils.OPS_QUERY_OBJECTS + ".provider." + providerId +
       ".container." + containerName + ".op." + method + '$/';
+};
+
+BounceUtils.OPS_FIELDS = {
+  getTime: function(point) { return point[0]; },
+  getSeq: function(point) { return point[1]; },
+  getKey: function(point) { return point[2]; },
+  getSize: function(point) { return point[3]; },
+  getDuration: function(point) { return point[4]; }
 };

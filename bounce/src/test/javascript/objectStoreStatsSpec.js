@@ -148,6 +148,52 @@ describe ('Test objectStoreStats', function() {
         container.size + sincePut - sinceDelete);
   });
 
+  it('should remove duplicates from the PUT points', function() {
+    var objectStores = [
+        { id: 1, // All statistics are referenced by ID
+          nickname: 'store'
+        }
+    ];
+
+    var objectStoreId = objectStores[0].id;
+    var container = { name: 'foo',
+                      time: 100
+                    };
+
+    // Summary stats
+    $httpBackend.expect('GET',
+        constructDBQuery(BounceUtils.objectStoreStatsQuery(
+            objectStoreId)))
+        .respond([
+          { name: 'object_store_stats.provider.' + objectStoreId +
+                  '.container.' + container.name,
+            points: [[ container.time, 1, 0, 0 ]]
+          }
+        ]);
+
+    // container stats
+    var points = [
+      [ 10, 10, 'foo', 1024, 10 ],
+      [ 9, 9, 'bar', 1300, 5 ],
+      [ 8, 8, 'foo', 1024*1024, 55 ],
+      [ 7, 7, 'bar', 1024*1024*5, 123]
+    ];
+    checkTotalContainerStats(objectStoreId, container.name, container.time,
+        [ { points: points,
+            name: buildSerieName(objectStoreId, container.name, 'PUT')
+          }],
+        []
+    );
+
+    // All other containers
+    checkTotalContainerStats(objectStoreId, '.*', null, [], []);
+
+    objectStoreStats.getStats(objectStores);
+    $httpBackend.flush();
+    var result = objectStoreStats.result;
+    expect(result[0].data.size).toEqual(1024 + 1300);
+  });
+
   it('should add containers without cumulative statistics', function() {
     var objectStores = [
         { id: 1, // All statistics are referenced by ID
@@ -202,11 +248,14 @@ describe ('Test objectStoreStats', function() {
         otherContainer.putCount - otherContainer.deleteCount);
   });
 
+  function buildSerieName(provider, container, op) {
+    return 'ops.provider.' + provider + '.container.' + container +
+      '.op.' + op;
+  }
+
   function buildContainerResponse(provider, container, op, value) {
-    var serieName = 'ops.provider.' + provider + '.container.' + container +
-        '.op.' + op;
-    return [ { points: [[ null, null, value]],
-               name: serieName
+    return [ { points: [[ 1, 1, 'foo', value, 5]],
+               name: buildSerieName(provider, container, op)
              }];
   }
 

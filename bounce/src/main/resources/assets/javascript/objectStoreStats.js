@@ -19,16 +19,33 @@ bounce.factory('objectStoreStats', ['$rootScope', '$http',
              };
     }
 
+    function aggregateValues(points) {
+      var observedValues = {};
+      var totalSize = 0;
+      for (var i = 0; i < points.length; i++) {
+        var point = points[i];
+        var key = BounceUtils.OPS_FIELDS.getKey(point);
+        // InfluxDB returns the values in chronological order and we rely on
+        // that here
+        if (BounceUtils.OPS_FIELDS.getKey(point) in observedValues) {
+          continue;
+        }
+        observedValues[key] = true;
+        totalSize += Number(BounceUtils.OPS_FIELDS.getSize(point));
+      }
+      return totalSize;
+    }
+
     function updateTotalContainerStats(objectStore, container, since, data,
         otherContainers) {
       var lookups = [ { method: 'PUT',
-                        callback: function(value) {
-                          data.data.size += value;
+                        callback: function(points) {
+                          data.data.size += aggregateValues(points);
                         }
                       },
                       { method: 'DELETE',
-                        callback: function(value) {
-                          data.data.size -= value;
+                        callback: function(points) {
+                          data.data.size -= aggregateValues(points);
                         }
                       }
                     ];
@@ -50,8 +67,11 @@ bounce.factory('objectStoreStats', ['$rootScope', '$http',
                 }
                 for (var j = 0; j < result.length; j++) {
                   var tags = BounceUtils.parseSerieName(result[j].name);
+                  // This function may be called with "*" for container name, in
+                  // which case we need to filter out any containers we have
+                  // already retrieved statistics for.
                   if (otherContainers.indexOf(tags.container) < 0) {
-                    callback(Number(result[j].points[0][2]));
+                    callback(result[j].points);
                   }
                 }
               }
