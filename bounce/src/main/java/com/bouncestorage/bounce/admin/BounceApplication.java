@@ -219,6 +219,7 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
             if (identity != null) {
                 builder.credentials(identity, c.getString(Constants.PROPERTY_CREDENTIAL));
             }
+            c.addProperty(Constants.PROPERTY_STRIP_EXPECT_HEADER, "true");
             context = builder.overrides(new ConfigurationPropertiesView(c))
                     .modules(ImmutableList.of(new SLF4JLoggingModule()))
                     .build(BlobStoreContext.class);
