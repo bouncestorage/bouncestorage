@@ -440,10 +440,31 @@ BounceUtils.containerStatsQuery = function(providerId, containerName, method) {
       ".container." + containerName + ".op." + method + '$/';
 };
 
-BounceUtils.OPS_FIELDS = {
-  getTime: function(point) { return point[0]; },
-  getSeq: function(point) { return point[1]; },
-  getKey: function(point) { return point[2]; },
-  getSize: function(point) { return point[3]; },
-  getDuration: function(point) { return point[4]; }
+BounceUtils.ResultsParser = function(columns) {
+  var FIELDS = { time: 'time',
+                 seq: 'sequence_number',
+                 duration: 'duration',
+                 key: 'object',
+                 size: 'size'
+               };
+
+  for (var i = 0; i < columns.length; i++) {
+    if (columns[i] === FIELDS.time) {
+      this.time_field = i;
+    } else if (columns[i] === FIELDS.seq) {
+      this.seq_field = i;
+    } else if (columns[i] === FIELDS.duration) {
+      this.duration_field = i;
+    } else if (columns[i] === FIELDS.key) {
+      this.key_field = i;
+    } else if (columns[i] === FIELDS.size) {
+      this.size_field = i;
+    }
+  }
+
+  this.getTime = function(point) { return point[this.time_field]; },
+  this.getSeq = function(point) { return point[this.seq_field]; },
+  this.getKey = function(point) { return point[this.key_field]; },
+  this.getSize = function(point) { return point[this.size_field]; },
+  this.getDuration = function(point) { return point[this.duration_field]; }
 };

@@ -19,19 +19,20 @@ bounce.factory('objectStoreStats', ['$rootScope', '$http',
              };
     }
 
-    function aggregateValues(points) {
+    function aggregateValues(results) {
       var observedValues = {};
       var totalSize = 0;
-      for (var i = 0; i < points.length; i++) {
-        var point = points[i];
-        var key = BounceUtils.OPS_FIELDS.getKey(point);
+      var parser = new BounceUtils.ResultsParser(results.columns);
+      for (var i = 0; i < results.points.length; i++) {
+        var point = results.points[i];
+        var key = parser.getKey(point);
         // InfluxDB returns the values in chronological order and we rely on
         // that here
-        if (BounceUtils.OPS_FIELDS.getKey(point) in observedValues) {
+        if (key in observedValues) {
           continue;
         }
         observedValues[key] = true;
-        totalSize += Number(BounceUtils.OPS_FIELDS.getSize(point));
+        totalSize += Number(parser.getSize(point));
       }
       return totalSize;
     }
@@ -39,13 +40,13 @@ bounce.factory('objectStoreStats', ['$rootScope', '$http',
     function updateTotalContainerStats(objectStore, container, since, data,
         otherContainers) {
       var lookups = [ { method: 'PUT',
-                        callback: function(points) {
-                          data.data.size += aggregateValues(points);
+                        callback: function(results) {
+                          data.data.size += aggregateValues(results);
                         }
                       },
                       { method: 'DELETE',
-                        callback: function(points) {
-                          data.data.size -= aggregateValues(points);
+                        callback: function(results) {
+                          data.data.size -= aggregateValues(results);
                         }
                       }
                     ];
@@ -71,7 +72,7 @@ bounce.factory('objectStoreStats', ['$rootScope', '$http',
                   // which case we need to filter out any containers we have
                   // already retrieved statistics for.
                   if (otherContainers.indexOf(tags.container) < 0) {
-                    callback(result[j].points);
+                    callback(result[j]);
                   }
                 }
               }
