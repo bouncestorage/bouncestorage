@@ -40,7 +40,6 @@ public class StoragePolicy extends WriteBackPolicy {
         super.init(app, configuration);
         capacity = configuration.getLong(CAPACITY_SETTING);
         evictDelay = Duration.ofHours(-1);
-        copyDelay = Duration.ofHours(-1);
     }
 
     /**

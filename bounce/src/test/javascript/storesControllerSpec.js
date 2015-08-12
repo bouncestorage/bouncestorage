@@ -49,15 +49,6 @@ describe ('Test viewStoresCtrl', function() {
     expect(BounceUtils.validateTier(tier)).toNotEqual(null);
   });
 
-  it ('should fail validation if capacity and copy are set', function() {
-    tier = { object: { blobStoreId: 0,
-                       containerName: 'test',
-                       copyDelay: 'P1D',
-                       capacity: 1000
-           } };
-    expect(BounceUtils.validateTier(tier)).toNotEqual(null);
-  });
-
   it ('should fail validation if no policy settings are set', function() {
     tier = { object: { blobStoreId: 0,
                        containerName: 'test',
