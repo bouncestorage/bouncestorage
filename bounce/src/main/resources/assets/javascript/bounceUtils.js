@@ -323,8 +323,8 @@ BounceUtils.validateTier = function(tier) {
   if (!moveSet && ! copySet && !capacitySet) {
     return 'Either a storage limit or copy/eviction time must bet set';
   }
-  if ((moveSet || copySet) && capacitySet) {
-    return 'Cannot set both storage limit and copy/eviction time';
+  if (moveSet && capacitySet) {
+    return 'Cannot set both storage limit and eviction time';
   }
 
   return null;
