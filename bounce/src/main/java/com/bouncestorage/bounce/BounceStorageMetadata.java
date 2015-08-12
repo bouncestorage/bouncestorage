@@ -26,10 +26,19 @@ public final class BounceStorageMetadata extends MutableStorageMetadataImpl {
     public static final ImmutableSet<Region> EVERYWHERE = ImmutableSet.of(Region.NEAR, Region.FAR);
     private final ImmutableSet<Region> regions;
     private boolean hasMarkerBlob;
+    private long linkSize;
 
     public BounceStorageMetadata(StorageMetadata metadata, Set<Region> regions) {
         super(metadata);
         this.regions = ImmutableSet.copyOf(requireNonNull(regions));
+    }
+
+    public void setLinkSize(long size) {
+        linkSize = size;
+    }
+
+    public long getLinkSize() {
+        return linkSize;
     }
 
     public void hasMarkerBlob(boolean b) {

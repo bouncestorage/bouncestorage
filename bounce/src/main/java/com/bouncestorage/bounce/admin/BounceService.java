@@ -214,7 +214,8 @@ public final class BounceService {
             }
         }
 
-        private void adjustContainerStats(BounceResult result, StorageMetadata source, StorageMetadata destination) {
+        private void adjustContainerStats(BounceResult result, BounceStorageMetadata source, StorageMetadata
+                destination) {
             if (source != null && result != BounceResult.REMOVE) {
                 // We may remove the object from the source during a migration operation
                 sourceStats.objectCount += 1;
@@ -225,7 +226,11 @@ public final class BounceService {
                         sourceStats.totalSize += source.getSize();
                         break;
                     case NO_OP:
-                        sourceStats.totalSize += source.getSize();
+                        if (source.getRegions().equals(BounceStorageMetadata.FAR_ONLY)) {
+                            sourceStats.totalSize += source.getLinkSize();
+                        } else {
+                            sourceStats.totalSize += source.getSize();
+                        }
                         break;
                     case MOVE:
                     case LINK:

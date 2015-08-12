@@ -547,6 +547,7 @@ public class WriteBackPolicy extends BouncePolicy {
                 if (nextIsMarker) {
                     if (BounceLink.isLink(getSource().blobMetadata(s, name))) {
                         meta = new BounceStorageMetadata(farMeta, farRegions);
+                        meta.setLinkSize(nearMeta.getSize());
                     } else {
                         meta = new BounceStorageMetadata(nearMeta, BounceStorageMetadata.NEAR_ONLY);
                     }
@@ -565,6 +566,7 @@ public class WriteBackPolicy extends BouncePolicy {
                         }
                     } else {
                         meta = new BounceStorageMetadata(farMeta, farRegions);
+                        meta.setLinkSize(nearMeta.getSize());
                     }
                 }
 
