@@ -22,17 +22,18 @@ bounce.factory('objectStoreStats', ['$rootScope', '$http',
     function aggregateValues(results) {
       var observedValues = {};
       var totalSize = 0;
-      var parser = new BounceUtils.ResultsParser(results.columns);
+      var parser = new BounceUtils.InfluxDBParser(
+          BounceUtils.QUERY_FIELDS.OP_STATS, results.columns);
       for (var i = 0; i < results.points.length; i++) {
         var point = results.points[i];
-        var key = parser.getKey(point);
+        var key = parser.get_key(point);
         // InfluxDB returns the values in chronological order and we rely on
         // that here
         if (key in observedValues) {
           continue;
         }
         observedValues[key] = true;
-        totalSize += Number(parser.getSize(point));
+        totalSize += Number(parser.get_size(point));
       }
       return totalSize;
     }
@@ -88,10 +89,12 @@ bounce.factory('objectStoreStats', ['$rootScope', '$http',
       var updateTimes = [];
       for (var j = 0; j < results.length; j++) {
         var serieTags = BounceUtils.parseSerieName(results[j].name);
-        data.data.size += Number(results[j].points[0][2]);
-        data.data.objects += Number(results[j].points[0][3]);
+        var parser = new BounceUtils.InfluxDBParser(
+            BounceUtils.QUERY_FIELDS.CONTAINER_STATS, results[j].columns);
+        data.data.size += parser.get_size(results[j].points[0]);
+        data.data.objects += parser.get_objects(results[j].points[0]);
         containers.push(serieTags.container);
-        updateTimes.push(results[j].points[0][0]);
+        updateTimes.push(parser.get_time(results[j].points[0]));
       }
       // For each container, we need to add/subtract added/deleted object sizes
       // since the last time statistics were gathered

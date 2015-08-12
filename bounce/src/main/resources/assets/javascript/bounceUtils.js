@@ -440,31 +440,34 @@ BounceUtils.containerStatsQuery = function(providerId, containerName, method) {
       ".container." + containerName + ".op." + method + '$/';
 };
 
-BounceUtils.ResultsParser = function(columns) {
-  var FIELDS = { time: 'time',
-                 seq: 'sequence_number',
-                 duration: 'duration',
-                 key: 'object',
-                 size: 'size'
-               };
 
-  for (var i = 0; i < columns.length; i++) {
-    if (columns[i] === FIELDS.time) {
-      this.time_field = i;
-    } else if (columns[i] === FIELDS.seq) {
-      this.seq_field = i;
-    } else if (columns[i] === FIELDS.duration) {
-      this.duration_field = i;
-    } else if (columns[i] === FIELDS.key) {
-      this.key_field = i;
-    } else if (columns[i] === FIELDS.size) {
-      this.size_field = i;
+BounceUtils.QUERY_FIELDS = {
+  CONTAINER_STATS:
+    { time: 'time',
+      seq: 'sequence_number',
+      objects: 'objects',
+      size: 'size'
+    },
+  OP_STATS:
+    { time: 'time',
+      seq: 'sequence_number',
+      duration: 'duration',
+      key: 'object',
+      size: 'size'
     }
+};
+
+BounceUtils.InfluxDBParser = function(fields, columns) {
+  function createGetter(key) {
+    return function(point) { return point[this[key + '_field']]; };
   }
 
-  this.getTime = function(point) { return point[this.time_field]; },
-  this.getSeq = function(point) { return point[this.seq_field]; },
-  this.getKey = function(point) { return point[this.key_field]; },
-  this.getSize = function(point) { return point[this.size_field]; },
-  this.getDuration = function(point) { return point[this.duration_field]; }
+  for (var i = 0; i < columns.length; i++) {
+    for (var key in fields) {
+      if (fields[key] === columns[i]) {
+        this[key + '_field'] = i;
+        this['get_' + key] = createGetter(key);
+      }
+    }
+  } 
 };
