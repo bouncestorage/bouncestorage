@@ -70,7 +70,7 @@ public final class LoggingBlobStore extends ForwardingBlobStore {
         }
     }
 
-    private int getProviderId() {
+    public int getProviderId() {
         return id;
     }
 }

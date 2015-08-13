@@ -10,6 +10,7 @@ import static com.bouncestorage.bounce.UtilsTest.assertStatus;
 import static com.google.common.base.Throwables.propagate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -156,15 +157,34 @@ public final class MigrationPolicyTest {
 
         BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
         // sleep a little to wait for migration to start
-        Thread.sleep(100);
-        try {
-            policy.putBlob(containerName, newBlob);
-        } catch (ServiceUnavailableException e) {
-            // putBlob may fail if we detect that reconciling is happening
-            return;
-        }
+        Utils.waitUntil(() -> status.getTotalObjectCount() == 1);
+        assertThat(status.getMovedObjectCount()).isEqualTo(0);
+        assertThatThrownBy(() -> policy.putBlob(containerName, newBlob))
+                .isInstanceOf(ServiceUnavailableException.class);
 
         status.future().get();
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
+    }
+
+    @Test
+    public void testMigratingWhileOverwrite() throws Exception {
+        String blobName = UtilsTest.createRandomBlobName();
+        int size = 10 * 1024 * 1024;
+        Blob newBlob = UtilsTest.makeBlob(policy, blobName, ByteSource.wrap(new byte[size]));
+        Blob oldBlob = UtilsTest.makeBlob(policy, blobName, ByteSource.empty());
+
+        policy.getSource().putBlob(containerName, oldBlob);
+
+        Thread overwrite = new Thread(() -> {
+            policy.putBlob(containerName, newBlob);
+        });
+        overwrite.start();
+
+        BounceService.BounceTaskStatus status = bounceService.bounce(containerName);
+        // sleep a little to wait for the new put to start
+        Thread.sleep(100);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(0);
+        overwrite.join();
         assertEqualBlobs(policy.getBlob(containerName, blobName), newBlob);
     }
 

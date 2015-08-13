@@ -198,6 +198,7 @@ public final class BounceServiceTest {
         status.future().get();
         assertStatus(status, status::getMovedObjectCount).isEqualTo(0);
         assertStatus(status, status::getTotalObjectCount).isEqualTo(1);
+        assertStatus(status, status::getLinkedObjectCount).isEqualTo(1);
         BlobMetadata nearBlob = policy.getSource().blobMetadata(containerName, blob.getMetadata().getName());
         assertThat(BounceLink.isLink(nearBlob)).isTrue();
     }

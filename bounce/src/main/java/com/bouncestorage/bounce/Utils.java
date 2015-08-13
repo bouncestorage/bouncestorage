@@ -23,7 +23,6 @@ import java.util.concurrent.TimeoutException;
 import javax.annotation.Nullable;
 
 import com.bouncestorage.bounce.admin.BouncePolicy;
-import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.bouncestorage.bounce.utils.BlobStoreByteSource;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;
@@ -45,12 +44,15 @@ import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jclouds.io.ContentMetadata;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class Utils {
     public static final int WAIT_SLEEP_MS = 10;
     public static final int WAIT_TIMEOUT_MS = 30 * 1000;
     public static final String RANDOM_CONTAINER_REGEX = "^bounce-[0-9]+$";
     private static final PutOptions MULTIPART_PUT = new PutOptions().multipart(true);
+    private static final Logger logger = LoggerFactory.getLogger(Utils.class);
 
     private Utils() {
         throw new AssertionError("intentionally unimplemented");
@@ -97,8 +99,6 @@ public final class Utils {
     public static BouncePolicy.BounceResult createBounceLink(BlobStore blobStore, BlobMetadata blobMetadata) {
         BounceLink link = new BounceLink(Optional.of(blobMetadata));
         blobStore.putBlob(blobMetadata.getContainer(), link.toBlob(blobStore));
-        blobStore.removeBlob(blobMetadata.getContainer(), blobMetadata.getName() +
-                WriteBackPolicy.LOG_MARKER_SUFFIX);
         return BouncePolicy.BounceResult.LINK;
     }
 
@@ -109,11 +109,13 @@ public final class Utils {
     public static void waitUntil(long waitMs, long timeoutMs, Callable<Boolean> test) throws Exception {
         Instant timeStarted = Instant.now();
         while (!test.call()) {
-            Thread.sleep(waitMs);
             if (Instant.now().minusMillis(timeoutMs).isAfter(timeStarted)) {
-                throw new TimeoutException("Application took more than 30 seconds to start");
+                throw new TimeoutException("Application took more than " + (timeoutMs / 1000) + " seconds to start");
             }
+            Thread.sleep(waitMs);
         }
+        logger.debug("Waited {} out of {} ms for {}",
+                Instant.now().minusMillis(timeStarted.toEpochMilli()).toEpochMilli(), timeoutMs, test);
     }
 
     public static String createRandomContainerName() {
@@ -262,7 +264,8 @@ public final class Utils {
         to.putBlob(containerNameTo, blob, options);
     }
 
-    public static Blob copyBlob(BlobStore from, BlobStore to, String containerNameTo, Blob blobFrom)
+    public static Blob copyBlob(BlobStore from, BlobStore to, String containerNameTo, Blob blobFrom,
+                                boolean saveSystemMetadata)
             throws IOException {
         if (blobFrom == null) {
             return null;
@@ -272,9 +275,15 @@ public final class Utils {
             throw new IllegalArgumentException(blobFrom.getMetadata().getName() + " is a link");
         }
 
+        Map<String, String> userMetadata = blobFrom.getMetadata().getUserMetadata();
+        if (saveSystemMetadata) {
+            SystemMetadataSerializer.SYSTEM_METADATA
+                    .forEach(t -> userMetadata.put(t.getName(), t.serialize(blobFrom.getMetadata())));
+        }
+
         ContentMetadata metadata = blobFrom.getMetadata().getContentMetadata();
         PayloadBlobBuilder builder = to.blobBuilder(blobFrom.getMetadata().getName())
-                .userMetadata(blobFrom.getMetadata().getUserMetadata())
+                .userMetadata(userMetadata)
                 .payload(new BlobStoreByteSource(from, blobFrom, blobFrom.getMetadata().getSize()));
 
         copyToBlobBuilder(metadata, builder);
@@ -295,14 +304,23 @@ public final class Utils {
     // TODO: eventually this should support parallel copies, cancellation, and
     // multi-part uploads
     public static Blob copyBlob(BlobStore from, BlobStore to,
-            String containerNameFrom, String containerNameTo, String blobName)
+                                String containerNameFrom, String containerNameTo, String blobName)
+            throws IOException {
+        return copyBlob(from, to, containerNameFrom, containerNameTo, blobName, false);
+    }
+
+    // TODO: eventually this should support parallel copies, cancellation, and
+    // multi-part uploads
+    public static Blob copyBlob(BlobStore from, BlobStore to,
+                                String containerNameFrom, String containerNameTo, String blobName,
+                                boolean saveSystemMetadata)
             throws IOException {
         Blob blobFrom = from.getBlob(containerNameFrom, blobName);
         if (blobFrom == null) {
             return null;
         }
 
-        return copyBlob(from, to, containerNameTo, blobFrom);
+        return copyBlob(from, to, containerNameTo, blobFrom, saveSystemMetadata);
     }
 
     static void moveBlob(BlobStore from, BlobStore to,

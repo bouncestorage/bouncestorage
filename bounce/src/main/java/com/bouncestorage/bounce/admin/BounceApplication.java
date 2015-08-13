@@ -219,6 +219,7 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
             if (identity != null) {
                 builder.credentials(identity, c.getString(Constants.PROPERTY_CREDENTIAL));
             }
+            c.addProperty(Constants.PROPERTY_STRIP_EXPECT_HEADER, "true");
             context = builder.overrides(new ConfigurationPropertiesView(c))
                     .modules(ImmutableList.of(new SLF4JLoggingModule()))
                     .build(BlobStoreContext.class);
@@ -229,10 +230,6 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
         }
 
         BlobStore blobStore = new LoggingBlobStore(context.getBlobStore(), id, this);
-        if (testAutoConfig) {
-            blobStore = new AutoConfigBlobStore(blobStore, this);
-        }
-
         providers.put(Integer.valueOf(id), blobStore);
     }
 
@@ -282,9 +279,6 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
             BlobStore store = providers.get(id);
             if (store == null) {
                 throw new IllegalArgumentException(String.format("Blobstore %d not found", id));
-            }
-            if (store instanceof AutoConfigBlobStore) {
-                store = ((AutoConfigBlobStore) store).delegate();
             }
             virtualContainer.getLocation(i).setBlobStoreId(id);
             String targetContainerName = c.getString(tierPrefix + "." + Location.CONTAINER_NAME_FIELD, containerName);
@@ -346,6 +340,9 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
     public int getBlobStoreId(BlobStore blobStore) {
         if (blobStore instanceof BlobStoreTarget) {
             blobStore = ((BlobStoreTarget) blobStore).delegate();
+        }
+        if (blobStore instanceof LoggingBlobStore) {
+            return ((LoggingBlobStore) blobStore).getProviderId();
         }
         Integer result = providers.inverse().get(blobStore);
         if (result == null) {
@@ -699,8 +696,11 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
         return backgroundReconcileTasks.schedule(task, delay, unit);
     }
 
+    @VisibleForTesting
     public boolean hasNoPendingReconcileTasks() {
-        return backgroundReconcileTasks.getQueue().isEmpty() && backgroundReconcileTasks.getActiveCount() == 0;
+        return backgroundReconcileTasks.getQueue().isEmpty() &&
+                backgroundReconcileTasks.getActiveCount() == 0 &&
+                backgroundReconcileTasks.getTaskCount() == backgroundReconcileTasks.getCompletedTaskCount();
     }
 
     @VisibleForTesting

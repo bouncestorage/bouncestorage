@@ -19,8 +19,6 @@ public class BounceAutoConfigApplication extends BounceApplication {
     public BounceAutoConfigApplication(String configFilePath) {
         super(configFilePath);
         autoConfigBlobStore = new AutoConfigBlobStore(this);
-        // Bouncing is done deterministically
-        pauseBackgroundTasks();
     }
 
     @Override

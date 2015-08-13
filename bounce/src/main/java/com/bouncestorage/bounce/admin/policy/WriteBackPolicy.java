@@ -7,6 +7,7 @@ package com.bouncestorage.bounce.admin.policy;
 
 import static java.util.Objects.requireNonNull;
 
+import static com.bouncestorage.bounce.Utils.eTagsEqual;
 import static com.google.common.base.Throwables.propagate;
 
 import java.io.IOException;
@@ -14,6 +15,8 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
@@ -22,16 +25,21 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import javax.ws.rs.ClientErrorException;
+import javax.ws.rs.ServiceUnavailableException;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
 import com.bouncestorage.bounce.BounceLink;
 import com.bouncestorage.bounce.BounceStorageMetadata;
+import com.bouncestorage.bounce.SystemMetadataSerializer;
 import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.utils.ReconcileLocker;
 import com.google.auto.service.AutoService;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
@@ -43,11 +51,14 @@ import com.google.common.io.ByteSource;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.io.input.TeeInputStream;
 import org.jclouds.blobstore.BlobStore;
+import org.jclouds.blobstore.KeyNotFoundException;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobMetadata;
+import org.jclouds.blobstore.domain.MutableBlobMetadata;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.internal.BlobImpl;
+import org.jclouds.blobstore.domain.internal.MutableBlobMetadataImpl;
 import org.jclouds.blobstore.domain.internal.PageSetImpl;
 import org.jclouds.blobstore.options.CopyOptions;
 import org.jclouds.blobstore.options.GetOptions;
@@ -69,11 +80,12 @@ public class WriteBackPolicy extends BouncePolicy {
     public static final String TAKEOVER_MARKER = INTERNAL_PREFIX + "need_take_over";
     private static final Predicate<String> SWIFT_SEGMENT_PATTERN =
             Pattern.compile(".*/slo/\\d{10}\\.\\d{6}/\\d+/\\d+/\\d{8}$").asPredicate();
-    private static final String LOG_MARKER_SUFFIX_ESCAPED = LOG_MARKER_SUFFIX.replace(" ", "%20");
-    private static final ListContainerOptions LIST_CONTAINER_RECURSIVE = new ListContainerOptions().recursive();
     private static final Iterable<Character> skipPathEncoding = Lists.charactersOf("/:;=");
+    private static final String LOG_MARKER_SUFFIX_ESCAPED = Strings2.urlEncode(LOG_MARKER_SUFFIX, skipPathEncoding);
+    private static final ListContainerOptions LIST_CONTAINER_RECURSIVE = new ListContainerOptions().recursive();
     protected Duration copyDelay;
     protected Duration evictDelay;
+    private ReconcileLocker reconcileLocker = new ReconcileLocker();
 
     public static boolean isMarkerBlob(String name) {
         return name.endsWith(LOG_MARKER_SUFFIX);
@@ -140,20 +152,29 @@ public class WriteBackPolicy extends BouncePolicy {
 
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions options) {
-        if (blob.getMetadata().getName().startsWith(INTERNAL_PREFIX)) {
+        String blobName = blob.getMetadata().getName();
+        if (blobName.startsWith(INTERNAL_PREFIX)) {
             throw new UnsupportedOperationException("illegal prefix");
         }
-        putMarkerBlob(containerName, blob.getMetadata().getName());
-        String etag = getSource().putBlob(containerName, blob, options);
-        String blobName = blob.getMetadata().getName();
-        enqueueReconcile(containerName, blobName);
-        return etag;
+        if (BounceLink.isLink(blob.getMetadata())) {
+            throw new IllegalArgumentException(blobName + " is a link");
+        }
+
+        try (ReconcileLocker.LockKey ignored = reconcileLocker.lockObject(containerName, blobName, false)) {
+            putMarkerBlob(containerName, blobName);
+            String etag = getSource().putBlob(containerName, blob, options);
+            enqueueReconcile(containerName, blobName);
+            return etag;
+        }
     }
 
     @Override
     public void removeBlob(String container, String name) {
         if (name.startsWith(INTERNAL_PREFIX)) {
             throw new UnsupportedOperationException("illegal prefix");
+        }
+        if (name.endsWith(LOG_MARKER_SUFFIX) || name.endsWith(LOG_MARKER_SUFFIX_ESCAPED)) {
+            throw new UnsupportedOperationException("illegal suffix: " + name);
         }
         super.removeBlob(container, name);
         removeMarkerBlob(container, name);
@@ -184,6 +205,11 @@ public class WriteBackPolicy extends BouncePolicy {
         }
     }
 
+    private String replaceMetadata(BlobStore blobStore, String container, String blobName,
+                                   CopyOptions options) {
+        return blobStore.copyBlob(container, blobName, container, blobName, options);
+    }
+
     @Override
     public String copyBlob(String fromContainer, String fromName, String toContainer, String toName, CopyOptions options) {
         if (!fromContainer.equals(toContainer)) {
@@ -198,12 +224,31 @@ public class WriteBackPolicy extends BouncePolicy {
             return null;
         }
 
+        if (fromName.equals(toName) && options.getUserMetadata().isPresent()) {
+            // we are only updating the user metadata
+            if (BounceLink.isLink(sourceMeta)) {
+                String etag = replaceMetadata(getDestination(), fromContainer, fromName, options);
+                BlobMetadata meta = getDestination().blobMetadata(toContainer, toName);
+                Utils.createBounceLink(getSource(), meta);
+                return etag == null ? meta.getETag() : etag;
+            } else {
+                try {
+                    replaceMetadata(getDestination(), fromContainer, fromName, options);
+                } catch (KeyNotFoundException e) {
+                    // if it's not on the remote side yet, it's ok
+                }
+                String etag = replaceMetadata(getSource(), fromContainer, fromName, options);
+                return etag == null ? getSource().blobMetadata(fromContainer, fromName).getETag() : etag;
+            }
+        }
+
         String etag;
         if (BounceLink.isLink(sourceMeta)) {
             // we know that the far store has a valid object
             etag = getDestination().copyBlob(fromContainer, fromName, toContainer, toName, options);
             if (etag != null) {
                 Utils.createBounceLink(getSource(), getDestination().blobMetadata(toContainer, toName));
+                removeMarkerBlob(fromContainer, toName);
             }
         } else {
             putMarkerBlob(toContainer, toName);
@@ -262,25 +307,29 @@ public class WriteBackPolicy extends BouncePolicy {
     @Override
     public BounceResult reconcileObject(String container, BounceStorageMetadata sourceObject, StorageMetadata
             destinationObject) {
-        logger.debug("reconciling {}", sourceObject == null ? destinationObject.getName() : sourceObject.getName());
-        if (sourceObject != null) {
-            logger.debug("reconciling {} {} {}", sourceObject.getName(),
-                    destinationObject == null ? "null" : destinationObject.getName(), sourceObject.getRegions());
-            try {
-                if (isEvict() && isObjectExpired(sourceObject, evictDelay)) {
-                    return maybeMoveObject(container, sourceObject, destinationObject);
-                } else if (isCopy() && (isImmediateCopy() || isObjectExpired(sourceObject, copyDelay))) {
-                    return maybeCopyObject(container, sourceObject, destinationObject);
+        String blobName = sourceObject == null ? destinationObject.getName() : sourceObject.getName();
+        try (ReconcileLocker.LockKey ignored = reconcileLocker.lockObject(container, blobName, true)) {
+            if (sourceObject != null) {
+                logger.debug("reconciling {} {} {}", sourceObject.getName(),
+                        destinationObject == null ? "null" : destinationObject.getName(), sourceObject.getRegions());
+                try {
+                    if (isEvict() && isObjectExpired(sourceObject, evictDelay)) {
+                        return maybeMoveObject(container, sourceObject, destinationObject);
+                    } else if (isCopy() && (isImmediateCopy() || isObjectExpired(sourceObject, copyDelay))) {
+                        return maybeCopyObject(container, sourceObject, destinationObject);
+                    }
+                } catch (IOException e) {
+                    throw propagate(e);
                 }
-            } catch (IOException e) {
-                throw propagate(e);
-            }
 
+                return BounceResult.NO_OP;
+            } else {
+                logger.debug("reconciling null {}", destinationObject.getName());
+                getDestination().removeBlob(container, destinationObject.getName());
+                return BounceResult.REMOVE;
+            }
+        } catch (ServiceUnavailableException e) {
             return BounceResult.NO_OP;
-        } else {
-            logger.debug("reconciling null {}", destinationObject.getName());
-            getDestination().removeBlob(container, destinationObject.getName());
-            return BounceResult.REMOVE;
         }
     }
 
@@ -339,7 +388,7 @@ public class WriteBackPolicy extends BouncePolicy {
         Instant now = app.getClock().instant();
         Instant then = metadata.getLastModified().toInstant();
         logger.debug("now {} mtime {}", now, then);
-        return !now.minus(duration).isBefore(then);
+        return !now.plusSeconds(1).minus(duration).isBefore(then);
     }
 
     private Blob pipeBlobAndReturn(String container, Blob blob) throws IOException {
@@ -351,7 +400,7 @@ public class WriteBackPolicy extends BouncePolicy {
 
         Payload blobPayload = blob.getPayload();
         MutableContentMetadata contentMetadata = blob.getMetadata().getContentMetadata();
-        Blob retBlob = new BlobImpl(blob.getMetadata());
+        Blob retBlob = new BlobImpl(replaceSystemMetadata(blob.getMetadata()));
         retBlob.setPayload(pipeIn);
         retBlob.setAllHeaders(blob.getAllHeaders());
         TeeInputStream tee = new TeeInputStream(blobPayload.openStream(), pipeOut, true);
@@ -361,6 +410,9 @@ public class WriteBackPolicy extends BouncePolicy {
             try {
                 logger.debug("copying {} to tee stream", name);
                 return Utils.copyBlob(getDestination(), getSource(), container, blob, tee);
+            } catch (RuntimeException e) {
+                logger.error("copying " + name + " to tee stream failed", e);
+                throw e;
             } finally {
                 tee.close();
             }
@@ -376,36 +428,59 @@ public class WriteBackPolicy extends BouncePolicy {
         return getDestination().getContext().unwrap().getId();
     }
 
+    private GetOptions maybeConditionalGet(String container, String blobName, GetOptions options) {
+        if (options.getIfMatch() != null || options.getIfNoneMatch() != null ||
+                options.getIfModifiedSince() != null || options.getIfUnmodifiedSince() != null) {
+
+            BlobMetadata meta = blobMetadata(container, blobName);
+            HttpResponseException ex = null;
+
+            if (options.getIfMatch() != null && !eTagsEqual(options.getIfMatch(), meta.getETag())) {
+                throw new ClientErrorException(Response.Status.PRECONDITION_FAILED);
+            }
+
+            if (options.getIfNoneMatch() != null && eTagsEqual(options.getIfNoneMatch(), meta.getETag())) {
+                throw new WebApplicationException(Response.Status.NOT_MODIFIED);
+            }
+
+            if (options.getIfModifiedSince() != null &&
+                    meta.getLastModified().compareTo(options.getIfModifiedSince()) <= 0) {
+                throw new WebApplicationException(Response.Status.NOT_MODIFIED);
+            }
+
+            if (options.getIfUnmodifiedSince() != null &&
+                    meta.getLastModified().compareTo(options.getIfUnmodifiedSince()) > 0) {
+                throw new ClientErrorException(Response.Status.PRECONDITION_FAILED);
+            }
+
+            return new GetOptions() {
+                @Override
+                public List<String> getRanges() {
+                    return options.getRanges();
+                }
+            };
+        }
+
+        return options;
+    }
+
     @Override
     public Blob getBlob(String container, String blobName, GetOptions options) {
         if (blobName.startsWith(INTERNAL_PREFIX)) {
             throw new UnsupportedOperationException("illegal prefix");
         }
 
-        Blob blob = null;
-        boolean isLink;
-        try {
-            blob = super.getBlob(container, blobName, options);
-            if (blob == null) {
-                if (takeOverInProcess) {
-                    return getDestination().getBlob(container, blobName, options);
-                }
-                return null;
-            }
+        options = maybeConditionalGet(container, blobName, options);
 
-            BlobMetadata meta = blob.getMetadata();
-            isLink = BounceLink.isLink(meta);
-        } catch (HttpResponseException e) {
-            if (e.getResponse().getStatusCode() == 412 &&
-                    e.getResponse().getHeaders().containsKey("X-Object-Meta-Bounce-Link")) {
-                isLink = true;
-            } else {
-                throw e;
+        Blob blob = super.getBlob(container, blobName, options);
+        if (blob == null) {
+            if (takeOverInProcess) {
+                return getDestination().getBlob(container, blobName, options);
             }
+            return null;
         }
-
-        if (isLink) {
-            logger.debug("following link {}", blobName);
+        BlobMetadata meta = blob.getMetadata();
+        if (BounceLink.isLink(meta)) {
             try {
                 if (app != null && options.equals(GetOptions.NONE)) {
                     blob = getDestination().getBlob(container, blobName, GetOptions.NONE);
@@ -415,15 +490,43 @@ public class WriteBackPolicy extends BouncePolicy {
                     logger.debug("unbouncing {} from {} to {}", blobName, getDestStoreName(), getSourceStoreName());
                     Utils.copyBlob(getDestination(), getSource(), container, container, blobName);
                     logger.debug("returning unbounced blob {}", blobName);
-                    return getSource().getBlob(container, blobName, options);
+                    blob = getSource().getBlob(container, blobName, options);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-                return getDestination().getBlob(container, blobName, options);
+                blob = getDestination().getBlob(container, blobName, options);
             }
-        } else {
-            return blob;
         }
+
+        return replaceSystemMetadata(blob);
+    }
+
+    private Blob replaceSystemMetadata(Blob blob) {
+        MutableContentMetadata contentMetadata = blob.getMetadata().getContentMetadata();
+        Blob newBlob = new BlobImpl(replaceSystemMetadata(blob.getMetadata()));
+        newBlob.setPayload(blob.getPayload());
+        newBlob.setAllHeaders(blob.getAllHeaders());
+        newBlob.getMetadata().setContentMetadata(contentMetadata);
+        return newBlob;
+    }
+
+    private MutableBlobMetadata replaceSystemMetadata(MutableBlobMetadata blobMetadata) {
+        Map<String, String> userMetadata = blobMetadata.getUserMetadata();
+        SystemMetadataSerializer.SYSTEM_METADATA.stream()
+                .filter(t -> userMetadata.containsKey(t.getName()))
+                .forEach(t -> {
+                    t.deserialize(blobMetadata, userMetadata.get(t.getName()));
+                });
+        Map<String, String> filtered = userMetadata.entrySet().stream()
+                .filter(e -> !e.getKey().startsWith(SystemMetadataSerializer.METADATA_PREFIX))
+                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
+        blobMetadata.setUserMetadata(filtered);
+        return blobMetadata;
+    }
+
+    private BlobMetadata replaceSystemMetadata(BlobMetadata blobMetadata) {
+        MutableBlobMetadata mutable = new MutableBlobMetadataImpl(blobMetadata);
+        return replaceSystemMetadata(mutable);
     }
 
     @Override
@@ -444,14 +547,17 @@ public class WriteBackPolicy extends BouncePolicy {
                             throw propagate(e);
                         }
                     } else {
-                        return linkBlob.getMetadata();
+                        return replaceSystemMetadata(linkBlob.getMetadata());
                     }
                 } else {
                     return null;
                 }
             }
+
+            return replaceSystemMetadata(meta);
+        } else {
+            return null;
         }
-        return meta;
     }
 
     protected final BounceResult maybeMoveObject(String container, BounceStorageMetadata sourceObject,
@@ -464,7 +570,7 @@ public class WriteBackPolicy extends BouncePolicy {
             BlobMetadata destinationMetadata = getDestination().blobMetadata(container, destinationObject.getName());
 
             if (sourceMetadata != null && destinationMetadata != null) {
-                Utils.createBounceLink(this, sourceMetadata);
+                Utils.createBounceLink(getSource(), sourceMetadata);
                 removeMarkerBlob(container, sourceObject.getName());
                 return BounceResult.LINK;
             }
