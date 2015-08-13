@@ -120,9 +120,13 @@ public final class BounceLink implements Serializable {
         oos.writeObject(cmeta.getContentEncoding());
         oos.writeObject(cmeta.getContentLanguage());
         oos.writeLong(cmeta.getContentLength());
-        byte[] md5 = cmeta.getContentMD5AsHashCode().asBytes();
-        oos.writeInt(md5.length);
-        oos.write(md5);
+        if (cmeta.getContentMD5AsHashCode() != null) {
+            byte[] md5 = cmeta.getContentMD5AsHashCode().asBytes();
+            oos.writeInt(md5.length);
+            oos.write(md5);
+        } else {
+            oos.writeInt(0);
+        }
         oos.writeObject(cmeta.getContentType());
         oos.writeObject(cmeta.getExpires());
     }
@@ -158,9 +162,11 @@ public final class BounceLink implements Serializable {
         cmeta.setContentLanguage(readStr(ois));
         cmeta.setContentLength(ois.readLong());
         int md5Length = ois.readInt();
-        byte[] md5 = new byte[md5Length];
-        ois.readFully(md5);
-        cmeta.setContentMD5(HashCode.fromBytes(md5));
+        if (md5Length != 0) {
+            byte[] md5 = new byte[md5Length];
+            ois.readFully(md5);
+            cmeta.setContentMD5(HashCode.fromBytes(md5));
+        }
         cmeta.setContentType(readStr(ois));
         cmeta.setExpires(readFrom(ois, Date.class));
     }
