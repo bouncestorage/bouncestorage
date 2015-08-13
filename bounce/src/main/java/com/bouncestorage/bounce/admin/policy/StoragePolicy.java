@@ -111,4 +111,9 @@ public class StoragePolicy extends WriteBackPolicy {
         Instant value = date.toInstant().truncatedTo(ChronoUnit.DAYS);
         return value;
     }
+
+    @VisibleForTesting
+    public long getCapacity() {
+        return capacity;
+    }
 }

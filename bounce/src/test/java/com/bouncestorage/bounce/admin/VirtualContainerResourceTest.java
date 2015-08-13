@@ -159,6 +159,39 @@ public class VirtualContainerResourceTest {
                 .isEqualTo(StoragePolicy.class.getSimpleName());
     }
 
+    @Test
+    public void testUpdateContainerConfig() throws Exception {
+        String containerName = UtilsTest.createRandomBlobName();
+
+        VirtualContainerResource resource = new VirtualContainerResource(app);
+
+        VirtualContainer newContainer = new VirtualContainer();
+        newContainer.setName(containerName);
+        Location origin = new Location();
+        origin.setBlobStoreId(0);
+        origin.setContainerName("container");
+        origin.setMoveDelay("-P1D");
+        origin.setCopyDelay("-P1D");
+        origin.setCapacity(1);
+        newContainer.setOriginLocation(origin);
+
+        Location archive = new Location();
+        archive.setBlobStoreId(0);
+        archive.setContainerName("archive");
+        newContainer.setArchiveLocation(archive);
+
+        resource.createContainer(newContainer);
+        assertThat(newContainer.getId()).isNotEqualTo(0);
+
+        StoragePolicy policy = (StoragePolicy) app.getBlobStore(containerName);
+        assertThat(policy.getCapacity()).isEqualTo(1);
+
+        origin = newContainer.getOriginLocation();
+        origin.setCapacity(2);
+        resource.updateContainer(newContainer.getId(), newContainer);
+        assertThat(policy.getCapacity()).isEqualTo(2);
+    }
+
     private Properties getDefaultProperties() {
         Properties properties = new Properties();
         properties.setProperty("bounce.backends", "0");
@@ -174,6 +207,7 @@ public class VirtualContainerResourceTest {
     private void setDefaultContainerProperties() {
         app.getBlobStore(0).createContainerInLocation(null, "container");
         app.getBlobStore(0).createContainerInLocation(null, "cache");
+        app.getBlobStore(0).createContainerInLocation(null, "archive");
         Properties properties = new Properties();
         String virtualContainerPrefix = VirtualContainerResource.VIRTUAL_CONTAINER_PREFIX + "." + 0;
         properties.setProperty(Joiner.on(".").join(virtualContainerPrefix, VirtualContainer.NAME), "vBucket");

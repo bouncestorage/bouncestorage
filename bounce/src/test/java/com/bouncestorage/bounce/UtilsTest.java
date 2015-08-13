@@ -98,7 +98,7 @@ public final class UtilsTest {
                     policyConfig.get(WriteBackPolicy.EVICT_DELAY));
         }
         policyConfig.entrySet()
-                .forEach(entry -> config.setProperty(Joiner.on(".").join(cacheTierPrefix, entry.getKey()),
+                .forEach(entry -> newProperties.setProperty(Joiner.on(".").join(cacheTierPrefix, entry.getKey()),
                         entry.getValue()));
         String primaryTierPrefix = Joiner.on(".").join(containerPrefix, VirtualContainer.PRIMARY_TIER_PREFIX);
         newProperties.setProperty(Joiner.on(".").join(primaryTierPrefix, Location.BLOB_STORE_ID_FIELD), "1");

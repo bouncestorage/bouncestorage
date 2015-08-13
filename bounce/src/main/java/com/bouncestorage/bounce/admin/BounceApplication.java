@@ -100,7 +100,7 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
     private Map<String, BouncePolicy> virtualContainers = new HashMap<>();
     private Map<String, VirtualContainer> vContainerConfig = new HashMap<>();
     private final Pattern providerConfigPattern = Pattern.compile("(bounce.backend.\\d+).jclouds.provider");
-    private final Pattern containerConfigPattern = Pattern.compile("(bounce.container.\\d+).name");
+    private final Pattern containerConfigPattern = Pattern.compile("(bounce.container.\\d+).tier.\\d+.\\w+");
     private Clock clock = Clock.systemUTC();
     private PausableThreadPoolExecutor backgroundReconcileTasks = new PausableThreadPoolExecutor(4);
     private PausableThreadPoolExecutor backgroundTasks = new PausableThreadPoolExecutor(4);
@@ -249,27 +249,66 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
         return Integer.parseInt(prefix.substring(dot + 1));
     }
 
-    private void addContainerFromConfig(String prefix, String containerName) {
-        logger.debug("adding container {} from {}", containerName, prefix);
+    private void updateContainerFromConfig(String prefix) {
         Configuration c = config.subset(prefix);
         int containerId = prefixToId(prefix);
-        int maxTierID = 3;
-        BlobStore lastBlobStore = null;
-        BouncePolicy lastPolicy = null;
+        String containerName = c.getString("name");
         VirtualContainer virtualContainer = vContainerConfig.get(containerName);
         if (virtualContainer == null) {
             virtualContainer = new VirtualContainer();
             virtualContainer.setName(containerName);
             vContainerConfig.put(containerName, virtualContainer);
             virtualContainer.setId(containerId);
+
+            logger.debug("adding container {} from {}", containerName, prefix);
+            addContainerFromConfig(c, containerName, virtualContainer);
         } else {
             if (virtualContainer.getId() != containerId) {
+                logger.error("Cannot update container id from {} to {}",
+                        virtualContainer.getId(), containerId);
                 throw new IllegalArgumentException(
                         String.format("Cannot update container id from %d to %d",
                                 virtualContainer.getId(), containerId));
+            } else {
+                logger.debug("updating container {} from {}", containerName, prefix);
+                updateContainerFromConfig(c, containerName, virtualContainer);
+            }
+        }
+    }
+
+    private void updateContainerFromConfig(Configuration c, String containerName, VirtualContainer virtualContainer) {
+        BlobStore blobStore = getBlobStore(containerName);
+        if (blobStore instanceof LoggingBlobStore) {
+            blobStore = ((LoggingBlobStore) blobStore).delegate();
+        }
+
+        int i = 0;
+        BouncePolicy policy;
+        for (; blobStore instanceof BouncePolicy; i++) {
+            String tierPrefix = "tier." + i;
+            Configuration tierConfig = c.subset(tierPrefix);
+            int id = tierConfig.getInt(Location.BLOB_STORE_ID_FIELD, -1);
+            if (id == -1) {
+                continue;
+            }
+            policy = (BouncePolicy) blobStore;
+            blobStore = policy.getDestination();
+
+            logger.debug("checking to see if we need to update location {}", i);
+            if (tierConfig.containsKey("policy")) {
+                policy.init(this, c.subset(tierPrefix));
             }
         }
 
+        if (i == 0) {
+            throw new IllegalStateException("haven't updated any policies");
+        }
+    }
+
+    private void addContainerFromConfig(Configuration c, String containerName, VirtualContainer virtualContainer) {
+        int maxTierID = 3;
+        BlobStore lastBlobStore = null;
+        BouncePolicy lastPolicy = null;
         for (int i = maxTierID; i >= 0; i--) {
             String tierPrefix = "tier." + i;
             int id = c.getInt(tierPrefix + "." + Location.BLOB_STORE_ID_FIELD, -1);
@@ -444,8 +483,7 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
         });
         config.getList(VirtualContainerResource.CONTAINERS_PREFIX).forEach(id -> {
             try {
-                addContainerFromConfig("bounce.container." + id,
-                        config.getString("bounce.container." + id + ".name"));
+                updateContainerFromConfig("bounce.container." + id);
             } catch (Throwable e) {
                 logger.error("Failed to initialize container " + id + ": " + e.getMessage());
                 e.printStackTrace();
@@ -606,7 +644,7 @@ public class BounceApplication extends Application<BounceDropWizardConfiguration
                 if ((m = providerConfigPattern.matcher(name)).matches()) {
                     addProviderFromConfig(m.group(1), (String) evt.getPropertyValue());
                 } else if ((m = containerConfigPattern.matcher(name)).matches()) {
-                    addContainerFromConfig(m.group(1), (String) evt.getPropertyValue());
+                    updateContainerFromConfig(m.group(1));
                 } else if (S3ProxyConstants.PROPERTY_ENDPOINT.equals(name)) {
                     startS3Proxy();
                 } else if (S3ProxyConstants.PROPERTY_SECURE_ENDPOINT.equals(name)) {
