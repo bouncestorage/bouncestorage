@@ -153,6 +153,9 @@ public class StoragePolicyTest {
         Mockito.doReturn(mockSource).when(mock).getSource();
         Mockito.doReturn(new PageSetImpl<>(listResults, null)).when(mockSource).list(Mockito.anyString(),
                 Mockito.any(ListContainerOptions.class));
+        BounceApplication mockApp = Mockito.spy(app);
+        mock.init(mockApp, app.getConfiguration().subset("bounce.container.0.tier.0"));
+        Mockito.doReturn(1).when(mockApp).getBlobStoreId(Mockito.any(BlobStore.class));
         mock.prepareBounce(containerName);
         try {
             BouncePolicy.BounceResult result = mock.reconcileObject(containerName,

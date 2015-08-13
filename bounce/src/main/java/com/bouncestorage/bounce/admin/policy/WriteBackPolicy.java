@@ -15,6 +15,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -571,15 +572,21 @@ public class WriteBackPolicy extends BouncePolicy {
 
             if (sourceMetadata != null && destinationMetadata != null) {
                 Utils.createBounceLink(getSource(), sourceMetadata);
+                Date startTime = new Date();
                 removeMarkerBlob(container, sourceObject.getName());
+                app.getBounceStats().logOperation("EVICT", app.getBlobStoreId(getSource()), container, sourceObject.getName(),
+                        sourceObject.getSize(), startTime.getTime());
                 return BounceResult.LINK;
             }
         }
 
         logger.debug("moving {}", sourceObject.getName());
+        Date startTime = new Date();
         Utils.copyBlobAndCreateBounceLink(getSource(), getDestination(), container,
                 sourceObject.getName());
         removeMarkerBlob(container, sourceObject.getName());
+        app.getBounceStats().logOperation("EVICT", app.getBlobStoreId(getSource()), container, sourceObject.getName(),
+                sourceObject.getSize(), startTime.getTime());
         return BounceResult.MOVE;
     }
 
@@ -723,8 +730,11 @@ public class WriteBackPolicy extends BouncePolicy {
         }
 
         logger.debug("copying {} to far store", sourceObject.getName());
+        Date startTime = new Date();
         Utils.copyBlob(getSource(), getDestination(), container, container, sourceObject.getName());
         removeMarkerBlob(container, sourceObject.getName());
+        app.getBounceStats().logOperation("COPY", app.getBlobStoreId(getSource()), container, sourceObject.getName(),
+                sourceObject.getSize(), startTime.getTime());
         return BounceResult.COPY;
     }
 
