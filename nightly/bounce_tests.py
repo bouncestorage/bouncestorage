@@ -368,7 +368,8 @@ def main(args):
 
     if saio_near_container is not None:
         if exception:
-            execute("sudo docker exec -it %s grep -e -server /var/log/syslog > swift.log" % saio_near_container)
+            execute("sudo docker exec -it %s grep -e -server /var/log/syslog > swift.log" %
+                    saio_near_container)
         execute("sudo docker rm -f %s" % saio_near_container)
     if saio_far_container is not None:
         execute("sudo docker rm -f %s" % saio_far_container)
