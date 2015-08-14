@@ -119,15 +119,15 @@ public class LRUStoragePolicy extends StoragePolicy {
     @Override
     public String putBlob(String containerName, Blob blob, PutOptions options) {
         String eTag = super.putBlob(containerName, blob, options);
-        updateLRU(containerName, blob.getMetadata().getName(),
-                blob.getPayload().getContentMetadata().getContentLength());
+        // the mtime of this object just got updated, we can fall back to that
+        lru.remove(getLRUKey(containerName, blob.getMetadata().getName()));
         return eTag;
     }
 
     @Override
     public void removeBlob(String container, String name) {
         super.removeBlob(container, name);
-        lru.remove(container + "/" + name);
+        lru.remove(getLRUKey(container, name));
     }
 
     @Override
