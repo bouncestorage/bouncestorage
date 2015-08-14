@@ -472,15 +472,32 @@ public class WriteBackPolicy extends BouncePolicy {
 
         options = maybeConditionalGet(container, blobName, options);
 
-        Blob blob = super.getBlob(container, blobName, options);
-        if (blob == null) {
-            if (takeOverInProcess) {
-                return getDestination().getBlob(container, blobName, options);
+        Blob blob = null;
+        boolean isLink = false;
+        try {
+            blob = super.getBlob(container, blobName, options);
+            if (blob == null) {
+                if (takeOverInProcess) {
+                    return getDestination().getBlob(container, blobName, options);
+                }
+                return null;
             }
-            return null;
+            isLink = BounceLink.isLink(blob.getMetadata());
+        } catch (HttpResponseException e) {
+            if (e.getResponse() != null) {
+                int status = e.getResponse().getStatusCode();
+                if (status == Response.Status.REQUESTED_RANGE_NOT_SATISFIABLE.getStatusCode() &&
+                        e.getResponse().getHeaders().containsKey("X-Object-Meta-Bounce-Link")) {
+                    isLink = true;
+                }
+            }
+            if (!isLink) {
+                throw e;
+            }
         }
-        BlobMetadata meta = blob.getMetadata();
-        if (BounceLink.isLink(meta)) {
+
+        if (isLink) {
+            logger.debug("following link {}", blobName);
             try {
                 if (app != null && options.equals(GetOptions.NONE)) {
                     blob = getDestination().getBlob(container, blobName, GetOptions.NONE);
