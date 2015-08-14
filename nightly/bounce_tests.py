@@ -42,7 +42,7 @@ BOUNCE_SRC_DIR = "bouncestorage"
 SUREFIRE_DIR = os.path.join(BOUNCE_SRC_DIR, 'bounce', 'target')
 SUREFIRE_DIR_NAME = 'surefire-reports'
 SUREFIRE_ARCHIVE = '/tmp/surefire.tar'
-COMPRESSED_ARCHIVE = SUREFIRE_ARCHIVE + '.gz'
+COMPRESSED_ARCHIVE = SUREFIRE_ARCHIVE + '.bz2'
 BOUNCE_NIGHTLY_TEST_NAME = "nightly/bounce_tests.py"
 
 DOCKER_SWIFT_REPO = "https://github.com/kahing/docker-swift"
@@ -195,7 +195,7 @@ def append_file_to_archive(path):
 
 
 def compress_archive():
-    execute("cd %s && gzip -f %s" %
+    execute("cd %s && bzip2 -f %s" %
             (os.path.dirname(SUREFIRE_ARCHIVE), SUREFIRE_ARCHIVE))
 
 
