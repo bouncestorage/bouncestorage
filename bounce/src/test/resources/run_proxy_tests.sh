@@ -15,6 +15,10 @@ trap cleanup EXIT
 AUTOCONFIG_MAIN=com.bouncestorage.bounce.AutoConfigMain
 BOUNCE_OPTS="$BOUNCE_OPTS -Dexec.classpathScope=test"
 PROXY_BIN="mvn -o exec:java $BOUNCE_OPTS -Dexec.mainClass=$AUTOCONFIG_MAIN -Dbounce.autoconfig-tiers=true"
+
+# exec:java doesn't compile
+mvn test-compile
+
 stdbuf -oL -eL $PROXY_BIN -Dexec.args='--properties src/main/resources/bounce.properties' &
 PROXY_PID=$!
 
