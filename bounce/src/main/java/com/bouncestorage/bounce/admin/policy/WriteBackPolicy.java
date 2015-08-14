@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
@@ -42,7 +43,6 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.utils.ReconcileLocker;
 import com.google.auto.service.AutoService;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
@@ -661,7 +661,7 @@ public class WriteBackPolicy extends BouncePolicy {
                     meta.hasMarkerBlob(true);
                     contents.put(name, meta);
                 } else {
-                    if (Objects.equal(nearMeta.getSize(), farMeta.getSize())) {
+                    if (Objects.equals(nearMeta.getSize(), farMeta.getSize())) {
                         meta = new BounceStorageMetadata(nearMeta,
                                 new ImmutableSet.Builder<BounceStorageMetadata.Region>()
                                         .add(BounceStorageMetadata.Region.NEAR)
