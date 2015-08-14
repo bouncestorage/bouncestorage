@@ -5,11 +5,15 @@
 
 package com.bouncestorage.bounce.utils;
 
+import static com.google.common.base.Throwables.propagate;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -18,6 +22,8 @@ import com.bouncestorage.bounce.Utils;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceConfiguration;
 import com.bouncestorage.bounce.admin.BouncePolicy;
+import com.bouncestorage.bounce.admin.policy.LRUStoragePolicy;
+import com.bouncestorage.bounce.admin.policy.StoragePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.collect.ImmutableMap;
 
@@ -224,7 +230,7 @@ public class AutoConfigBlobStore implements BlobStore {
 
     @Override
     public boolean createContainerInLocation(Location location, String container, CreateContainerOptions options) {
-        WriteBackPolicy policy = new WriteBackPolicy();
+        WriteBackPolicy policy = new LRUStoragePolicy();
         policy.init(app, getNewConfiguration());
         BlobStore tier1 = app.getBlobStore(0);
         BlobStore tier2 = app.getBlobStore(1);
@@ -346,14 +352,18 @@ public class AutoConfigBlobStore implements BlobStore {
             properties.setProperty(WriteBackPolicy.COPY_DELAY,
                     System.getProperty("bounce." + WriteBackPolicy.COPY_DELAY));
         } else {
-            properties.setProperty(WriteBackPolicy.COPY_DELAY, "P-1D");
+            properties.setProperty(WriteBackPolicy.COPY_DELAY, "P0D");
         }
         if (System.getProperty("bounce." + WriteBackPolicy.EVICT_DELAY) != null) {
             properties.setProperty(WriteBackPolicy.EVICT_DELAY,
                     System.getProperty("bounce." + WriteBackPolicy.EVICT_DELAY));
         } else {
-            properties.setProperty(WriteBackPolicy.EVICT_DELAY, "P0D");
+            properties.setProperty(WriteBackPolicy.EVICT_DELAY, "P-1D");
         }
+
+        properties.setProperty(StoragePolicy.CAPACITY_SETTING,
+                System.getProperty("bounce." + StoragePolicy.CAPACITY_SETTING, "10"));
+
         BounceConfiguration config = new BounceConfiguration();
         config.setAll(properties);
         return config;
@@ -366,8 +376,23 @@ public class AutoConfigBlobStore implements BlobStore {
             // allow for 5 seocnds overhead / object
             totalTime += pendingObjects.getAndSet(0) * 5 * 1000;
             Utils.waitUntil(10, totalTime, () -> app.hasNoPendingReconcileTasks());
-        } catch (Exception e) {
+
+            policyMap.keySet().iterator()
+                    .forEachRemaining(container -> app.getBounceService().bounce(container));
+            app.getBounceService().status().forEach(s -> {
+                try {
+                    s.future().get();
+                } catch (ExecutionException | InterruptedException e) {
+                    throw propagate(e);
+                }
+            });
+
+        } catch (TimeoutException e) {
             logger.error(e.getMessage(), e);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw propagate(e);
         }
     }
 }

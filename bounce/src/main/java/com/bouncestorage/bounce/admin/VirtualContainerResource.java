@@ -25,6 +25,7 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.bouncestorage.bounce.admin.policy.LRUStoragePolicy;
 import com.bouncestorage.bounce.admin.policy.MigrationPolicy;
 import com.bouncestorage.bounce.admin.policy.StoragePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
@@ -138,7 +139,7 @@ public final class VirtualContainerResource {
                 if (request.getOriginLocation().getCapacity() != null &&
                         request.getOriginLocation().getCapacity() > 0) {
                     properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
-                            StoragePolicy.class.getSimpleName());
+                            LRUStoragePolicy.class.getSimpleName());
                 } else {
                     properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.PRIMARY_TIER_PREFIX, "policy"),
                             WriteBackPolicy.class.getSimpleName());
@@ -151,7 +152,7 @@ public final class VirtualContainerResource {
             if (isPolicyUnset(current, request, VirtualContainer.TIER.CACHE)) {
                 if (request.getCacheLocation().getCapacity() != null) {
                     properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.CACHE_TIER_PREFIX, "policy"),
-                            StoragePolicy.class.getSimpleName());
+                            LRUStoragePolicy.class.getSimpleName());
                 } else {
                     properties.setProperty(Joiner.on(".").join(prefix, VirtualContainer.CACHE_TIER_PREFIX, "policy"),
                             WriteBackPolicy.class.getSimpleName());
