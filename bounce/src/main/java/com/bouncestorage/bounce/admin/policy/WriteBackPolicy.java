@@ -42,6 +42,7 @@ import com.bouncestorage.bounce.admin.BouncePolicy;
 import com.bouncestorage.bounce.utils.ReconcileLocker;
 import com.google.auto.service.AutoService;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
@@ -661,13 +662,14 @@ public class WriteBackPolicy extends BouncePolicy {
                     meta.hasMarkerBlob(true);
                     contents.put(name, meta);
                 } else {
-                    if (nearMeta.getSize().equals(farMeta.getSize())) {
+                    if (Objects.equal(nearMeta.getSize(), farMeta.getSize())) {
                         meta = new BounceStorageMetadata(nearMeta,
                                 new ImmutableSet.Builder<BounceStorageMetadata.Region>()
                                         .add(BounceStorageMetadata.Region.NEAR)
                                         .addAll(farRegions)
                                         .build());
-                        if (nearMeta.getLastModified().compareTo(meta.getLastModified()) < 0) {
+                        if (nearMeta.getLastModified() != null &&
+                                nearMeta.getLastModified().compareTo(meta.getLastModified()) < 0) {
                             meta.setLastModified(nearMeta.getLastModified());
                         }
                     } else {
