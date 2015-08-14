@@ -74,7 +74,8 @@ public final class BounceService {
         return bounceStatus.get(container);
     }
 
-    synchronized Collection<BounceTaskStatus> status() {
+    @VisibleForTesting
+    public synchronized Collection<BounceTaskStatus> status() {
         return bounceStatus.values();
     }
 

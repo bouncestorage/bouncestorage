@@ -17,6 +17,7 @@ import javax.ws.rs.core.Response;
 
 import com.bouncestorage.bounce.BounceBlobStore;
 import com.bouncestorage.bounce.UtilsTest;
+import com.bouncestorage.bounce.admin.policy.LRUStoragePolicy;
 import com.bouncestorage.bounce.admin.policy.StoragePolicy;
 import com.bouncestorage.bounce.admin.policy.WriteBackPolicy;
 import com.google.common.base.Joiner;
@@ -156,7 +157,7 @@ public class VirtualContainerResourceTest {
         assertThat(config.getProperty(Joiner.on(".").join(primaryLocationPrefix, WriteBackPolicy.EVICT_DELAY)))
                 .isEqualTo("-P1D");
         assertThat(config.getProperty(Joiner.on(".").join(primaryLocationPrefix, "policy")))
-                .isEqualTo(StoragePolicy.class.getSimpleName());
+                .isEqualTo(LRUStoragePolicy.class.getSimpleName());
     }
 
     @Test
