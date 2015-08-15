@@ -19,6 +19,13 @@ describe ('Test DashboardCtrl', function() {
     }
   }
 
+  function stubBounceStatsQueries() {
+    for (var i in BounceUtils.BOUNCE_METHODS) {
+      $httpBackend.expect('GET',
+          constructDBQuery(BounceUtils.BOUNCE_METHODS[i].query)).respond([]);
+    }
+  }
+
   beforeEach(inject(function($injector) {
     $httpBackend = $injector.get('$httpBackend');
     scope = $injector.get('$rootScope').$new();
@@ -41,6 +48,7 @@ describe ('Test DashboardCtrl', function() {
     $httpBackend.expectGET('/api/object_store').respond([]);
     stubOpsQuery();
     stubDurationQueries();
+    stubBounceStatsQueries();
     createController({});
     $httpBackend.flush();
   });
@@ -63,6 +71,7 @@ describe ('Test DashboardCtrl', function() {
     $httpBackend.expect('GET', '/api/object_store').respond(objectStores);
     stubOpsQuery();
     stubDurationQueries();
+    stubBounceStatsQueries();
     spyOn(objectStoreStats, 'getStats');
     createController({});
     $httpBackend.flush();

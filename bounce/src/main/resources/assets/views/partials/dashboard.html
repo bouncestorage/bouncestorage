@@ -14,16 +14,29 @@
   <h1 class="page-header">Dashboard</h1>
   <div class="col-sm-12">
     <div class="row">
-      <h2 class="sub-header">Object store usage: {{total_space}}</h2>
+      <div class="col-sm-6">
+        <h2 class="sub-header">Object store usage: {{total_space}}</h2>
 
-      <nvd3-pie-chart data="totalObjectStoreData" id="objectStoreChart"
-            height="280" width="515" x="objectStoreName()" y="objectStoreSize()"
-            showLabels="true" interactive="true" tooltips="true"
-            showLegend="true" labelType="percent"
-            margin="{left: 0, right: 0, top: 0, bottom: 0}"
-      >
-        <svg></svg>
-      </nvd3-pie-chart>
+        <nvd3-pie-chart data="totalObjectStoreData" id="objectStoreChart"
+              height="280" width="515" x="objectStoreName()" y="objectStoreSize()"
+              showLabels="true" interactive="true" tooltips="true"
+              showLegend="true" labelType="percent"
+              margin="{left: 0, right: 0, top: 0, bottom: 0}"
+        >
+          <svg></svg>
+        </nvd3-pie-chart>
+      </div>
+      <div class="col-sm-6">
+        <h2 class="sub-header">Objects bounced</h2>
+
+        <nvd3-line-chart data="bounceData" id="bounceChart" height="280"
+            width="515" xAxisTickFormat="formatDays()" objectEquality=true
+            xAxisLabel="Time" yAxisLabel="Objects" interactive="true"
+            tooltips="true" showXAxis="true" showYAxis="true" showLegend="true"
+        >
+          <svg></svg>
+        </nvd3-line-chart>
+      </div>
     </div>
     <div class="row">
       <div class="col-sm-6">
