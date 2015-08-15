@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 import com.bouncestorage.bounce.BlobStoreTarget;
 import com.bouncestorage.bounce.Utils;
+import com.bouncestorage.bounce.UtilsTest;
 import com.bouncestorage.bounce.admin.BounceApplication;
 import com.bouncestorage.bounce.admin.BounceConfiguration;
 import com.bouncestorage.bounce.admin.BouncePolicy;
@@ -228,8 +229,8 @@ public class AutoConfigBlobStore implements BlobStore {
         policy.init(app, getNewConfiguration());
         BlobStore tier1 = app.getBlobStore(0);
         BlobStore tier2 = app.getBlobStore(1);
-        String tier1Container = ContainerPool.getContainerPool(tier1).getContainer();
-        String tier2Container = ContainerPool.getContainerPool(tier2).getContainer();
+        String tier1Container = UtilsTest.createOrRequestContainer(tier1);
+        String tier2Container = UtilsTest.createOrRequestContainer(tier2);
         BlobStoreTarget source = new BlobStoreTarget(tier1, tier1Container);
         BlobStoreTarget destination = new BlobStoreTarget(tier2, tier2Container);
         policy.setBlobStores(source, destination);

@@ -368,7 +368,7 @@ public final class UtilsTest {
         return status;
     }
 
-    private static String createOrRequestContainer(BlobStore blobStore) {
+    public static String createOrRequestContainer(BlobStore blobStore) {
         String container;
         if (!isTransient(blobStore)) {
             container = ContainerPool.getContainerPool(blobStore).getContainer();
