@@ -360,7 +360,7 @@ public class WriteBackPolicyTest {
 
         Queue<StatsQueueEntry> q = app.getBounceStats().getQueue();
         boolean foundCopyOperation = false;
-        while(!q.isEmpty()) {
+        while (!q.isEmpty()) {
             StatsQueueEntry entry = q.remove();
             String seriesName = entry.getDbSeries().getName();
             if (seriesName.startsWith(BounceStats.DBSeries.OPS_SERIES) && seriesName.endsWith("COPY")) {
@@ -388,7 +388,7 @@ public class WriteBackPolicyTest {
 
         Queue<StatsQueueEntry> q = app.getBounceStats().getQueue();
         boolean foundMoveOperation = false;
-        while(!q.isEmpty()) {
+        while (!q.isEmpty()) {
             StatsQueueEntry entry = q.remove();
             String seriesName = entry.getDbSeries().getName();
             if (seriesName.startsWith(BounceStats.DBSeries.OPS_SERIES) && seriesName.endsWith("EVICT")) {
