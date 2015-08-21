@@ -206,9 +206,6 @@ public final class VirtualContainerResource {
             return;
         }
         if (location.getCapacity() != null && location.getCapacity() > 0) {
-            if (location.getCopyDelay() != null && !location.getCopyDelay().startsWith("-")) {
-                throw new IllegalArgumentException("Cannot set both capacity and delay");
-            }
             if (location.getMoveDelay() != null && !location.getMoveDelay().startsWith("-")) {
                 // Cannot configure an expiration or move policy, while also defining a storage policy
                 throw new IllegalArgumentException("Cannot set both capacity and delay");
