@@ -1,6 +1,14 @@
 Bounce Storage
 ==============
 
-Bounce Storage will create a virtual object store which provides lower costs, better performance, and superior manageability than existing object stores.
+Bounce Storage explored management of object store data between public and
+private clouds.  The core of this code might prove useful to developers solving
+similar problems.  The most immediately useful bits to users are our collection
+of protocol translators:
 
-[![Build Status](https://magnum.travis-ci.com/bouncestorage/bouncestorage.svg?token=WMFosPscYzMA9hzmo2Vq)](https://magnum.travis-ci.com/bouncestorage/bouncestorage)
+* [S3Proxy](https://github.com/andrewgaul/s3proxy)
+* [SwiftProxy](https://github.com/bouncestorage/swiftproxy)
+* [GlacierProxy](https://github.com/bouncestorage/glacier-proxy)
+
+Bounce ceased operations in late 2015.  Thank you to all our customers,
+investors, and friends for your feedback and support!
