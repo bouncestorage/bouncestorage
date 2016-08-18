@@ -399,16 +399,17 @@ BounceUtils.DB_PASSWORD = "bounce";
 BounceUtils.SERIES_URL = BounceUtils.DB_URL + BounceUtils.DB_NAME +
     "?username=" + BounceUtils.DB_USER + "&password=" + BounceUtils.DB_PASSWORD;
 
-BounceUtils.TRACKED_METHODS =
-  { 'PUT': 0,
-    'GET': 1,
-    'DELETE': 2
-  };
-
 BounceUtils.OPS_SERIES_PREFIX = "ops";
 BounceUtils.OPS_QUERY = "select count(object) from merge(/^" +
     BounceUtils.OPS_SERIES_PREFIX + "./i) group by time(30s) fill(0) " +
     "where time > now()-1h";
+BounceUtils.EVICT_OPS_QUERY = "select count(object) from merge(/^" +
+    BounceUtils.OPS_SERIES_PREFIX + ".*.op.EVICT/i) group by time(1d) " +
+    "fill(0) where time > now()-7d ";
+BounceUtils.COPY_OPS_QUERY = "select count(object) from merge(/^" +
+    BounceUtils.OPS_SERIES_PREFIX + ".*.op.COPY/i) group by time(1d) " +
+    "fill(0) where time > now()-7d ";
+
 BounceUtils.DURATION_QUERY = "select mean(duration) from merge(/^" +
     BounceUtils.OPS_SERIES_PREFIX;
 BounceUtils.DURATION_PARAMETERS =
@@ -418,12 +419,22 @@ BounceUtils.OBJECT_STORE_PREFIX = "object_store_stats"
 BounceUtils.OBJECT_STORE_QUERY =
     "select * from /^" + BounceUtils.OBJECT_STORE_PREFIX;
 
+BounceUtils.TRACKED_METHODS =
+  { 'PUT': 0,
+    'GET': 1,
+    'DELETE': 2
+  };
+BounceUtils.BOUNCE_METHODS =
+  { 'COPY': { index: 0,
+              query: BounceUtils.COPY_OPS_QUERY
+            },
+    'EVICT': { index: 1,
+              query: BounceUtils.EVICT_OPS_QUERY
+            }
+  };
+
 BounceUtils.OPS_QUERY_OBJECTS = "select * from /^" +
     BounceUtils.OPS_SERIES_PREFIX;
-
-BounceUtils.opCountQuery = function(op) {
-  return BounceUtils.OP_COUNT_SIZE_QUERY + "'" + op + "'";
-};
 
 BounceUtils.durationQuery = function(opName) {
   return BounceUtils.DURATION_QUERY + "..*\.op\." + opName + "$/) " +

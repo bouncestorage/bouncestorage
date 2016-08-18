@@ -346,6 +346,62 @@ public class WriteBackPolicyTest {
     }
 
     @Test
+    public void testLogCopyOperation() throws Exception {
+        policy.evictDelay = Duration.parse("-P1D");
+        policy.copyDelay = Duration.parse("PT5S");
+        String blobName = UtilsTest.createRandomBlobName();
+        Blob blob = UtilsTest.makeBlob(policy, blobName, ByteSource.wrap("foo".getBytes()));
+        policy.putBlob(containerName, blob);
+
+        UtilsTest.advanceServiceClock(app, duration.plusHours(1));
+        BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(0);
+        assertStatus(status, status::getCopiedObjectCount).isEqualTo(1);
+
+        Queue<StatsQueueEntry> q = app.getBounceStats().getQueue();
+        boolean foundCopyOperation = false;
+        while (!q.isEmpty()) {
+            StatsQueueEntry entry = q.remove();
+            String seriesName = entry.getDbSeries().getName();
+            if (seriesName.startsWith(BounceStats.DBSeries.OPS_SERIES) && seriesName.endsWith("COPY")) {
+                assertThat(entry.getValues().get(1)).isEqualTo(blobName);
+                assertThat(entry.getValues().get(2)).isEqualTo(blob.getMetadata().getContentMetadata()
+                        .getContentLength());
+                foundCopyOperation = true;
+            }
+        }
+        assertThat(foundCopyOperation).isTrue();
+    }
+
+    @Test
+    public void testLogMoveOperation() throws Exception {
+        policy.evictDelay = Duration.parse("PT5S");
+        policy.copyDelay = Duration.parse("-P1D");
+        String blobName = UtilsTest.createRandomBlobName();
+        Blob blob = UtilsTest.makeBlob(policy, blobName, ByteSource.wrap("foo".getBytes()));
+        policy.putBlob(containerName, blob);
+
+        UtilsTest.advanceServiceClock(app, duration.plusHours(1));
+        BounceService.BounceTaskStatus status = runBounce(bounceService, containerName);
+        assertStatus(status, status::getMovedObjectCount).isEqualTo(1);
+        assertStatus(status, status::getCopiedObjectCount).isEqualTo(0);
+
+        Queue<StatsQueueEntry> q = app.getBounceStats().getQueue();
+        boolean foundMoveOperation = false;
+        while (!q.isEmpty()) {
+            StatsQueueEntry entry = q.remove();
+            String seriesName = entry.getDbSeries().getName();
+            if (seriesName.startsWith(BounceStats.DBSeries.OPS_SERIES) && seriesName.endsWith("EVICT")) {
+                assertThat(entry.getValues().get(1)).isEqualTo(blobName);
+                assertThat(entry.getValues().get(2)).isEqualTo(blob.getMetadata().getContentMetadata()
+                        .getContentLength());
+                foundMoveOperation = true;
+            }
+        }
+        assertThat(foundMoveOperation).isTrue();
+    }
+
+    @Test
     public void testRandomOperations() throws Exception {
         BlobStore reference = UtilsTest.createTransientBlobStore();
         reference.createContainerInLocation(null, containerName);

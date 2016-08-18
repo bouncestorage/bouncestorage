@@ -9,6 +9,7 @@ dashboardControllers.controller('DashboardCtrl', ['$rootScope', '$scope',
   $scope.opsData = [{ key: "Number of operations",
                       values: []
                     }];
+  $scope.bounceData = [];
   $scope.objectStores = null;
   $scope.total_space = null;
   $scope.totalObjectStoreData = [];
@@ -20,11 +21,23 @@ dashboardControllers.controller('DashboardCtrl', ['$rootScope', '$scope',
                              });
   }
 
+  for (var i in BounceUtils.BOUNCE_METHODS) {
+    $scope.bounceData.push({ key: i,
+                             values: []
+                           });
+  }
+
   $scope.formatDate = function() {
     return function(epoch) {
       return $filter('date')(epoch, 'hh:mm:ss');
     };
   };
+
+  $scope.formatDays = function() {
+    return function(epoch) {
+      return $filter('date')(epoch, 'MM/dd');
+    }
+  }
 
   $scope.formatDuration = function() {
     return function(duration) {
@@ -96,6 +109,26 @@ dashboardControllers.controller('DashboardCtrl', ['$rootScope', '$scope',
     }
   };
 
+  $scope.getBounceOpsData = function() {
+    for (var i in BounceUtils.BOUNCE_METHODS) {
+      $http.get(BounceUtils.SERIES_URL, {
+          params: { query: BounceUtils.BOUNCE_METHODS[i].query }
+      })
+      .success(function(method) {
+        return function(results) {
+          if (results.length === 0 || results[0].points.length === 0) {
+            return;
+          }
+
+          var index = BounceUtils.BOUNCE_METHODS[method].index;
+          $scope.bounceData[index].values = results[0].points;
+        };
+      }(i)).error(function(error) {
+        console.log(error);
+      });
+    }
+  };
+
   $scope.getOpsData = function() {
     $http.get(BounceUtils.SERIES_URL, { params: { query: BounceUtils.OPS_QUERY }
                           })
@@ -112,15 +145,14 @@ dashboardControllers.controller('DashboardCtrl', ['$rootScope', '$scope',
 
   $scope.getOpsData();
   $scope.getDurationData();
-  $scope.refreshOpsData = $interval($scope.getOpsData, 5000);
-  $scope.refreshDurationData = $interval($scope.getDurationData, 5000);
+  $scope.getBounceOpsData();
+  $scope.refreshIntervals = [];
+  $scope.refreshIntervals.push($interval($scope.getOpsData, 5000));
+  $scope.refreshIntervals.push($interval($scope.getDurationData, 5000));
 
   $scope.$on('$locationChangeStart', function() {
-    if ($scope.refreshOpsData !== null) {
-      $interval.cancel($scope.refreshOpsData);
-    }
-    if ($scope.refreshDurationData !== null) {
-      $interval.cancel($scope.refreshDurationData);
+    for (var i = $scope.refreshIntervals.length; i > 0; i--) {
+      $interval.cancel($scope.refreshIntervals[i-1]);
     }
   });
 }]);
