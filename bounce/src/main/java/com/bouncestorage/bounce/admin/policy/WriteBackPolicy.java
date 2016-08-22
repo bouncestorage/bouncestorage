@@ -313,9 +313,18 @@ public class WriteBackPolicy extends BouncePolicy {
                 logger.debug("reconciling {} {} {}", sourceObject.getName(),
                         destinationObject == null ? "null" : destinationObject.getName(), sourceObject.getRegions());
                 try {
+                    if (sourceObject.contentMetadata() != null &&
+                            sourceObject.contentMetadata().getContentType().equals("application/directory")) {
+                        // Swift supports directory blobs, which we should not evict to another provider
+                        if (isCopy() && isImmediateCopy() || isObjectExpired(sourceObject, copyDelay)) {
+                            return maybeCopyObject(container, sourceObject, destinationObject);
+                        }
+                        return BounceResult.NO_OP;
+                    }
                     if (isEvict() && isObjectExpired(sourceObject, evictDelay)) {
                         return maybeMoveObject(container, sourceObject, destinationObject);
-                    } else if (isCopy() && (isImmediateCopy() || isObjectExpired(sourceObject, copyDelay))) {
+                    }
+                    if (isCopy() && (isImmediateCopy() || isObjectExpired(sourceObject, copyDelay))) {
                         return maybeCopyObject(container, sourceObject, destinationObject);
                     }
                 } catch (IOException e) {

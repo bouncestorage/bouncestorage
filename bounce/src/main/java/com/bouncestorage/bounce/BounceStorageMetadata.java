@@ -11,8 +11,10 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
 
+import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.domain.internal.MutableStorageMetadataImpl;
+import org.jclouds.io.ContentMetadata;
 
 public final class BounceStorageMetadata extends MutableStorageMetadataImpl {
     public enum Region {
@@ -27,9 +29,13 @@ public final class BounceStorageMetadata extends MutableStorageMetadataImpl {
     private final ImmutableSet<Region> regions;
     private boolean hasMarkerBlob;
     private long linkSize;
+    private ContentMetadata contentMetadata;
 
     public BounceStorageMetadata(StorageMetadata metadata, Set<Region> regions) {
         super(metadata);
+        if (metadata instanceof BlobMetadata) {
+            contentMetadata = ((BlobMetadata) metadata).getContentMetadata();
+        }
         this.regions = ImmutableSet.copyOf(requireNonNull(regions));
     }
 
@@ -51,5 +57,9 @@ public final class BounceStorageMetadata extends MutableStorageMetadataImpl {
 
     public ImmutableSet<Region> getRegions() {
         return regions;
+    }
+
+    public ContentMetadata contentMetadata() {
+        return contentMetadata;
     }
 }

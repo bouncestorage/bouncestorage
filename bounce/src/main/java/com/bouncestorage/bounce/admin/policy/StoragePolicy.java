@@ -66,6 +66,12 @@ public class StoragePolicy extends WriteBackPolicy {
             return super.reconcileObject(container, sourceObject, destinationObject);
         }
 
+        if (sourceObject.contentMetadata() != null) {
+            if (sourceObject.contentMetadata().getContentType().equals("application/directory")) {
+                return BounceResult.NO_OP;
+            }
+        }
+
         if (currentSize < capacity) {
             return super.reconcileObject(container, sourceObject, destinationObject);
         }
